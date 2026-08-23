@@ -15,11 +15,5 @@
   </head>
   <body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-blue-500 selection:text-white min-h-screen overflow-x-hidden">
     <div id="root"></div>
-    <script>
-      const path = window.location.pathname.replace(/\/+$/, '');
-      if (window.location.hostname.endsWith('github.io') && path === '/sales') {
-        window.location.replace('./dist/');
-      }
-    </script>
   </body>
 </html>
