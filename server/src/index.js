@@ -7,6 +7,19 @@ import { pool } from './db.js';
 import { requireAuth } from './auth.js';
 import { produitsRouter } from './routes/produits.js';
 import { licencesRouter } from './routes/licences.js';
+import { categoriesRouter } from './routes/categories.js';
+import { zonesRouter } from './routes/zones.js';
+import { fournisseursRouter } from './routes/fournisseurs.js';
+import { clientsRouter } from './routes/clients.js';
+import { paniersRouter } from './routes/paniers.js';
+import { personnelRouter } from './routes/personnel.js';
+import { settingsRouter } from './routes/settings.js';
+import { licenceStatusRouter } from './routes/licenceStatus.js';
+import { ventesRouter } from './routes/ventes.js';
+import { achatsStockRouter } from './routes/achatsStock.js';
+import { ajustementsStockRouter } from './routes/ajustementsStock.js';
+import { retoursRouter } from './routes/retours.js';
+import { reglementsRouter } from './routes/reglements.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +47,19 @@ app.use('/licences', licencesRouter);
 
 // Toutes les autres routes métier exigent un utilisateur Supabase authentifié.
 app.use('/produits', requireAuth, produitsRouter);
+app.use('/categories', requireAuth, categoriesRouter);
+app.use('/zones', requireAuth, zonesRouter);
+app.use('/fournisseurs', requireAuth, fournisseursRouter);
+app.use('/clients', requireAuth, clientsRouter);
+app.use('/paniers-en-attente', requireAuth, paniersRouter);
+app.use('/personnel', requireAuth, personnelRouter);
+app.use('/settings', requireAuth, settingsRouter);
+app.use('/licence', requireAuth, licenceStatusRouter);
+app.use('/ventes', requireAuth, ventesRouter);
+app.use('/achats-stock', requireAuth, achatsStockRouter);
+app.use('/ajustements-stock', requireAuth, ajustementsStockRouter);
+app.use('/retours', requireAuth, retoursRouter);
+app.use('/reglements', requireAuth, reglementsRouter);
 
 const PORT = process.env.PORT || 3000;
 
