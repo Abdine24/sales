@@ -1,4 +1,7 @@
-import Dexie, { Table } from 'dexie';
+// Définitions de types partagées pour les données métier — l'app est online-only, toutes ces
+// données vivent sur l'API du VPS (voir src/services/api.ts et server/), plus dans une base
+// locale. Ce fichier ne contient plus que des types, aucun code d'exécution : Dexie a été
+// retiré du projet une fois toutes les pages migrées vers l'API.
 
 export interface AttributProduit {
   nom: string; // Ex: "Couleur", "Modèle", "Capacité"
@@ -85,9 +88,7 @@ export interface Personnel {
   nom: string;
   username: string;
   email?: string;
-  password_hash: string;
-  // Lie ce profil métier au compte Supabase Auth (auth.users.id) qui porte désormais le
-  // mot de passe réel. Absent sur les comptes créés avant la bascule vers Supabase Auth.
+  // Lie ce profil métier au compte Supabase Auth (auth.users.id), qui porte le mot de passe.
   supabase_user_id?: string;
   role: PersonnelRole;
   actif: boolean;
@@ -167,18 +168,6 @@ export interface AchatStock {
   cout_total: number;
   cout_unitaire?: number;
   zone_id?: number | null;
-}
-
-export interface SyncItem {
-  id?: number;
-  action: 'INSERT' | 'UPDATE' | 'DELETE';
-  table: string;
-  data: string; // JSON stringified data
-  date_creation: string;
-  status: 'en_attente' | 'synchronise' | 'echec';
-  attempts?: number;
-  last_error?: string;
-  next_retry_at?: string; // ISO — n'est réessayé qu'après cette date (back-off)
 }
 
 export type MotifAjustement = 'inventaire' | 'casse' | 'perte_vol' | 'don_promo' | 'autre';
@@ -263,179 +252,3 @@ export interface Reglement {
   type: TypeReglement;
   note?: string;
 }
-
-export class VenteAppleDB extends Dexie {
-  produits!: Table<Produit, number>;
-  categories!: Table<Categorie, number>;
-  personnel!: Table<Personnel, number>;
-  licence!: Table<Licence, string>;
-  zones!: Table<Zone, number>;
-  settings!: Table<AppSettings, string>;
-  clients!: Table<Client, number>;
-  fournisseurs!: Table<Fournisseur, number>;
-  ventes!: Table<Vente, string>;
-  lignes_vente!: Table<LigneVente, number>;
-  achats_stock!: Table<AchatStock, number>;
-  ajustements_stock!: Table<AjustementStock, number>;
-  file_attente_sync!: Table<SyncItem, number>;
-  paniers_en_attente!: Table<PanierEnAttente, number>;
-  retours!: Table<Retour, number>;
-  reglements!: Table<Reglement, number>;
-
-  constructor() {
-    super('VenteAppleDB');
-    this.version(1).stores({
-      produits: '++id, nom, code_barres, categorie, stock',
-      clients: '++id, nom, telephone, total_dette',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-    });
-    this.version(2)
-      .stores({
-        produits: '++id, nom, code_barres, categorie, stock',
-        categories: '++id, &nom',
-        clients: '++id, nom, telephone, total_dette',
-        fournisseurs: '++id, nom',
-        ventes: 'id, date, client_id, statut',
-        lignes_vente: '++id, vente_id, produit_id',
-        achats_stock: '++id, date, fournisseur_id, produit_id',
-        file_attente_sync: '++id, action, table, status, date_creation',
-      })
-      .upgrade(async (trans) => {
-        const produits = await trans.table('produits').toArray() as Produit[];
-        const noms = Array.from(new Set(produits.map((produit) => produit.categorie).filter(Boolean)));
-        await trans.table('categories').bulkAdd(noms.map((nom) => ({ nom })));
-      });
-    this.version(3).stores({
-      produits: '++id, nom, code_barres, categorie, stock',
-      categories: '++id, &nom',
-      personnel: '++id, &username, role, actif, principal',
-      licence: 'id',
-      clients: '++id, nom, telephone, total_dette',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-    });
-    this.version(4).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-    }).upgrade(async (trans) => {
-      const zones = trans.table('zones');
-      const defaultZoneId = await zones.add({ nom: 'Magasin principal', code: 'MAG-01', actif: true });
-      await trans.table('produits').toCollection().modify({ zone_id: defaultZoneId });
-      await trans.table('ventes').toCollection().modify({ zone_id: defaultZoneId });
-      await trans.table('achats_stock').toCollection().modify({ zone_id: defaultZoneId });
-      await trans.table('settings').put({ id: 'principale', nom_site: 'iVente Pro' });
-    });
-    this.version(5).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, &identifiant, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-    }).upgrade(async (trans) => {
-      const personnel = await trans.table('personnel').toArray() as Personnel[];
-      const used = new Set<string>();
-      for (const person of personnel) {
-        let identifiant = person.identifiant;
-        do {
-          identifiant = Array.from(crypto.getRandomValues(new Uint8Array(10)))
-            .map((value) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[value % 32])
-            .join('');
-        } while (used.has(identifiant));
-        used.add(identifiant);
-        await trans.table('personnel').update(person.id, { identifiant });
-      }
-    });
-    this.version(6).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, &identifiant, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette, vendeur_id',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id, vendeur_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-      paniers_en_attente: '++id, date, nom_reference, vendeur_id',
-    });
-    this.version(7).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, &identifiant, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette, vendeur_id',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id, vendeur_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      ajustements_stock: '++id, date, produit_id, motif, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-      paniers_en_attente: '++id, date, nom_reference, vendeur_id',
-    });
-    this.version(8).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, &identifiant, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette, vendeur_id',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id, vendeur_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      ajustements_stock: '++id, date, produit_id, motif, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-      paniers_en_attente: '++id, date, nom_reference, vendeur_id',
-      retours: '++id, vente_id, date, client_id, zone_id',
-    });
-    this.version(9).stores({
-      produits: '++id, nom, code_barres, categorie, stock, zone_id',
-      categories: '++id, &nom',
-      personnel: '++id, &username, &identifiant, role, actif, principal, zone_id',
-      licence: 'id',
-      zones: '++id, &code, nom, actif',
-      settings: 'id',
-      clients: '++id, nom, telephone, total_dette, vendeur_id',
-      fournisseurs: '++id, nom',
-      ventes: 'id, date, client_id, statut, zone_id, vendeur_id',
-      lignes_vente: '++id, vente_id, produit_id',
-      achats_stock: '++id, date, fournisseur_id, produit_id, zone_id',
-      ajustements_stock: '++id, date, produit_id, motif, zone_id',
-      file_attente_sync: '++id, action, table, status, date_creation',
-      paniers_en_attente: '++id, date, nom_reference, vendeur_id',
-      retours: '++id, vente_id, date, client_id, zone_id',
-      reglements: '++id, date, client_id, vendeur_id, zone_id, type, vente_id',
-    });
-  }
-}
-
-export const db = new VenteAppleDB();

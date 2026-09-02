@@ -14,13 +14,7 @@ import {
   Send,
   ShieldAlert,
 } from 'lucide-react';
-import {
-  authenticate,
-  createPrincipal,
-  completePasswordReset,
-  resetAllUsersAndPasswords,
-  ensureDefaultPersonnel,
-} from '../services/localAuth';
+import { authenticate, createPrincipal, completePasswordReset } from '../services/localAuth';
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
@@ -87,58 +81,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     return () => unsubscribe?.();
   }, []);
 
-  // Initialisation automatique de comptes de démo — UNIQUEMENT en développement local
-  // (npm run dev). Retiré du build de production : sur l'app publique, aucun compte
-  // admin ne doit pouvoir être créé sans passer par la licence + vérification d'email.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    ensureDefaultPersonnel().then(() => {
-      setUsername((prev) => prev || 'admin');
-      setEmail((prev) => prev || 'admin@ivente.com');
-      setPassword((prev) => prev || 'admin123');
-    }).catch(console.error);
-  }, []);
-
-  const handleResetAll = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await resetAllUsersAndPasswords();
-      setUsername('admin');
-      setEmail('admin@ivente.com');
-      setPassword('admin123');
-      setInfoMessage('Tous les comptes ont été réinitialisés avec succès ! (admin / admin123)');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la réinitialisation.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Activation directe sans vérification OTP — outil de dépannage DEV UNIQUEMENT (ex: quota
-  // d'emails Supabase épuisé pendant les tests). Ne doit jamais être accessible en production :
-  // ça reviendrait à distribuer des comptes admin + licences d'essai sans aucun contrôle.
-  const handleDirectActivation = async () => {
-    if (!import.meta.env.DEV) return;
-    setLoading(true);
-    setError('');
-    try {
-      const trialCle = cle.trim() ? cle : await requestTrialLicenseKey();
-      const created = await createPrincipal(
-        nom.trim() || 'Admin',
-        username.trim() || 'admin',
-        email.trim() || 'admin@ivente.com',
-        password || 'admin123',
-        trialCle
-      );
-      if (!created) throw new Error('Création impossible.');
-      setPersonnel(created);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'activation directe.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // NB : les anciens raccourcis dev (comptes de démo pré-remplis, activation sans OTP) ont
+  // été retirés — depuis que l'auth passe entièrement par Supabase (plus de repli Dexie),
+  // ils créaient des comptes fantômes qui ne pouvaient plus jamais se connecter (l'activation
+  // sans OTP en particulier : createPrincipal() a besoin d'une session Supabase déjà ouverte
+  // par l'OTP pour attacher le mot de passe, donc la sauter cassait tout). Pour tester
+  // rapidement : connecte-toi avec un vrai compte admin, puis crée des comptes de test via
+  // Personnel.tsx (mot de passe choisi par toi, compte réel immédiatement utilisable).
 
   if (personnel) {
     return <>{children}</>;
@@ -416,64 +365,6 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               </div>
             </div>
 
-            {/* Comptes pré-configurés et réinitialisation — DEV UNIQUEMENT. Ce bloc ne doit
-                jamais apparaître sur l'app publique (ça reviendrait à afficher des identifiants
-                admin en clair sur l'écran de connexion). Retiré du build de production. */}
-            {import.meta.env.DEV && (
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <span>Comptes prêts à l'emploi (dev)</span>
-                  <button
-                    type="button"
-                    onClick={handleResetAll}
-                    className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold normal-case"
-                    title="Réinitialiser tous les mots de passe et utilisateurs"
-                  >
-                    <RotateCw className="w-3 h-3" />
-                    Réinitialiser
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('admin');
-                      setEmail('admin@ivente.com');
-                      setPassword('admin123');
-                      setError('');
-                    }}
-                    className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold text-center transition active:scale-95"
-                  >
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('gerant');
-                      setEmail('gerant@ivente.com');
-                      setPassword('gerant123');
-                      setError('');
-                    }}
-                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-bold text-center transition active:scale-95"
-                  >
-                    Gérant
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('caissier');
-                      setEmail('caissier@ivente.com');
-                      setPassword('caissier123');
-                      setError('');
-                    }}
-                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold text-center transition active:scale-95"
-                  >
-                    Caissier
-                  </button>
-                </div>
-              </div>
-            )}
-
             {infoMessage && (
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
                 {infoMessage}
@@ -734,16 +625,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             {error && (
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold space-y-2.5">
                 <div>{error}</div>
-                {import.meta.env.DEV &&
-                  (error.toLowerCase().includes('rate limit') || error.toLowerCase().includes('limit')) && (
-                  <button
-                    type="button"
-                    onClick={handleDirectActivation}
-                    className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-blue-500/20 active:scale-95"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Activer directement en local (dev uniquement)</span>
-                  </button>
+                {(error.toLowerCase().includes('rate limit') || error.toLowerCase().includes('limit')) && (
+                  <p className="text-[11px] font-normal text-rose-500/90">
+                    Limite d'envoi d'emails Supabase atteinte — réessaie dans une heure, ou configure un SMTP personnalisé (voir la doc du projet).
+                  </p>
                 )}
               </div>
             )}
