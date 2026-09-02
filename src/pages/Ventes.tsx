@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Receipt,
   Search,
@@ -16,8 +15,8 @@ import {
   Printer,
   Download,
 } from 'lucide-react';
-import { db, Vente, LigneVente, Retour, RetourLigne, MotifRetour, ModeRemboursement, Produit, Reglement } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { Vente, LigneVente, Retour, RetourLigne, MotifRetour, ModeRemboursement, AppSettings, Client } from '../db/db';
+import { apiGet, apiPost, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -43,11 +42,37 @@ const MOTIF_LABELS: Record<MotifRetour, string> = {
 
 export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
   const { alert } = useDialog();
-  const ventes = useLiveQuery(() => db.ventes.orderBy('date').reverse().toArray(), []) || [];
-  const lignesVente = useLiveQuery(() => db.lignes_vente.toArray(), []) || [];
-  const retours = useLiveQuery(() => db.retours.orderBy('date').reverse().toArray(), []) || [];
-  const clients = useLiveQuery(() => db.clients.toArray(), []) || [];
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
+  const [ventes, setVentes] = useState<Vente[]>([]);
+  const [lignesVente, setLignesVente] = useState<LigneVente[]>([]);
+  const [retours, setRetours] = useState<Retour[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    try {
+      const [v, l, r, c, s] = await Promise.all([
+        apiGet<Vente[]>('/ventes'),
+        apiGet<LigneVente[]>('/ventes/lignes/all'),
+        apiGet<Retour[]>('/retours'),
+        apiGet<Client[]>('/clients'),
+        apiGet<AppSettings>('/settings'),
+      ]);
+      setVentes([...v].sort((a, b) => b.date.localeCompare(a.date)));
+      setLignesVente(l);
+      setRetours([...r].sort((a, b) => b.date.localeCompare(a.date)));
+      setClients(c);
+      setSettings(s);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Impossible de charger l'historique des ventes.");
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const today = new Date().toISOString().split('T')[0];
   const defaultStart = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0];
@@ -99,6 +124,10 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
 
   const montantRetourne = (venteId: string) =>
     retoursParVente(venteId).reduce((sum, r) => sum + r.montant_total, 0);
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -412,6 +441,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           onClose={() => setRetourVente(null)}
           onSuccess={async () => {
             setRetourVente(null);
+            await reload();
             await alert('Retour enregistré : le stock a été remis à jour.');
           }}
         />
@@ -475,86 +505,28 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
           prix_unitaire: ligne.prix_unitaire,
         }));
 
-      const produitsModifies: Produit[] = [];
-
-      if (!db.isOpen()) {
-        await db.open();
-      }
-
-      await db.transaction('rw', db.retours, db.produits, db.clients, db.reglements, async () => {
-        // 1. Remise en stock de chaque article retourné
-        for (const rl of retourLignes) {
-          const produit = await db.produits.get(rl.produit_id);
-          if (!produit) continue; // produit supprimé depuis : on n'échoue pas le retour pour ça
-
-          if (rl.variant_id && produit.variantes_detaillees) {
-            const vIndex = produit.variantes_detaillees.findIndex((v) => v.id === rl.variant_id);
-            if (vIndex > -1) {
-              produit.variantes_detaillees[vIndex].stock += rl.quantite;
-            }
-            produit.stock = produit.variantes_detaillees.reduce((sum, v) => sum + v.stock, 0);
-            await db.produits.update(produit.id!, { stock: produit.stock, variantes_detaillees: produit.variantes_detaillees });
-          } else {
-            produit.stock += rl.quantite;
-            await db.produits.update(produit.id!, { stock: produit.stock });
-          }
-          produitsModifies.push(produit);
-        }
-
-        // 2. Enregistre le retour
-        const retourDate = new Date().toISOString();
-        const retour: Retour = {
-          date: retourDate,
-          vente_id: vente.id,
-          client_id: vente.client_id,
-          client_nom: vente.client_nom,
-          lignes: retourLignes,
-          montant_total: montantTotal,
-          mode_remboursement: modeRemboursement,
-          motif,
-          commentaire: commentaire.trim() || undefined,
-          zone_id: activeZoneId,
-          vendeur_id: vendeur.id ?? null,
-          vendeur_nom: vendeur.nom,
-        };
-        const retourId = await db.retours.add(retour);
-        (retour as Retour).id = retourId;
-
-        // 3. Enregistre la trace comptable dans le journal des règlements
-        if (vente.client_id && vente.client_nom) {
-          const client = await db.clients.get(vente.client_id);
-          const detteActuelle = client?.total_dette || 0;
-          const reglementData: Reglement = {
-            date: retourDate,
-            client_id: vente.client_id,
-            client_nom: vente.client_nom,
-            montant: montantTotal,
-            mode_paiement: modeRemboursement,
-            vendeur_id: vendeur.id ?? null,
-            vendeur_nom: vendeur.nom,
-            vendeur_identifiant: vendeur.identifiant,
-            zone_id: activeZoneId,
-            vente_id: vente.id,
-            dette_avant: detteActuelle,
-            dette_apres: Math.max(0, detteActuelle - montantTotal),
-            type: 'remboursement_retour',
-            note: `Remboursement retour article (${MOTIF_LABELS[motif] || motif})${commentaire ? ` : ${commentaire}` : ''}`,
-          };
-          const regId = await db.reglements.add(reglementData);
-          await db.clients.update(vente.client_id, { total_dette: Math.max(0, detteActuelle - montantTotal) });
-          await pushToSyncQueue('INSERT', 'reglements', { id: regId, ...reglementData });
-        }
-
-        await pushToSyncQueue('INSERT', 'retours', retour);
+      // Le serveur fait tout atomiquement : remise en stock, journal du retour, et si la vente
+      // était liée à un client, réduction de sa dette + trace dans les règlements (voir
+      // server/src/routes/retours.js).
+      await apiPost('/retours', {
+        vente_id: vente.id,
+        client_id: vente.client_id,
+        client_nom: vente.client_nom,
+        lignes: retourLignes,
+        montant_total: montantTotal,
+        mode_remboursement: modeRemboursement,
+        motif,
+        motif_label: MOTIF_LABELS[motif],
+        commentaire: commentaire.trim() || undefined,
+        zone_id: activeZoneId,
+        vendeur_id: vendeur.id ?? null,
+        vendeur_nom: vendeur.nom,
+        vendeur_identifiant: vendeur.identifiant,
       });
-
-      for (const produit of produitsModifies) {
-        await pushToSyncQueue('UPDATE', 'produits', { id: produit.id, stock: produit.stock, variantes_detaillees: produit.variantes_detaillees });
-      }
 
       onSuccess();
     } catch (err) {
-      await alert(err instanceof Error ? err.message : "Le retour n'a pas pu être enregistré.");
+      await alert(err instanceof ApiError ? err.message : "Le retour n'a pas pu être enregistré.");
     } finally {
       setSubmitting(false);
     }

@@ -3,6 +3,7 @@ import { computeExpiryIso, validateLicenseKey } from '../utils/license';
 import { pushToSyncQueue } from '../hooks/useSync';
 import { isSupabaseConfigured } from './supabase';
 import { signInWithPassword, updateOwnPassword, getSupabaseUserEmail } from './supabaseAuth';
+import { apiPost, ApiError } from './api';
 
 const SESSION_KEY = 'vente_personnel_session';
 
@@ -188,22 +189,14 @@ export const createPrincipal = async (nom: string, username: string, email: stri
 
 // Active/renouvelle la licence de la boutique avec une nouvelle clé. La période repart
 // de la date du renouvellement (pas de cumul avec le temps restant de l'ancienne clé).
+// La validation ET l'écriture se font désormais côté serveur (voir server/src/routes/licenceStatus.js) —
+// c'est lui la source de vérité, plus Dexie.
 export const renewLicence = async (cle: string): Promise<Licence> => {
-  const validation = await validateLicenseKey(cle);
-  if (!validation.valid) {
-    throw new Error(validation.reason || 'Clé de licence invalide.');
+  try {
+    return await apiPost<Licence>('/licence/activer', { cle: cle.trim().toUpperCase() });
+  } catch (err) {
+    throw new Error(err instanceof ApiError ? err.message : 'Clé de licence invalide.');
   }
-  const activeeLe = new Date().toISOString();
-  const licence: Licence = {
-    id: 'principale',
-    cle: cle.trim().toUpperCase(),
-    activee_le: activeeLe,
-    duree_jours: validation.days,
-    expire_le: computeExpiryIso(activeeLe, validation.days),
-  };
-  await db.licence.put(licence);
-  await pushToSyncQueue('UPDATE', 'licence', licence);
-  return licence;
 };
 
 export const hasPrincipal = async () => (await db.personnel.toArray()).some((personnel) => personnel.principal);

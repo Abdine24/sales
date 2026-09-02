@@ -1,16 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Building2,
-  DatabaseBackup,
-  Download,
   Image,
   Mail,
   MapPin,
   Plus,
   Save,
   Trash2,
-  Upload,
   Printer,
   Volume2,
   VolumeX,
@@ -21,30 +17,49 @@ import {
   Sparkles,
   Smartphone,
 } from 'lucide-react';
-import { db, AppSettings, Zone } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord } from '../db/db';
+import { apiGet, apiPut, apiPost, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { useDialog } from '../components/ui/DialogProvider';
-import { downloadBackup, parseBackupFile, restoreBackup } from '../utils/backup';
 import { LicenceSection } from '../components/LicenceSection';
 import { playScanBeep } from '../utils/barcode';
 
+const DEFAULT_SETTINGS: AppSettings = { id: 'principale', nom_site: 'iVente Pro' };
+
 export const Settings: React.FC = () => {
   const { confirm, alert } = useDialog();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || {
-    id: 'principale',
-    nom_site: 'iVente Pro',
-  };
-  const zones = useLiveQuery(() => db.zones.toArray(), []) || [];
-  const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
-  const personnel = useLiveQuery(() => db.personnel.toArray(), []) || [];
+  const [settings, setSettingsState] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [personnel, setPersonnel] = useState<PersonnelRecord[]>([]);
+
+  const reload = useCallback(async () => {
+    try {
+      const [s, z, p, pers] = await Promise.all([
+        apiGet<AppSettings>('/settings'),
+        apiGet<Zone[]>('/zones'),
+        apiGet<Produit[]>('/produits'),
+        apiGet<PersonnelRecord[]>('/personnel'),
+      ]);
+      setSettingsState(s || DEFAULT_SETTINGS);
+      setZones(z);
+      setProduits(p);
+      setPersonnel(pers);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger les réglages.');
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   // Identity Form State
   const [nomSite, setNomSite] = useState('');
@@ -136,12 +151,15 @@ export const Settings: React.FC = () => {
     };
 
     localStorage.setItem('app_sound_enabled', String(soundEnabled));
-    await db.settings.put(updated);
-    await pushToSyncQueue('UPDATE', 'settings', updated);
-    window.dispatchEvent(new Event('app-settings-updated'));
-
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    try {
+      const saved = await apiPut<AppSettings>('/settings', updated);
+      setSettingsState(saved);
+      window.dispatchEvent(new Event('app-settings-updated'));
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement des paramètres.");
+    }
   };
 
   const handleTestBeep = () => {
@@ -174,16 +192,17 @@ export const Settings: React.FC = () => {
     if (!zoneNom.trim() || !code) return;
     const duplicate = zones.some((zone) => zone.code === code && zone.id !== editingZone?.id);
     if (duplicate) return;
-    if (editingZone?.id) {
-      const updated = { ...editingZone, nom: zoneNom.trim(), code };
-      await db.zones.put(updated);
-      await pushToSyncQueue('UPDATE', 'zones', updated);
-    } else {
-      const created = { nom: zoneNom.trim(), code, actif: true };
-      const id = await db.zones.add(created);
-      await pushToSyncQueue('INSERT', 'zones', { id, ...created });
+    try {
+      if (editingZone?.id) {
+        await apiPut(`/zones/${editingZone.id}`, { nom: zoneNom.trim(), code });
+      } else {
+        await apiPost('/zones', { nom: zoneNom.trim(), code, actif: true });
+      }
+      setZoneModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement de la boutique.");
     }
-    setZoneModalOpen(false);
   };
 
   const deleteZone = async (zone: Zone) => {
@@ -201,62 +220,18 @@ export const Settings: React.FC = () => {
       danger: true,
       confirmLabel: 'Supprimer',
     });
-    if (ok) {
-      await db.zones.delete(zone.id);
-      await pushToSyncQueue('DELETE', 'zones', { id: zone.id });
-    }
-  };
-
-  // Backup & Restore
-  const handleDownloadBackup = async () => {
-    setIsBackingUp(true);
+    if (!ok) return;
     try {
-      const filename = await downloadBackup();
-      await alert({
-        title: 'Sauvegarde téléchargée',
-        message: `Le fichier « ${filename} » a été téléchargé. Conservez-le en lieu sûr : il contient l'intégralité de vos données locales.`,
-      });
-    } catch {
-      await alert(
-        "La sauvegarde a échoué. Réessayez, et si le problème persiste, vérifiez l'espace disque disponible."
-      );
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
-
-  const handlePickRestoreFile = () => fileInputRef.current?.click();
-
-  const handleRestoreFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    try {
-      const backup = await parseBackupFile(file);
-      const ok = await confirm({
-        title: 'Restaurer cette sauvegarde ?',
-        message: `Cela va REMPLACER toutes les données actuelles par le contenu du fichier exporté le ${new Date(
-          backup.exported_at
-        ).toLocaleString('fr-FR')}. Cette action est irréversible. Continuer ?`,
-        danger: true,
-        confirmLabel: 'Restaurer et remplacer',
-      });
-      if (!ok) return;
-
-      setIsRestoring(true);
-      await restoreBackup(backup);
-      await alert({
-        title: 'Restauration terminée',
-        message: "Les données ont été restaurées. L'application va se recharger.",
-      });
-      window.location.reload();
+      await apiDelete(`/zones/${zone.id}`);
+      await reload();
     } catch (err) {
-      await alert(err instanceof Error ? err.message : 'La restauration a échoué.');
-    } finally {
-      setIsRestoring(false);
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6 max-w-6xl pb-10">
@@ -831,44 +806,9 @@ export const Settings: React.FC = () => {
       {/* 6. LICENCE, ABONNEMENT & VERSION DE L'APPLICATION */}
       <LicenceSection />
 
-      {/* 7. SAUVEGARDE & RESTAURATION LOCALE */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-1">
-          <DatabaseBackup className="w-5 h-5 text-blue-500" />
-          <h3 className="font-bold text-base text-slate-900 dark:text-white">
-            Sauvegarde & Restauration Locale
-          </h3>
-        </div>
-        <p className="text-xs text-slate-400 mb-5 max-w-2xl">
-          Toutes les données de cette boutique résident sur cet appareil (IndexedDB). Téléchargez une sauvegarde
-          régulièrement (.json) sur clé USB ou disque externe pour sécuriser votre historique.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            variant="primary"
-            icon={<Download className="w-4 h-4" />}
-            onClick={handleDownloadBackup}
-            disabled={isBackingUp}
-          >
-            {isBackingUp ? 'Génération...' : 'Télécharger une sauvegarde (.json)'}
-          </Button>
-          <Button
-            variant="glass"
-            icon={<Upload className="w-4 h-4 text-amber-500" />}
-            onClick={handlePickRestoreFile}
-            disabled={isRestoring}
-          >
-            {isRestoring ? 'Restauration...' : 'Restaurer depuis un fichier'}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            onChange={handleRestoreFileSelected}
-            className="hidden"
-          />
-        </div>
-      </GlassCard>
+      {/* La sauvegarde/restauration locale (.json) a été retirée : elle exportait Dexie/IndexedDB,
+          qui ne contient plus les données de la boutique (tout vit sur le serveur maintenant).
+          Une vraie sauvegarde reviendra plus tard côté serveur (dump programmé de Postgres). */}
 
       {/* MODAL: Ajout / Édition d'une Zone */}
       <Modal

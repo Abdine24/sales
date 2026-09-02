@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, KeyRound, ShieldCheck, TimerReset, Sparkles, Clock, AlertTriangle, Info, Laptop } from 'lucide-react';
-import { db } from '../db/db';
+import type { Licence } from '../db/db';
+import { apiGet, ApiError } from '../services/api';
 import { evaluateLicenceStatus, requestTrialLicenseKey, APP_VERSION, APP_RELEASE_NAME } from '../utils/license';
 import { renewLicence } from '../services/localAuth';
 import { GlassCard } from './ui/GlassCard';
@@ -11,10 +11,22 @@ import { useDialog } from './ui/DialogProvider';
 
 export const LicenceSection: React.FC = () => {
   const { alert } = useDialog();
-  const licence = useLiveQuery(() => db.licence.get('principale'), []);
+  const [licence, setLicence] = useState<Licence | null>(null);
   const [cle, setCle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const reloadLicence = useCallback(async () => {
+    try {
+      setLicence(await apiGet<Licence | null>('/licence'));
+    } catch {
+      // Statut affiché comme "absente" si l'appel échoue — le formulaire reste utilisable.
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadLicence();
+  }, [reloadLicence]);
 
   const status = evaluateLicenceStatus(licence);
 
@@ -25,12 +37,13 @@ export const LicenceSection: React.FC = () => {
     try {
       await renewLicence(cle);
       setCle('');
+      await reloadLicence();
       await alert({
         title: 'Licence Activée avec Succès',
-        message: 'Votre nouvel abonnement a été validé et enregistré sur cet appareil.',
+        message: 'Votre nouvel abonnement a été validé et enregistré.',
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Clé de licence invalide.');
+      setError(err instanceof ApiError ? err.message : 'Clé de licence invalide.');
     } finally {
       setSubmitting(false);
     }

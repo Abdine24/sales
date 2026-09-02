@@ -1,35 +1,40 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useState } from 'react';
 import { KeyRound, ShieldAlert, Sparkles } from 'lucide-react';
-import { db } from '../db/db';
+import type { Licence } from '../db/db';
+import { apiGet, ApiError } from '../services/api';
 import { evaluateLicenceStatus, requestTrialLicenseKey } from '../utils/license';
-import { renewLicence, hasPrincipal } from '../services/localAuth';
+import { renewLicence } from '../services/localAuth';
 import { Button } from './ui/Button';
 
-// Bloque l'accès à l'app (avant même l'écran de connexion) si la licence de la boutique
-// est absente ou expirée. Ne s'applique qu'une fois la boutique déjà activée une première
-// fois — la toute première activation (création du compte admin) passe par AuthGate.
+// Bloque l'accès à l'app si la licence de la boutique est absente ou expirée. Rendu à
+// l'intérieur d'AuthGate : arriver jusqu'ici suppose déjà une session valide, donc pas besoin
+// de re-vérifier si le compte admin existe (AuthGate s'en est déjà chargé).
 export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const licence = useLiveQuery(() => db.licence.get('principale'), []);
-  const personnelList = useLiveQuery(() => db.personnel.toArray(), []);
-
+  const [licence, setLicence] = useState<Licence | null | undefined>(undefined);
   const [cle, setCle] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const reloadLicence = useCallback(async () => {
+    try {
+      setLicence(await apiGet<Licence | null>('/licence'));
+    } catch {
+      setLicence(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadLicence();
+  }, [reloadLicence]);
+
   // Chargement initial : affichage du loader au lieu d'un écran blanc
-  if (licence === undefined || personnelList === undefined) {
+  if (licence === undefined) {
     return (
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-
-  const setupDone = personnelList.some((p) => p.principal);
-
-  // Pas encore de compte admin créé -> on laisse AuthGate gérer l'activation initiale.
-  if (!setupDone) return <>{children}</>;
 
   const status = evaluateLicenceStatus(licence);
   if (status.state !== 'expiree') return <>{children}</>;
@@ -41,8 +46,9 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await renewLicence(cle);
       setCle('');
+      await reloadLicence();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Clé de licence invalide.');
+      setError(err instanceof ApiError ? err.message : 'Clé de licence invalide.');
     } finally {
       setSubmitting(false);
     }

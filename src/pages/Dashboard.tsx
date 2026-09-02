@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   DollarSign,
@@ -42,7 +41,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { db } from '../db/db';
+import type { Vente, LigneVente, Produit, Client, AchatStock, Retour, Zone } from '../db/db';
+import { apiGet, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -59,13 +59,48 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }) => {
   const { personnel } = useAuth();
-  const ventes = useLiveQuery(() => db.ventes.toArray(), []) || [];
-  const lignesVente = useLiveQuery(() => db.lignes_vente.toArray(), []) || [];
-  const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
-  const clients = useLiveQuery(() => db.clients.toArray(), []) || [];
-  const achatsStock = useLiveQuery(() => db.achats_stock.orderBy('date').toArray(), []) || [];
-  const retours = useLiveQuery(() => db.retours.toArray(), []) || [];
-  const zones = useLiveQuery(() => db.zones.toArray(), []) || [];
+  const [ventes, setVentes] = useState<Vente[]>([]);
+  const [lignesVente, setLignesVente] = useState<LigneVente[]>([]);
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [achatsStock, setAchatsStock] = useState<AchatStock[]>([]);
+  const [retours, setRetours] = useState<Retour[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [v, l, p, c, a, r, z] = await Promise.all([
+          apiGet<Vente[]>('/ventes'),
+          apiGet<LigneVente[]>('/ventes/lignes/all'),
+          apiGet<Produit[]>('/produits'),
+          apiGet<Client[]>('/clients'),
+          apiGet<AchatStock[]>('/achats-stock'),
+          apiGet<Retour[]>('/retours'),
+          apiGet<Zone[]>('/zones'),
+        ]);
+        if (cancelled) return;
+        setVentes(v);
+        setLignesVente(l);
+        setProduits(p);
+        setClients(c);
+        setAchatsStock([...a].sort((x, y) => x.date.localeCompare(y.date)));
+        setRetours(r);
+        setZones(z);
+      } catch (err) {
+        if (!cancelled) setLoadError(err instanceof ApiError ? err.message : 'Impossible de charger le tableau de bord.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const today = new Date().toISOString().split('T')[0];
   const defaultStart = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
   const [dateDebut, setDateDebut] = useState(defaultStart);
@@ -559,6 +594,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
 
     setIsExportModalOpen(false);
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
+  if (loadError) {
+    return <div className="p-8 text-center text-sm text-rose-500">{loadError}</div>;
+  }
 
   // Format Currency
   return (

@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
@@ -27,8 +26,8 @@ import {
   Download,
   Landmark,
 } from 'lucide-react';
-import { db, Produit, VarianteProduit, Client, Vente, PanierLigne } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { Produit, VarianteProduit, Client, Vente, PanierLigne, PanierEnAttente, AppSettings } from '../db/db';
+import { apiGet, apiPost, apiDelete, ApiError } from '../services/api';
 import { useGlobalBarcodeScanner } from '../hooks/useGlobalBarcodeScanner';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -51,9 +50,39 @@ interface POSProps {
 
 export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   const { confirm, alert } = useDialog();
-  const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
-  const clients = useLiveQuery(() => db.clients.toArray(), []) || [];
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [paniersEnAttenteAll, setPaniersEnAttenteAll] = useState<PanierEnAttente[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    try {
+      const [p, c, s, panels] = await Promise.all([
+        apiGet<Produit[]>('/produits'),
+        apiGet<Client[]>('/clients'),
+        apiGet<AppSettings>('/settings'),
+        apiGet<PanierEnAttente[]>('/paniers-en-attente'),
+      ]);
+      setProduits(p);
+      setClients(c);
+      setSettings(s);
+      setPaniersEnAttenteAll(panels);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger la caisse.');
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const paniersEnAttente = useMemo(
+    () => paniersEnAttenteAll.filter((p) => !vendeur?.id || p.vendeur_id === vendeur.id || p.vendeur_id === null),
+    [paniersEnAttenteAll, vendeur?.id]
+  );
 
   const [search, setSearch] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -64,12 +93,6 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   const [selectedVariableProduct, setSelectedVariableProduct] = useState<Produit | null>(null);
   const [modalAttributes, setModalAttributes] = useState<Record<string, string>>({});
   const [modalQuantity, setModalQuantity] = useState<number>(1);
-
-  const paniersEnAttente = useLiveQuery(() => {
-    return db.paniers_en_attente
-      .filter((p) => !vendeur?.id || p.vendeur_id === vendeur.id || p.vendeur_id === null)
-      .toArray();
-  }, [vendeur?.id]) || [];
 
   const [isPanierModalOpen, setIsPanierModalOpen] = useState(false);
   const [panierReference, setPanierReference] = useState('');
@@ -151,20 +174,24 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   const handleMettreEnAttente = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!panierReference.trim() || cart.length === 0) return;
-    await db.paniers_en_attente.add({
-      date: new Date().toISOString(),
-      nom_reference: panierReference,
-      lignes: cart,
-      total: totalCart,
-      vendeur_id: vendeur.id ?? null,
-    });
-    setCart([]);
-    setPanierReference('');
-    setIsPanierModalOpen(false);
+    try {
+      await apiPost('/paniers-en-attente', {
+        nom_reference: panierReference,
+        lignes: cart,
+        total: totalCart,
+        vendeur_id: vendeur.id ?? null,
+      });
+      setCart([]);
+      setPanierReference('');
+      setIsPanierModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la mise en attente.');
+    }
   };
 
   const handleRestaurerPanier = async (id: number) => {
-    const panier = await db.paniers_en_attente.get(id);
+    const panier = paniersEnAttenteAll.find((p) => p.id === id);
     if (panier) {
       if (cart.length > 0) {
         const ok = await confirm('Cela va écraser le panier en cours. Voulez-vous continuer ?');
@@ -178,7 +205,12 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         })
         .filter((ligne): ligne is CartItem => ligne !== null);
       setCart(restored);
-      await db.paniers_en_attente.delete(id);
+      try {
+        await apiDelete(`/paniers-en-attente/${id}`);
+        await reload();
+      } catch {
+        // Le panier reste restauré côté UI même si la suppression serveur échoue.
+      }
       setShowPanierList(false);
     }
   };
@@ -189,8 +221,12 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
       danger: true,
       confirmLabel: 'Supprimer',
     });
-    if (ok) {
-      await db.paniers_en_attente.delete(id);
+    if (!ok) return;
+    try {
+      await apiDelete(`/paniers-en-attente/${id}`);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
 
@@ -429,8 +465,6 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
       return;
     }
 
-    const saleId = crypto.randomUUID();
-    const nowISO = new Date().toISOString();
     const selectedClient = clients.find((c) => c.id === selectedClientId);
 
     let statut: 'paye' | 'partiel' | 'credit' = 'paye';
@@ -438,125 +472,44 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
       statut = numericMontantPaye === 0 ? 'credit' : 'partiel';
     }
 
-    const newVente: Vente = {
-      id: saleId,
-      date: nowISO,
-      client_id: selectedClientId,
-      client_nom: selectedClient ? selectedClient.nom : 'Client Passant',
-      total: totalApresRemise,
-      remise: numericRemise,
-      montant_paye: Math.min(numericMontantPaye, totalApresRemise),
-      reste_a_payer: resteAPayer,
-      statut,
-      methode_paiement: paymentMethod,
-      zone_id: activeZoneId,
-      vendeur_id: vendeur.id ?? null,
-      vendeur_nom: vendeur.nom,
-      vendeur_identifiant: vendeur.identifiant,
-    };
-
-    // Écriture atomique : vente + lignes + stock + dette client dans une seule transaction Dexie
-    let updatedClientDebt: number | null = null;
+    // Le serveur fait tout atomiquement (vérification de stock, vente, lignes, décrément du
+    // stock, dette client) dans une seule transaction Postgres — voir server/src/routes/ventes.js.
+    let newVente: Vente;
     try {
-      await db.transaction('rw', db.ventes, db.lignes_vente, db.produits, db.clients, async () => {
-        // 1. Contrôle de stock frais pour tous les articles avant toute écriture
-        const stockFrais = new Map<number, Produit>();
-        for (const item of cart) {
-          if (!item.produit.id) continue;
-          let frais = stockFrais.get(item.produit.id);
-          if (!frais) {
-            const fetched = await db.produits.get(item.produit.id);
-            if (!fetched) throw new Error(`Produit introuvable : ${item.produit.nom}`);
-            frais = fetched;
-            stockFrais.set(item.produit.id, frais);
-          }
-
-          if (item.variant_id && frais.variantes_detaillees) {
-            const v = frais.variantes_detaillees.find((vr) => vr.id === item.variant_id);
-            if (!v || v.stock < item.quantite) {
-              throw new Error(`Stock insuffisant pour « ${frais.nom} (${item.variante || item.variant_id}) » : il reste ${v?.stock ?? 0} unité(s).`);
-            }
-          } else {
-            if (frais.stock < item.quantite) {
-              throw new Error(`Stock insuffisant pour « ${frais.nom} » : il reste ${frais.stock} unité(s).`);
-            }
-          }
-        }
-
-        // 2. Enregistre la vente
-        await db.ventes.add(newVente);
-
-        // 3. Lignes de vente + décrément du stock
-        for (const item of cart) {
-          if (!item.produit.id) continue;
-          const frais = stockFrais.get(item.produit.id)!;
-          const unitPrice = item.prix_unitaire ?? frais.prix;
-
-          await db.lignes_vente.add({
-            vente_id: saleId,
-            produit_id: item.produit.id,
-            variant_id: item.variant_id,
-            produit_nom: frais.nom,
-            variante: item.variante,
-            quantite: item.quantite,
-            prix_unitaire: unitPrice,
-            cout_unitaire: frais.cout_achat_unitaire,
-          });
-
-          if (item.variant_id && frais.variantes_detaillees) {
-            const vIndex = frais.variantes_detaillees.findIndex((vr) => vr.id === item.variant_id);
-            if (vIndex > -1) {
-              frais.variantes_detaillees[vIndex].stock -= item.quantite;
-            }
-            frais.stock = frais.variantes_detaillees.reduce((sum, vr) => sum + vr.stock, 0);
-            await db.produits.update(item.produit.id, {
-              stock: frais.stock,
-              variantes_detaillees: frais.variantes_detaillees,
-            });
-          } else {
-            frais.stock -= item.quantite;
-            await db.produits.update(item.produit.id, { stock: frais.stock });
-          }
-        }
-
-        // 4. Met à jour la dette client (relue dans la transaction)
-        if (selectedClient?.id && resteAPayer > 0) {
-          const freshClient = await db.clients.get(selectedClient.id);
-          updatedClientDebt = (freshClient?.total_dette || 0) + resteAPayer;
-          await db.clients.update(selectedClient.id, { total_dette: updatedClientDebt });
-        }
+      const result = await apiPost<{ vente: Vente }>('/ventes', {
+        client_id: selectedClientId,
+        client_nom: selectedClient ? selectedClient.nom : 'Client Passant',
+        total: totalApresRemise,
+        remise: numericRemise,
+        montant_paye: Math.min(numericMontantPaye, totalApresRemise),
+        reste_a_payer: resteAPayer,
+        statut,
+        methode_paiement: paymentMethod,
+        zone_id: activeZoneId,
+        vendeur_id: vendeur.id ?? null,
+        vendeur_nom: vendeur.nom,
+        vendeur_identifiant: vendeur.identifiant,
+        lignes: cart.map((item) => ({
+          produit_id: item.produit.id,
+          variant_id: item.variant_id ?? null,
+          produit_nom: item.produit.nom,
+          variante: item.variante ?? null,
+          quantite: item.quantite,
+          prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+          cout_unitaire: item.produit.cout_achat_unitaire ?? null,
+        })),
       });
+      newVente = result.vente;
+      await reload(); // stock et dette client ont changé côté serveur
     } catch (err) {
       await alert({
         title: 'Vente non enregistrée',
-        message: err instanceof Error ? err.message : "La vente a échoué : aucune donnée n'a été enregistrée.",
+        message: err instanceof ApiError ? err.message : "La vente a échoué : aucune donnée n'a été enregistrée.",
       });
       return;
     }
 
-    // 5. File de synchronisation (hors transaction, après succès)
-    await pushToSyncQueue('INSERT', 'ventes', newVente);
-    for (const item of cart) {
-      if (!item.produit.id) continue;
-      const unitPrice = item.prix_unitaire ?? item.produit.prix;
-      await pushToSyncQueue('INSERT', 'lignes_vente', {
-        vente_id: saleId,
-        produit_id: item.produit.id,
-        variant_id: item.variant_id ?? null,
-        produit_nom: item.produit.nom,
-        variante: item.variante ?? null,
-        quantite: item.quantite,
-        prix_unitaire: unitPrice,
-      });
-    }
-    if (selectedClient?.id && updatedClientDebt !== null) {
-      await pushToSyncQueue('UPDATE', 'clients', {
-        id: selectedClient.id,
-        total_dette: updatedClientDebt,
-      });
-    }
-
-    // 6. Confettis + reçu
+    // Confettis + reçu
     confetti({
       particleCount: 80,
       spread: 70,
@@ -595,6 +548,10 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
 
     setCart([]);
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="h-[calc(100vh-4rem)] min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6">
