@@ -24,6 +24,7 @@ import {
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
+import { apiPostPublic } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 
@@ -149,14 +150,26 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setError('');
     setLoading(true);
     try {
-      const result = await sendPasswordResetEmail(forgotEmail);
-      if (!result.success) {
-        throw new Error(result.message || "Échec de l'envoi de l'email.");
+      // L'admin gère les mots de passe de son équipe (voir Personnel.tsx) : un membre qui a
+      // oublié le sien ne reçoit pas d'email de réinitialisation, ça notifie l'admin à la
+      // place. Seul un compte admin passe encore par l'email Supabase classique.
+      const routing = await apiPostPublic<{ isAdmin: boolean }>('/mot-de-passe-oublie', {
+        email: forgotEmail,
+      });
+
+      if (routing.isAdmin) {
+        const result = await sendPasswordResetEmail(forgotEmail);
+        if (!result.success) {
+          throw new Error(result.message || "Échec de l'envoi de l'email.");
+        }
+        setForgotSent(true);
+        setInfoMessage(result.message || '');
+      } else {
+        setForgotSent(true);
+        setInfoMessage("L'administrateur de la boutique a été prévenu et va réinitialiser ton mot de passe.");
       }
-      setForgotSent(true);
-      setInfoMessage(result.message || '');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de l'envoi de l'email de réinitialisation.");
+      setError(err instanceof Error ? err.message : "Échec de l'envoi de la demande de réinitialisation.");
     } finally {
       setLoading(false);
     }

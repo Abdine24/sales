@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { NotificationBell } from '../NotificationBell';
 import { Zone } from '../../db/db';
 
 export type ThemeMode = 'light' | 'dark' | 'emerald' | 'contrast';
@@ -108,6 +109,8 @@ export const Topbar: React.FC<TopbarProps> = ({
           {canSelectAll && <option value="">Tous les magasins</option>}
           {zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.nom}</option>)}
         </select>
+
+        <NotificationBell />
 
         <div className="flex items-center gap-2 border-l border-slate-200/50 dark:border-white/10 pl-4">
           <UserCircle className="w-7 h-7 text-blue-500" />

@@ -217,3 +217,19 @@ create table if not exists licence (
   duree_jours integer,
   expire_le timestamptz
 );
+
+-- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
+-- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin
+-- généralement réduites — pas besoin d'un état de lecture par personne pour l'instant).
+create table if not exists notifications (
+  id serial primary key,
+  type text not null,
+  message text not null,
+  target_role text,
+  target_personnel_id integer references personnel(id) on delete cascade,
+  related_personnel_id integer references personnel(id) on delete set null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_notifications_target_role on notifications(target_role, read);
+create index if not exists idx_notifications_target_personnel on notifications(target_personnel_id, read);

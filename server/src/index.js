@@ -20,6 +20,8 @@ import { achatsStockRouter } from './routes/achatsStock.js';
 import { ajustementsStockRouter } from './routes/ajustementsStock.js';
 import { retoursRouter } from './routes/retours.js';
 import { reglementsRouter } from './routes/reglements.js';
+import { notificationsRouter } from './routes/notifications.js';
+import { motDePasseOublieRouter } from './routes/motDePasseOublie.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -44,6 +46,7 @@ app.get('/health', async (_req, res) => {
 // Publique — appelée avant toute authentification (activation d'une boutique, écran
 // de licence expirée...). Voir server/src/routes/licences.js pour le rate-limiting.
 app.use('/licences', licencesRouter);
+app.use('/mot-de-passe-oublie', motDePasseOublieRouter);
 
 // Toutes les autres routes métier exigent un utilisateur Supabase authentifié.
 app.use('/produits', requireAuth, produitsRouter);
@@ -60,6 +63,7 @@ app.use('/achats-stock', requireAuth, achatsStockRouter);
 app.use('/ajustements-stock', requireAuth, ajustementsStockRouter);
 app.use('/retours', requireAuth, retoursRouter);
 app.use('/reglements', requireAuth, reglementsRouter);
+app.use('/notifications', requireAuth, notificationsRouter);
 
 const PORT = process.env.PORT || 3000;
 
