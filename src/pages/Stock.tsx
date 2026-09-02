@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Package,
   Plus,
@@ -38,16 +37,19 @@ import {
   Camera,
   Printer,
 } from 'lucide-react';
-import {
-  db,
+import type {
   Produit,
   AttributProduit,
   VarianteProduit,
   AchatStock,
   AjustementStock,
   MotifAjustement,
+  Fournisseur,
+  Zone,
+  Categorie,
+  AppSettings,
 } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -65,13 +67,43 @@ interface StockProps {
 }
 
 export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
-  const { confirm } = useDialog();
-  const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
-  const fournisseurs = useLiveQuery(() => db.fournisseurs.toArray(), []) || [];
-  const zones = useLiveQuery(() => db.zones.toArray(), []) || [];
-  const categoriesDb = useLiveQuery(() => db.categories.orderBy('nom').toArray(), []) || [];
-  const achats = useLiveQuery(() => db.achats_stock.orderBy('date').reverse().toArray(), []) || [];
-  const ajustements = useLiveQuery(() => db.ajustements_stock.orderBy('date').reverse().toArray(), []) || [];
+  const { confirm, alert } = useDialog();
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [categoriesDb, setCategoriesDb] = useState<Categorie[]>([]);
+  const [achats, setAchats] = useState<AchatStock[]>([]);
+  const [ajustements, setAjustements] = useState<AjustementStock[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    try {
+      const [p, f, z, cat, a, aj, s] = await Promise.all([
+        apiGet<Produit[]>('/produits'),
+        apiGet<Fournisseur[]>('/fournisseurs'),
+        apiGet<Zone[]>('/zones'),
+        apiGet<Categorie[]>('/categories'),
+        apiGet<AchatStock[]>('/achats-stock'),
+        apiGet<AjustementStock[]>('/ajustements-stock'),
+        apiGet<AppSettings>('/settings'),
+      ]);
+      setProduits(p);
+      setFournisseurs(f);
+      setZones(z);
+      setCategoriesDb([...cat].sort((x, y) => x.nom.localeCompare(y.nom)));
+      setAchats([...a].sort((x, y) => y.date.localeCompare(x.date)));
+      setAjustements([...aj].sort((x, y) => y.date.localeCompare(x.date)));
+      setSettings(s);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger le stock.');
+    } finally {
+      setDataLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const [activeTab, setActiveTab] = useState<'produits' | 'achats' | 'ajustements'>('produits');
   
@@ -156,7 +188,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
   const [bulkPriceValue, setBulkPriceValue] = useState<string>('');
 
   // Barcode Printing & Scanning States
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [barcodePrintProduit, setBarcodePrintProduit] = useState<Produit | null>(null);
   const [isBarcodePrintModalOpen, setIsBarcodePrintModalOpen] = useState(false);
   const [isStockScannerOpen, setIsStockScannerOpen] = useState(false);
@@ -419,50 +451,26 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       return;
     }
 
-    const newAjustement: AjustementStock = {
-      date: new Date().toISOString(),
-      produit_id: pId,
-      produit_nom: targetProduit.nom,
-      variant_id: ajustementVariantId || undefined,
-      variante: variantLabel,
-      ancien_stock: ancienStock,
-      nouveau_stock: newStockValue,
-      delta: delta,
-      motif: ajustementMotif,
-      commentaire: ajustementCommentaire.trim() || undefined,
-      zone_id: targetProduit.zone_id,
-      auteur: 'Gérant / Admin',
-    };
-
-    let finalProductStock = newStockValue;
-    await db.transaction('rw', db.ajustements_stock, db.produits, async () => {
-      await db.ajustements_stock.add(newAjustement);
-      const fresh = await db.produits.get(pId);
-      if (!fresh) return;
-
-      if (fresh.is_variable && fresh.variantes_detaillees && ajustementVariantId) {
-        const vIdx = fresh.variantes_detaillees.findIndex((vr) => vr.id === ajustementVariantId);
-        if (vIdx > -1) {
-          fresh.variantes_detaillees[vIdx].stock = newStockValue;
-        }
-        finalProductStock = fresh.variantes_detaillees.reduce((sum, vr) => sum + vr.stock, 0);
-        await db.produits.update(pId, {
-          stock: finalProductStock,
-          variantes_detaillees: fresh.variantes_detaillees,
-        });
-      } else {
-        finalProductStock = newStockValue;
-        await db.produits.update(pId, { stock: finalProductStock });
-      }
-    });
-
-    await pushToSyncQueue('INSERT', 'ajustements_stock', newAjustement);
-    await pushToSyncQueue('UPDATE', 'produits', {
-      id: pId,
-      stock: finalProductStock,
-    });
-
-    setIsAjustementModalOpen(false);
+    // Le serveur relit le stock actuel, applique l'ajustement et journalise, atomiquement
+    // (voir server/src/routes/ajustementsStock.js) — évite de travailler sur un stock local
+    // périmé.
+    try {
+      await apiPost('/ajustements-stock', {
+        produit_id: pId,
+        produit_nom: targetProduit.nom,
+        variant_id: ajustementVariantId || undefined,
+        variante: variantLabel,
+        nouveau_stock: newStockValue,
+        motif: ajustementMotif,
+        commentaire: ajustementCommentaire.trim() || undefined,
+        zone_id: targetProduit.zone_id,
+        auteur: 'Gérant / Admin',
+      });
+      setIsAjustementModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement de l'ajustement.");
+    }
   };
 
   // Helper to add a single variant explicitly with its custom price and stock
@@ -639,44 +647,32 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       }
     }
 
-    if (editingProduit && editingProduit.id) {
-      const updated: Produit = {
-        ...editingProduit,
-        nom,
-        is_variable: isVariable,
-        prix: finalPrix,
-        stock: finalStock,
-        code_barres: codeBarres,
-        categorie,
-        variantes: productVariantes,
-        attributs: isVariable ? finalAttributs : undefined,
-        variantes_detaillees: isVariable ? finalVariantesDetaillees : undefined,
-        min_stock: numericMinStock,
-        zone_id: Number(productZoneId),
-        fournisseur_id: productFournisseurId ? Number(productFournisseurId) : undefined,
-      };
-      await db.produits.put(updated);
-      await pushToSyncQueue('UPDATE', 'produits', updated);
-    } else {
-      const newProduit: Produit = {
-        nom,
-        is_variable: isVariable,
-        prix: finalPrix,
-        stock: finalStock,
-        code_barres: codeBarres,
-        categorie,
-        variantes: productVariantes,
-        attributs: isVariable ? finalAttributs : undefined,
-        variantes_detaillees: isVariable ? finalVariantesDetaillees : undefined,
-        min_stock: numericMinStock,
-        zone_id: Number(productZoneId),
-        fournisseur_id: productFournisseurId ? Number(productFournisseurId) : undefined,
-      };
-      const newId = await db.produits.add(newProduit);
-      await pushToSyncQueue('INSERT', 'produits', { id: newId, ...newProduit });
-    }
+    const payload = {
+      nom,
+      is_variable: isVariable,
+      prix: finalPrix,
+      stock: finalStock,
+      code_barres: codeBarres,
+      categorie,
+      variantes: productVariantes,
+      attributs: isVariable ? finalAttributs : undefined,
+      variantes_detaillees: isVariable ? finalVariantesDetaillees : undefined,
+      min_stock: numericMinStock,
+      zone_id: Number(productZoneId),
+      fournisseur_id: productFournisseurId ? Number(productFournisseurId) : undefined,
+    };
 
-    setIsModalOpen(false);
+    try {
+      if (editingProduit?.id) {
+        await apiPut(`/produits/${editingProduit.id}`, payload);
+      } else {
+        await apiPost('/produits', payload);
+      }
+      setIsModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement du produit.");
+    }
   };
 
   const handleDeleteProduit = async (id: number) => {
@@ -686,9 +682,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       danger: true,
       confirmLabel: 'Supprimer',
     });
-    if (ok) {
-      await db.produits.delete(id);
-      await pushToSyncQueue('DELETE', 'produits', { id });
+    if (!ok) return;
+    try {
+      await apiDelete(`/produits/${id}`);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
 
@@ -716,65 +715,30 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
         }
       }
 
-      const newAchat: AchatStock = {
-        date: new Date().toISOString(),
-        fournisseur_id: fId,
-        fournisseur_nom: targetFournisseur ? targetFournisseur.nom : 'Fournisseur',
-        produit_id: pId,
-        produit_nom: targetProduit.nom,
-        variant_id: selectedVariantId || undefined,
-        variante: variantLabel,
-        quantite: qty,
-        cout_total: cout,
-        cout_unitaire: coutUnitaire,
-        zone_id: Number(achatZoneId),
-      };
-
-      // Achat + réappro du stock + mise à jour du prix de vente et coût d'achat
-      let stockAfter = targetProduit.stock;
       const newSalePriceNum = parseFloat(nouveauPrixVente);
       const hasNewSalePrice = Number.isFinite(newSalePriceNum) && newSalePriceNum > 0;
 
-      await db.transaction('rw', db.achats_stock, db.produits, async () => {
-        await db.achats_stock.add(newAchat);
-        const fresh = await db.produits.get(pId);
-        if (!fresh) return;
-
-        if (fresh.is_variable && fresh.variantes_detaillees && selectedVariantId) {
-          const vIdx = fresh.variantes_detaillees.findIndex((vr) => vr.id === selectedVariantId);
-          if (vIdx > -1) {
-            fresh.variantes_detaillees[vIdx].stock += qty;
-            fresh.variantes_detaillees[vIdx].cout_achat_unitaire = coutUnitaire;
-            if (hasNewSalePrice) {
-              fresh.variantes_detaillees[vIdx].prix = newSalePriceNum;
-            }
-          }
-          stockAfter = fresh.variantes_detaillees.reduce((sum, vr) => sum + vr.stock, 0);
-          await db.produits.update(pId, {
-            stock: stockAfter,
-            cout_achat_unitaire: coutUnitaire,
-            variantes_detaillees: fresh.variantes_detaillees,
-          });
-        } else {
-          stockAfter = (fresh.stock ?? 0) + qty;
-          const updateData: Partial<Produit> = {
-            stock: stockAfter,
-            cout_achat_unitaire: coutUnitaire,
-          };
-          if (hasNewSalePrice) {
-            updateData.prix = newSalePriceNum;
-          }
-          await db.produits.update(pId, updateData);
-        }
-      });
-
-      await pushToSyncQueue('INSERT', 'achats_stock', newAchat);
-      await pushToSyncQueue('UPDATE', 'produits', {
-        id: pId,
-        stock: stockAfter,
-        cout_achat_unitaire: coutUnitaire,
-        ...(hasNewSalePrice ? { prix: newSalePriceNum } : {}),
-      });
+      // Le serveur fait tout atomiquement : incrémente le stock, met à jour le coût d'achat
+      // (et le prix de vente si fourni), et journalise l'achat (voir server/src/routes/achatsStock.js).
+      try {
+        await apiPost('/achats-stock', {
+          fournisseur_id: fId,
+          fournisseur_nom: targetFournisseur ? targetFournisseur.nom : 'Fournisseur',
+          produit_id: pId,
+          produit_nom: targetProduit.nom,
+          variant_id: selectedVariantId || undefined,
+          variante: variantLabel,
+          quantite: qty,
+          cout_total: cout,
+          cout_unitaire: coutUnitaire,
+          zone_id: Number(achatZoneId),
+          nouveau_prix_vente: hasNewSalePrice ? newSalePriceNum : undefined,
+        });
+        await reload();
+      } catch (err) {
+        await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement de l'achat.");
+        return;
+      }
     }
 
     setIsAchatModalOpen(false);
@@ -1024,6 +988,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
     setSortByAjustements('date-desc');
     setCurrentPageAjustements(1);
   };
+
+  if (dataLoading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6">

@@ -8,7 +8,8 @@ achatsStockRouter.get('/', async (_req, res) => {
   res.json(rows);
 });
 
-// Enregistre un achat fournisseur et incrémente le stock du produit concerné, atomiquement.
+// Enregistre un achat fournisseur, incrémente le stock du produit concerné, et met à jour son
+// coût d'achat (et éventuellement son prix de vente) — atomiquement.
 achatsStockRouter.post('/', async (req, res) => {
   const body = req.body || {};
   if (!body.produit_id || !body.quantite || body.quantite <= 0) {
@@ -20,17 +21,26 @@ achatsStockRouter.post('/', async (req, res) => {
       const { rows: produitRows } = await client.query('select * from produits where id=$1 for update', [body.produit_id]);
       if (produitRows.length === 0) throw Object.assign(new Error('Produit introuvable.'), { status: 404 });
       const produit = produitRows[0];
+      const coutUnitaire = body.cout_unitaire ?? (body.cout_total && body.quantite ? body.cout_total / body.quantite : null);
+      const nouveauPrix = Number.isFinite(body.nouveau_prix_vente) && body.nouveau_prix_vente > 0 ? body.nouveau_prix_vente : null;
 
       if (body.variant_id && produit.variantes_detaillees) {
         const variantes = produit.variantes_detaillees.map((v) =>
-          v.id === body.variant_id ? { ...v, stock: v.stock + body.quantite } : v
+          v.id === body.variant_id
+            ? { ...v, stock: v.stock + body.quantite, cout_achat_unitaire: coutUnitaire ?? v.cout_achat_unitaire, prix: nouveauPrix ?? v.prix }
+            : v
         );
         const stockTotal = variantes.reduce((sum, v) => sum + v.stock, 0);
-        await client.query('update produits set variantes_detaillees=$1, stock=$2 where id=$3', [
-          JSON.stringify(variantes), stockTotal, produit.id,
-        ]);
+        await client.query(
+          'update produits set variantes_detaillees=$1, stock=$2, cout_achat_unitaire=$3 where id=$4',
+          [JSON.stringify(variantes), stockTotal, coutUnitaire, produit.id]
+        );
       } else {
-        await client.query('update produits set stock=stock+$1 where id=$2', [body.quantite, produit.id]);
+        await client.query(
+          `update produits set stock=stock+$1, cout_achat_unitaire=coalesce($2, cout_achat_unitaire),
+             prix=coalesce($3, prix) where id=$4`,
+          [body.quantite, coutUnitaire, nouveauPrix, produit.id]
+        );
       }
 
       const { rows } = await client.query(
@@ -42,7 +52,7 @@ achatsStockRouter.post('/', async (req, res) => {
         [
           body.fournisseur_id ?? null, body.fournisseur_nom ?? null, body.produit_id,
           body.produit_nom ?? produit.nom, body.variant_id ?? null, body.variante ?? null,
-          body.quantite, body.cout_total ?? 0, body.cout_unitaire ?? null, body.zone_id ?? null,
+          body.quantite, body.cout_total ?? 0, coutUnitaire, body.zone_id ?? null,
         ]
       );
       return rows[0];
