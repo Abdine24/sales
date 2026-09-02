@@ -1,6 +1,5 @@
-import React, { useEffect, lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
-import { initializeSeedData } from './db/seed';
 import { AuthGate } from './pages/AuthGate';
 import { canAccess, firstAllowedPage } from './services/localAuth';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -16,7 +15,6 @@ const Ventes = lazy(() => import('./pages/Ventes').then((m) => ({ default: m.Ven
 const Stock = lazy(() => import('./pages/Stock').then((m) => ({ default: m.Stock })));
 const Clients = lazy(() => import('./pages/Clients').then((m) => ({ default: m.Clients })));
 const Fournisseurs = lazy(() => import('./pages/Fournisseurs').then((m) => ({ default: m.Fournisseurs })));
-const SyncManager = lazy(() => import('./pages/SyncManager').then((m) => ({ default: m.SyncManager })));
 const Categories = lazy(() => import('./pages/Categories').then((m) => ({ default: m.Categories })));
 const Personnel = lazy(() => import('./pages/Personnel').then((m) => ({ default: m.Personnel })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
@@ -53,12 +51,6 @@ function AccessDenied({ onGoHome }: { onGoHome: () => void }) {
 
 function AuthenticatedApp() {
   const { personnel } = useAuth();
-  
-  useEffect(() => {
-    initializeSeedData().catch((err) =>
-      console.error('Failed to initialize seed data:', err)
-    );
-  }, []);
 
   if (!personnel) return null;
 
@@ -97,8 +89,6 @@ function AuthenticatedApp() {
               return <Personnel currentUser={personnel} />;
             case 'settings':
               return <Settings />;
-            case 'sync':
-              return <SyncManager />;
             case 'dashboard':
             default:
               return <Dashboard onNavigate={navigate} activeZoneId={activeZoneId} />;

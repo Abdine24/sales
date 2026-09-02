@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, NavPage } from './Sidebar';
 import { Topbar, ThemeMode } from './Topbar';
-import { useSync } from '../../hooks/useSync';
-import { canAccess, clearSession, firstAllowedPage, roleLabel } from '../../services/localAuth';
-import { Personnel } from '../../db/db';
-import { db, Zone } from '../../db/db';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { canAccess, firstAllowedPage, roleLabel } from '../../services/localAuth';
+import { signOutSupabase } from '../../services/supabaseAuth';
+import type { Personnel, AppSettings, Zone } from '../../db/db';
+import { apiGet } from '../../services/api';
 
 interface AppLayoutProps {
   personnel: Personnel;
@@ -21,7 +21,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
   const [currentPage, setCurrentPage] = useState<NavPage>(() => firstAllowedPage(personnel) as NavPage);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const zones = useLiveQuery(() => db.zones.toArray(), []) || [];
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeZoneId, setActiveZoneId] = useState<number | null>(personnel.role === 'gerant' ? personnel.zone_id || null : null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('app-theme-mode') as ThemeMode;
@@ -29,14 +30,23 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const { isOnline, pendingCount, isSyncing, triggerSync } = useSync();
+  const { isOnline } = useOnlineStatus();
 
   const handleLogout = async () => {
-    clearSession();
+    await signOutSupabase();
     window.location.reload();
   };
 
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
+  const reloadSettings = useCallback(() => {
+    apiGet<AppSettings>('/settings').then(setSettings).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    apiGet<Zone[]>('/zones').then(setZones).catch(() => {});
+    reloadSettings();
+    window.addEventListener('app-settings-updated', reloadSettings);
+    return () => window.removeEventListener('app-settings-updated', reloadSettings);
+  }, [reloadSettings]);
 
   useEffect(() => {
     if (settings?.nom_site) {
@@ -68,7 +78,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
         onNavigate={(page) => {
           if (canAccess(personnel, page)) setCurrentPage(page);
         }}
-        pendingCount={pendingCount}
         role={personnel.role}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
@@ -78,9 +87,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <Topbar
           isOnline={isOnline}
-          pendingCount={pendingCount}
-          isSyncing={isSyncing}
-          triggerSync={triggerSync}
           onQuickSale={() => setCurrentPage('pos')}
           themeMode={themeMode}
           setThemeMode={setThemeMode}

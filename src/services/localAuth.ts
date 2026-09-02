@@ -1,9 +1,8 @@
 import { db, Licence, Personnel, PersonnelRole } from '../db/db';
 import { computeExpiryIso, validateLicenseKey } from '../utils/license';
-import { pushToSyncQueue } from '../hooks/useSync';
 import { isSupabaseConfigured } from './supabase';
-import { signInWithPassword, updateOwnPassword, getSupabaseUserEmail } from './supabaseAuth';
-import { apiPost, ApiError } from './api';
+import { signInWithPassword, signOutSupabase, updateOwnPassword, getSupabaseUserEmail } from './supabaseAuth';
+import { apiGet, apiPost, ApiError } from './api';
 
 const SESSION_KEY = 'vente_personnel_session';
 
@@ -47,90 +46,39 @@ export const getSessionId = () => {
 export const setSession = (id: number) => sessionStorage.setItem(SESSION_KEY, String(id));
 export const clearSession = () => sessionStorage.removeItem(SESSION_KEY);
 
-export const authenticate = async (username: string, email: string, password: string) => {
-  const normalizedUsername = username.trim().toLowerCase();
+// Résout le profil personnel (rôle, zone...) associé à l'utilisateur Supabase actuellement
+// authentifié — le serveur est l'unique source de vérité désormais (voir
+// server/src/routes/personnel.js, route /me). Renvoie null si aucun profil n'existe encore
+// pour ce compte (email pas encore rattaché par un admin) ou s'il est désactivé.
+const resolveCurrentPersonnel = async (): Promise<Personnel | null> => {
+  try {
+    const personnel = await apiGet<Personnel>('/personnel/me');
+    if (!personnel.actif) return null;
+    return personnel;
+  } catch {
+    return null;
+  }
+};
+
+export const authenticate = async (_username: string, email: string, password: string) => {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase doit être configuré pour se connecter.');
+  }
   const normalizedEmail = email.trim().toLowerCase();
-
-  // Le mot de passe est vérifié par Supabase Auth (source de vérité) quand Supabase est
-  // configuré. Si Supabase répond et refuse explicitement (mauvais mot de passe, email non
-  // confirmé...), on refuse aussi — pas de repli local qui contournerait ce refus. Le repli
-  // local ne joue que si Supabase est injoignable (hors-ligne, panne réseau).
-  let supabaseUserId: string | undefined;
-  if (isSupabaseConfigured()) {
-    const result = await signInWithPassword(normalizedEmail, password);
-    if (result.success) {
-      supabaseUserId = result.userId;
-    } else if (!result.networkError) {
-      return null;
-    }
-  }
-
-  let personnel = await db.personnel.where('username').equals(normalizedUsername).first();
-  if (!personnel) {
-    // Compte retrouvé par email
-    personnel = (await db.personnel.toArray()).find(
-      (p) => p.email?.trim().toLowerCase() === normalizedEmail
-    );
-  }
-  if (!personnel || !personnel.actif) return null;
-
-  // Check email match
-  if (personnel.email) {
-    if (personnel.email.trim().toLowerCase() !== normalizedEmail) {
-      if (personnel.principal) {
-        // Associer le nouvel email saisi par l'administrateur
-        await db.personnel.update(personnel.id!, { email: normalizedEmail });
-        personnel.email = normalizedEmail;
-      } else {
-        return null;
-      }
-    }
-  } else {
-    // Si compte existant sans email, associer l'email renseigné
-    await db.personnel.update(personnel.id!, { email: normalizedEmail });
-    personnel.email = normalizedEmail;
-  }
-
-  if (!supabaseUserId) {
-    const isPasswordValid = await verifyPassword(password, personnel.password_hash);
-    if (!isPasswordValid) {
-      return null;
-    }
-  }
-
-  if (supabaseUserId && personnel.supabase_user_id !== supabaseUserId) {
-    await db.personnel.update(personnel.id!, { supabase_user_id: supabaseUserId });
-    personnel.supabase_user_id = supabaseUserId;
-  }
-
-  setSession(personnel.id!);
-  return personnel;
+  const result = await signInWithPassword(normalizedEmail, password);
+  if (!result.success) return null;
+  return resolveCurrentPersonnel();
 };
 
 // Termine le parcours "mot de passe oublié" : appelé une fois que l'utilisateur a défini
 // son nouveau mot de passe (session de récupération Supabase active), résout son profil
-// local par email et ouvre sa session applicative.
+// via le serveur et ouvre sa session applicative.
 export const completePasswordReset = async (newPassword: string): Promise<Personnel | null> => {
   const result = await updateOwnPassword(newPassword);
   if (!result.success) {
     throw new Error(result.message || 'Échec de la mise à jour du mot de passe.');
   }
-  const email = await getSupabaseUserEmail();
-  if (!email) return null;
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const personnel = (await db.personnel.toArray()).find(
-    (p) => p.email?.trim().toLowerCase() === normalizedEmail
-  );
-  if (!personnel || !personnel.actif) return null;
-
-  if (result.userId && personnel.supabase_user_id !== result.userId) {
-    await db.personnel.update(personnel.id!, { supabase_user_id: result.userId });
-    personnel.supabase_user_id = result.userId;
-  }
-
-  setSession(personnel.id!);
-  return personnel;
+  return resolveCurrentPersonnel();
 };
 
 export const createPrincipal = async (nom: string, username: string, email: string, password: string, cle: string) => {
@@ -139,52 +87,35 @@ export const createPrincipal = async (nom: string, username: string, email: stri
     throw new Error(validation.reason || 'Clé de licence invalide.');
   }
 
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase doit être configuré pour activer une boutique.');
+  }
   const normalizedUsername = username.trim().toLowerCase();
   const normalizedEmail = email.trim().toLowerCase();
 
   // À ce stade l'email a déjà été vérifié par OTP (voir AuthGate), ce qui a ouvert une
   // session Supabase pour cet utilisateur : on y attache simplement le mot de passe choisi
   // plutôt que de re-créer un compte (qui entrerait en conflit avec celui de l'OTP).
-  let supabaseUserId: string | undefined;
-  if (isSupabaseConfigured()) {
-    try {
-      const result = await updateOwnPassword(password);
-      if (result.success) {
-        supabaseUserId = result.userId;
-      }
-    } catch {
-      // Poursuite locale en cas d'erreur Supabase / offline / rate limit
-    }
+  const passwordResult = await updateOwnPassword(password);
+  if (!passwordResult.success) {
+    throw new Error(passwordResult.message || "Échec de l'enregistrement du mot de passe.");
   }
 
-  const passwordHash = await makePasswordHash(password);
-  const personnel: Personnel = {
-    identifiant: await generateUniquePersonnelIdentifier(),
+  // Active la licence de la boutique (revalidée et écrite côté serveur).
+  await apiPost('/licence/activer', { cle: cle.trim().toUpperCase() });
+
+  // Crée le profil admin/principal, lié dès sa création au compte Supabase qu'on vient d'activer.
+  await apiPost('/personnel', {
     nom: nom.trim(),
     username: normalizedUsername,
     email: normalizedEmail,
-    password_hash: passwordHash,
-    supabase_user_id: supabaseUserId,
     role: 'admin',
     actif: true,
     principal: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  const activeeLe = new Date().toISOString();
-  const licence: Licence = {
-    id: 'principale',
-    cle: cle.trim().toUpperCase(),
-    activee_le: activeeLe,
-    duree_jours: validation.days,
-    expire_le: computeExpiryIso(activeeLe, validation.days),
-  };
-  await db.transaction('rw', db.personnel, db.licence, async () => {
-    await db.personnel.add(personnel);
-    await db.licence.put(licence);
+    supabase_user_id: passwordResult.userId,
   });
-  await pushToSyncQueue('INSERT', 'licence', licence);
-  return authenticate(normalizedUsername, normalizedEmail, password);
+
+  return resolveCurrentPersonnel();
 };
 
 // Active/renouvelle la licence de la boutique avec une nouvelle clé. La période repart

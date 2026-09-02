@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Wifi,
   WifiOff,
-  RefreshCw,
   Sun,
   Moon,
   Leaf,
@@ -20,9 +19,6 @@ export type ThemeMode = 'light' | 'dark' | 'emerald' | 'contrast';
 
 interface TopbarProps {
   isOnline: boolean;
-  pendingCount: number;
-  isSyncing: boolean;
-  triggerSync: () => void;
   onQuickSale: () => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
@@ -37,9 +33,6 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({
   isOnline,
-  pendingCount,
-  isSyncing,
-  triggerSync,
   onQuickSale,
   themeMode,
   setThemeMode,
@@ -79,43 +72,23 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-3 min-w-0 overflow-x-auto">
-        {/* Network & Sync Status (Design épuré : Wifi vert En ligne / Wifi rouge barré Hors ligne) */}
+        {/* Network Status — l'app est online-only, ce badge reflète juste l'état de connexion. */}
         <div className="flex items-center">
-          {isSyncing ? (
+          {isOnline ? (
             <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold"
-              title="Synchronisation des données en cours..."
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold"
+              title="Connexion active · En ligne"
             >
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
-              <span className="hidden sm:inline text-[11px] font-bold">Synchro...</span>
-            </div>
-          ) : isOnline ? (
-            <button
-              type="button"
-              onClick={triggerSync}
-              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all hover:bg-emerald-500/20 active:scale-95"
-              title={pendingCount > 0 ? `${pendingCount} action(s) en attente (cliquez pour forcer la synchronisation)` : 'Connexion active · En ligne'}
-            >
-              <Wifi className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+              <Wifi className="w-4 h-4 text-emerald-500" />
               <span className="text-[11px] font-bold">En ligne</span>
-              {pendingCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-extrabold">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
+            </div>
           ) : (
             <div
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold"
-              title={`Mode hors ligne (${pendingCount} actions sauvegardées localement en attente de reconnexion)`}
+              title="Connexion perdue — l'app a besoin d'internet pour fonctionner."
             >
               <WifiOff className="w-4 h-4 text-rose-500 animate-pulse" />
               <span className="text-[11px] font-bold">Hors ligne</span>
-              {pendingCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-extrabold">
-                  {pendingCount}
-                </span>
-              )}
             </div>
           )}
         </div>

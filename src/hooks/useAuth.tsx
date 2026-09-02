@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Personnel } from '../db/db';
-import { getSessionId } from '../services/localAuth';
-import { db } from '../db/db';
+import { apiGet } from '../services/api';
+import { getSupabase, isSupabaseConfigured } from '../services/supabase';
+import { signOutSupabase } from '../services/supabaseAuth';
 
 interface AuthContextType {
   personnel: Personnel | null;
@@ -17,11 +18,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const loadSession = async () => {
-      const sessionId = getSessionId();
-      if (sessionId) {
-        const activePersonnel = await db.personnel.get(sessionId);
-        if (activePersonnel?.actif) {
-          setPersonnel(activePersonnel);
+      // La session vient désormais de Supabase (persistée par son propre SDK) — plus d'un
+      // identifiant local dans sessionStorage. Une session Supabase active ne veut pas
+      // forcément dire qu'un profil personnel existe déjà pour ce compte (ex: lien coupé
+      // entre-temps par un admin) : /personnel/me tranche.
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = await getSupabase();
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            const activePersonnel = await apiGet<Personnel>('/personnel/me');
+            if (activePersonnel?.actif) {
+              setPersonnel(activePersonnel);
+            }
+          }
+        } catch {
+          // Pas de session valide ou pas de profil pour ce compte -> reste déconnecté.
         }
       }
       setLoading(false);
@@ -30,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = () => {
-    sessionStorage.removeItem('vente_personnel_session');
+    signOutSupabase();
     setPersonnel(null);
   };
 

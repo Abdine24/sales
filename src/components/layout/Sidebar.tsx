@@ -1,5 +1,4 @@
-import React from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -7,7 +6,6 @@ import {
   Package,
   Users,
   Truck,
-  RefreshCw,
   Store,
   FolderKanban,
   Building2,
@@ -15,17 +13,16 @@ import {
   ChevronRight,
   Receipt,
 } from 'lucide-react';
-import { PersonnelRole } from '../../db/db';
+import type { PersonnelRole, AppSettings, Licence } from '../../db/db';
 import { canAccess } from '../../services/localAuth';
-import { db } from '../../db/db';
+import { apiGet } from '../../services/api';
 import { evaluateLicenceStatus } from '../../utils/license';
 
-export type NavPage = 'dashboard' | 'pos' | 'ventes' | 'stock' | 'clients' | 'fournisseurs' | 'categories' | 'personnel' | 'settings' | 'sync';
+export type NavPage = 'dashboard' | 'pos' | 'ventes' | 'stock' | 'clients' | 'fournisseurs' | 'categories' | 'personnel' | 'settings';
 
 interface SidebarProps {
   currentPage: NavPage;
   onNavigate: (page: NavPage) => void;
-  pendingCount: number;
   role: PersonnelRole;
   collapsed: boolean;
   onToggle: () => void;
@@ -34,13 +31,21 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentPage,
   onNavigate,
-  pendingCount,
   role,
   collapsed,
   onToggle,
 }) => {
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
-  const licence = useLiveQuery(() => db.licence.get('principale'), []) || null;
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [licence, setLicence] = useState<Licence | null>(null);
+
+  useEffect(() => {
+    apiGet<AppSettings>('/settings').then(setSettings).catch(() => {});
+    apiGet<Licence | null>('/licence').then(setLicence).catch(() => {});
+    // Se rafraîchit quand Settings.tsx enregistre (il fait window.dispatchEvent('app-settings-updated')).
+    const onSettingsUpdated = () => apiGet<AppSettings>('/settings').then(setSettings).catch(() => {});
+    window.addEventListener('app-settings-updated', onSettingsUpdated);
+    return () => window.removeEventListener('app-settings-updated', onSettingsUpdated);
+  }, []);
 
   const licenceStatus = React.useMemo(() => evaluateLicenceStatus(licence), [licence]);
   const daysRemaining = licenceStatus.daysRemaining;
@@ -56,12 +61,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'categories' as NavPage, label: 'Catégories & Variantes', icon: FolderKanban },
     { id: 'personnel' as NavPage, label: 'Gestion du personnel', icon: Users },
     { id: 'settings' as NavPage, label: 'Paramètres', icon: Building2 },
-    {
-      id: 'sync' as NavPage,
-      label: 'Synchronisation',
-      icon: RefreshCw,
-      badge: pendingCount > 0 ? `${pendingCount}` : undefined,
-    },
   ];
 
   return (
@@ -157,8 +156,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     isActive
                       ? 'bg-white/20 text-white'
-                      : item.id === 'sync' && pendingCount > 0
-                      ? 'bg-amber-500 text-white animate-pulse'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                   }`}
                 >
@@ -179,8 +176,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
         <div className="flex items-center justify-between text-[11px] opacity-75">
-          <span>Base Locale</span>
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Dexie.js</span>
+          <span>Données</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">En ligne</span>
         </div>
       </div>
     </aside>
