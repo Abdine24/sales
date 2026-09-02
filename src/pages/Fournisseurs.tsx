@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Truck,
   Plus,
@@ -10,8 +9,8 @@ import {
   Trash2,
   Package,
 } from 'lucide-react';
-import { db, Fournisseur } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { Fournisseur, AchatStock } from '../db/db';
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -20,9 +19,10 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 
 export const Fournisseurs: React.FC = () => {
-  const { confirm } = useDialog();
-  const fournisseurs = useLiveQuery(() => db.fournisseurs.toArray(), []) || [];
-  const achats = useLiveQuery(() => db.achats_stock.toArray(), []) || [];
+  const { confirm, alert } = useDialog();
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [achats, setAchats] = useState<AchatStock[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
 
@@ -32,6 +32,25 @@ export const Fournisseurs: React.FC = () => {
   const [nom, setNom] = useState('');
   const [contact, setContact] = useState('');
   const [email, setEmail] = useState('');
+
+  const reload = useCallback(async () => {
+    try {
+      const [f, a] = await Promise.all([
+        apiGet<Fournisseur[]>('/fournisseurs'),
+        apiGet<AchatStock[]>('/achats-stock'),
+      ]);
+      setFournisseurs(f);
+      setAchats(a);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger les fournisseurs.');
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const handleOpenAddModal = () => {
     setEditingFournisseur(null);
@@ -53,26 +72,17 @@ export const Fournisseurs: React.FC = () => {
     e.preventDefault();
     if (!nom || !contact) return;
 
-    if (editingFournisseur && editingFournisseur.id) {
-      const updated: Fournisseur = {
-        ...editingFournisseur,
-        nom,
-        contact,
-        email,
-      };
-      await db.fournisseurs.update(editingFournisseur.id, updated);
-      await pushToSyncQueue('UPDATE', 'fournisseurs', updated);
-    } else {
-      const newF: Fournisseur = {
-        nom,
-        contact,
-        email,
-      };
-      const newId = await db.fournisseurs.add(newF);
-      await pushToSyncQueue('INSERT', 'fournisseurs', { id: newId, ...newF });
+    try {
+      if (editingFournisseur?.id) {
+        await apiPut(`/fournisseurs/${editingFournisseur.id}`, { nom, contact, email });
+      } else {
+        await apiPost('/fournisseurs', { nom, contact, email });
+      }
+      setIsModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement du fournisseur.");
     }
-
-    setIsModalOpen(false);
   };
 
   const handleDeleteFournisseur = async (id: number) => {
@@ -82,15 +92,22 @@ export const Fournisseurs: React.FC = () => {
       danger: true,
       confirmLabel: 'Supprimer',
     });
-    if (ok) {
-      await db.fournisseurs.delete(id);
-      await pushToSyncQueue('DELETE', 'fournisseurs', { id });
+    if (!ok) return;
+    try {
+      await apiDelete(`/fournisseurs/${id}`);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
 
   const filteredFournisseurs = fournisseurs.filter((f) =>
     f.nom.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6">

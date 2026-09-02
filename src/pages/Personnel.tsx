@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { KeyRound, ShieldCheck, UserPlus, Users, Edit2, Copy } from 'lucide-react';
-import { db, Personnel as PersonnelRecord, PersonnelRole } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
-import { generateUniquePersonnelIdentifier, makePasswordHash, roleLabel } from '../services/localAuth';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ShieldCheck, UserPlus, Users, Edit2, Copy, Mail } from 'lucide-react';
+import type { Personnel as PersonnelRecord, PersonnelRole, Zone } from '../db/db';
+import { apiGet, apiPost, apiPut, ApiError } from '../services/api';
+import { roleLabel } from '../services/localAuth';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -13,31 +12,52 @@ interface PersonnelProps {
   currentUser: PersonnelRecord;
 }
 
+// Depuis la bascule vers Supabase Auth, ce n'est plus l'admin qui fixe le mot de passe d'un
+// membre : il crée juste le profil (nom, rôle, zone, email), et la personne active elle-même
+// son compte en s'inscrivant sur l'app avec ce même email (Supabase relie automatiquement les
+// deux via /personnel/me, voir server/src/routes/personnel.js).
 export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
-  const personnel = useLiveQuery(
-    async () => (await db.personnel.toArray()).sort((first, second) => first.nom.localeCompare(second.nom)),
-    []
-  ) || [];
-  const zones = useLiveQuery(() => db.zones.toArray(), []) || [];
+  const [personnel, setPersonnel] = useState<PersonnelRecord[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<PersonnelRecord | null>(null);
   const [nom, setNom] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState<PersonnelRole>('gerant');
   const [zoneId, setZoneId] = useState<number | ''>('');
   const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+
+  const reload = useCallback(async () => {
+    try {
+      const [p, z] = await Promise.all([
+        apiGet<PersonnelRecord[]>('/personnel'),
+        apiGet<Zone[]>('/zones'),
+      ]);
+      setPersonnel([...p].sort((a, b) => a.nom.localeCompare(b.nom)));
+      setZones(z);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Impossible de charger le personnel.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const openCreate = () => {
     setEditingPerson(null);
     setNom('');
     setUsername('');
     setEmail('');
-    setPassword('');
     setRole('gerant');
     setZoneId(zones.length === 1 ? zones[0].id || '' : '');
     setError('');
+    setInfoMessage('');
     setIsModalOpen(true);
   };
 
@@ -46,10 +66,10 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     setNom(person.nom);
     setUsername(person.username);
     setEmail(person.email || '');
-    setPassword('');
     setRole(person.role);
     setZoneId(person.zone_id || '');
     setError('');
+    setInfoMessage('');
     setIsModalOpen(true);
   };
 
@@ -63,21 +83,14 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
       setError('L’adresse email est obligatoire pour sécuriser le compte.');
       return;
     }
-
     const duplicateUsername = personnel.find((person) => person.username === normalizedUsername && person.id !== editingPerson?.id);
     if (duplicateUsername) {
       setError('Ce nom d’utilisateur existe déjà.');
       return;
     }
-
     const duplicateEmail = personnel.find((person) => (person.email || '').trim().toLowerCase() === normalizedEmail && person.id !== editingPerson?.id);
     if (duplicateEmail) {
       setError('Cette adresse email est déjà utilisée par un autre membre.');
-      return;
-    }
-
-    if (!editingPerson && password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.');
       return;
     }
     if (editingPerson?.principal && role !== 'admin') {
@@ -88,45 +101,40 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
       setError('Un gérant doit être affecté à une zone.');
       return;
     }
-    if (editingPerson && password && !currentUser.principal && editingPerson.id !== currentUser.id) {
-      setError('Seul l’administrateur principal peut changer le mot de passe d’un autre membre.');
-      return;
-    }
 
-    const updated: PersonnelRecord = {
-      ...(editingPerson || {}),
-      identifiant: editingPerson?.identifiant || await generateUniquePersonnelIdentifier(),
+    const payload = {
       nom: nom.trim(),
       username: normalizedUsername,
       email: normalizedEmail,
       role: editingPerson?.principal ? 'admin' : role,
-      actif: editingPerson?.actif ?? true,
-      principal: editingPerson?.principal ?? false,
       zone_id: editingPerson?.principal ? null : (zoneId ? Number(zoneId) : null),
-      created_at: editingPerson?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      password_hash: editingPerson?.password_hash || await makePasswordHash(password),
     };
-    if (password) updated.password_hash = await makePasswordHash(password);
 
-    let personId = updated.id;
-    if (updated.id) {
-      await db.personnel.put(updated);
-    } else {
-      personId = await db.personnel.add(updated);
+    try {
+      if (editingPerson?.id) {
+        await apiPut(`/personnel/${editingPerson.id}`, payload);
+        setIsModalOpen(false);
+      } else {
+        await apiPost('/personnel', payload);
+        setIsModalOpen(false);
+        setInfoMessage(
+          `Profil créé pour ${payload.nom}. Communique-lui son email (${payload.email}) : il doit s'inscrire lui-même sur l'app avec cette adresse pour activer son compte.`
+        );
+      }
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement.");
     }
-
-    // On ne synchronise jamais le hash du mot de passe (géré séparément par l'auth serveur)
-    const { password_hash, ...syncable } = { ...updated, id: personId };
-    await pushToSyncQueue(updated.id ? 'UPDATE' : 'INSERT', 'personnel', syncable);
-    setIsModalOpen(false);
   };
 
   const toggleActive = async (person: PersonnelRecord) => {
-    if (person.principal) return;
-    const updated_at = new Date().toISOString();
-    await db.personnel.update(person.id!, { actif: !person.actif, updated_at });
-    await pushToSyncQueue('UPDATE', 'personnel', { id: person.id, actif: !person.actif, updated_at });
+    if (person.principal || !person.id) return;
+    try {
+      await apiPut(`/personnel/${person.id}`, { actif: !person.actif });
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Échec de la mise à jour.');
+    }
   };
 
   if (currentUser.role !== 'admin') {
@@ -139,6 +147,10 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     );
   }
 
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -148,6 +160,13 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
         </div>
         <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={openCreate}>Ajouter une personne</Button>
       </div>
+
+      {infoMessage && (
+        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm flex items-start gap-2">
+          <Mail className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{infoMessage}</span>
+        </div>
+      )}
 
       <GlassCard className="p-0 overflow-hidden">
         <div className="divide-y divide-slate-200/40 dark:divide-white/5">
@@ -161,6 +180,9 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
                     <span className="font-semibold text-slate-700 dark:text-slate-300">@{person.username}</span>
                     <span className="text-slate-400">•</span>
                     <span>{person.email || 'Email non défini'}</span>
+                    {!person.supabase_user_id && (
+                      <Badge variant="amber" size="sm">Inscription en attente</Badge>
+                    )}
                   </div>
                   <div className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5"><Copy className="w-3 h-3" /> ID: {person.identifiant}</div>
                 </div>
@@ -190,7 +212,12 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
             <option value="">-- Zone affectée au gérant --</option>
             {zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.nom} ({zone.code})</option>)}
           </select>
-          <div className="relative"><KeyRound className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" /><input type="password" required={!editingPerson} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={editingPerson ? 'Nouveau mot de passe (facultatif)' : 'Mot de passe'} className="w-full glass-input pl-10 pr-4 py-3 rounded-xl" /></div>
+          {!editingPerson && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Aucun mot de passe à saisir ici : la personne s'inscrit elle-même sur l'app avec cet
+              email pour activer son compte (son profil ci-dessus s'y liera automatiquement).
+            </p>
+          )}
           {error && <p className="text-sm text-rose-500">{error}</p>}
           <div className="flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsModalOpen(false)}>Annuler</Button><Button type="submit" variant="primary">Enregistrer</Button></div>
         </form>

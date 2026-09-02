@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FolderKanban, Layers3, Plus, Edit2, Trash2 } from 'lucide-react';
-import { db, Categorie, Produit } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { Categorie, Produit } from '../db/db';
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -10,8 +9,9 @@ import { useDialog } from '../components/ui/DialogProvider';
 
 export const Categories: React.FC = () => {
   const { confirm, alert } = useDialog();
-  const categories = useLiveQuery(() => db.categories.orderBy('nom').toArray(), []) || [];
-  const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
+  const [categories, setCategories] = useState<Categorie[]>([]);
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'categories' | 'variantes'>('categories');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Categorie | null>(null);
@@ -21,6 +21,25 @@ export const Categories: React.FC = () => {
   const [editingVariant, setEditingVariant] = useState<string | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variantProductId, setVariantProductId] = useState<number | ''>('');
+
+  const reload = useCallback(async () => {
+    try {
+      const [cats, prods] = await Promise.all([
+        apiGet<Categorie[]>('/categories'),
+        apiGet<Produit[]>('/produits'),
+      ]);
+      setCategories(cats);
+      setProduits(prods);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger les catégories.');
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const variants = Array.from(
     new Set(produits.flatMap((produit) => produit.variantes || []).filter(Boolean))
@@ -45,17 +64,22 @@ export const Categories: React.FC = () => {
       return;
     }
 
-    if (editingCategory?.id) {
-      const updated = { ...editingCategory, nom: normalizedName, description };
-      await db.categories.put(updated);
-      await db.produits.where('categorie').equals(editingCategory.nom).modify({ categorie: normalizedName });
-      await pushToSyncQueue('UPDATE', 'categories', updated);
-    } else {
-      const category = { nom: normalizedName, description };
-      const id = await db.categories.add(category);
-      await pushToSyncQueue('INSERT', 'categories', { id, ...category });
+    try {
+      if (editingCategory?.id) {
+        await apiPut(`/categories/${editingCategory.id}`, { nom: normalizedName, description });
+        // Renomme la catégorie sur tous les produits qui la référencent (par nom, pas par id).
+        const affected = produits.filter((produit) => produit.categorie === editingCategory.nom);
+        await Promise.all(
+          affected.map((produit) => apiPut(`/produits/${produit.id}`, { categorie: normalizedName }))
+        );
+      } else {
+        await apiPost('/categories', { nom: normalizedName, description });
+      }
+      setIsModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement de la catégorie.");
     }
-    setIsModalOpen(false);
   };
 
   const deleteCategory = async (category: Categorie) => {
@@ -71,8 +95,12 @@ export const Categories: React.FC = () => {
       confirmLabel: 'Supprimer',
     });
     if (!ok) return;
-    await db.categories.delete(category.id);
-    await pushToSyncQueue('DELETE', 'categories', { id: category.id });
+    try {
+      await apiDelete(`/categories/${category.id}`);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
+    }
   };
 
   const openVariantModal = (variant?: string) => {
@@ -87,34 +115,35 @@ export const Categories: React.FC = () => {
     const normalizedName = variantName.trim();
     if (!normalizedName) return;
 
-    if (editingVariant) {
-      if (variants.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase() && variant !== editingVariant)) {
-        await alert('Cette variante existe déjà.');
-        return;
+    try {
+      if (editingVariant) {
+        if (variants.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase() && variant !== editingVariant)) {
+          await alert('Cette variante existe déjà.');
+          return;
+        }
+        const affectedProducts = produits.filter((produit) => produit.variantes?.includes(editingVariant));
+        await Promise.all(
+          affectedProducts.map((produit) =>
+            apiPut(`/produits/${produit.id}`, {
+              variantes: (produit.variantes || []).map((variant) => (variant === editingVariant ? normalizedName : variant)),
+            })
+          )
+        );
+      } else {
+        if (!variantProductId) return;
+        const produit = produits.find((item) => item.id === Number(variantProductId));
+        if (!produit?.id) return;
+        if (produit.variantes?.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase())) {
+          await alert('Ce produit possède déjà cette variante.');
+          return;
+        }
+        await apiPut(`/produits/${produit.id}`, { variantes: [...(produit.variantes || []), normalizedName] });
       }
-      const affectedProducts = produits.filter((produit) => produit.variantes?.includes(editingVariant));
-      for (const produit of affectedProducts) {
-        if (!produit.id) continue;
-        const updated: Produit = {
-          ...produit,
-          variantes: (produit.variantes || []).map((variant) => variant === editingVariant ? normalizedName : variant),
-        };
-        await db.produits.put(updated);
-        await pushToSyncQueue('UPDATE', 'produits', updated);
-      }
-    } else {
-      if (!variantProductId) return;
-      const produit = produits.find((item) => item.id === Number(variantProductId));
-      if (!produit?.id) return;
-      if (produit.variantes?.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase())) {
-        await alert('Ce produit possède déjà cette variante.');
-        return;
-      }
-      const updated: Produit = { ...produit, variantes: [...(produit.variantes || []), normalizedName] };
-      await db.produits.put(updated);
-      await pushToSyncQueue('UPDATE', 'produits', updated);
+      setIsVariantModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement de la variante.");
     }
-    setIsVariantModalOpen(false);
   };
 
   const deleteVariant = async (variant: string) => {
@@ -125,17 +154,22 @@ export const Categories: React.FC = () => {
       confirmLabel: 'Supprimer',
     });
     if (!ok) return;
-    const affectedProducts = produits.filter((produit) => produit.variantes?.includes(variant));
-    for (const produit of affectedProducts) {
-      if (!produit.id) continue;
-      const updated: Produit = {
-        ...produit,
-        variantes: (produit.variantes || []).filter((item) => item !== variant),
-      };
-      await db.produits.put(updated);
-      await pushToSyncQueue('UPDATE', 'produits', updated);
+    try {
+      const affectedProducts = produits.filter((produit) => produit.variantes?.includes(variant));
+      await Promise.all(
+        affectedProducts.map((produit) =>
+          apiPut(`/produits/${produit.id}`, { variantes: (produit.variantes || []).filter((item) => item !== variant) })
+        )
+      );
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6">

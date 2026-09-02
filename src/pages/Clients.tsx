@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Users,
   UserPlus,
@@ -20,8 +19,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
 } from 'lucide-react';
-import { db, Client, Vente, Reglement } from '../db/db';
-import { pushToSyncQueue } from '../hooks/useSync';
+import type { Client, Vente, LigneVente, Reglement, AppSettings } from '../db/db';
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -39,11 +38,37 @@ interface ClientsProps {
 
 export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
   const { confirm, alert } = useDialog();
-  const clients = useLiveQuery(() => db.clients.toArray(), []) || [];
-  const ventes = useLiveQuery(() => db.ventes.orderBy('date').reverse().toArray(), []) || [];
-  const lignesVente = useLiveQuery(() => db.lignes_vente.toArray(), []) || [];
-  const reglements = useLiveQuery(() => db.reglements.orderBy('date').reverse().toArray(), []) || [];
-  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
+  const [clients, setClients] = useState<Client[]>([]);
+  const [ventes, setVentes] = useState<Vente[]>([]);
+  const [lignesVente, setLignesVente] = useState<LigneVente[]>([]);
+  const [reglements, setReglements] = useState<Reglement[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    try {
+      const [c, v, l, r, s] = await Promise.all([
+        apiGet<Client[]>('/clients'),
+        apiGet<Vente[]>('/ventes'),
+        apiGet<LigneVente[]>('/ventes/lignes/all'),
+        apiGet<Reglement[]>('/reglements'),
+        apiGet<AppSettings>('/settings'),
+      ]);
+      setClients(c);
+      setVentes(v);
+      setLignesVente(l);
+      setReglements(r);
+      setSettings(s);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de charger les clients.');
+    } finally {
+      setLoading(false);
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const [activeMainTab, setActiveMainTab] = useState<'clients' | 'reglements'>('clients');
   const [search, setSearch] = useState('');
@@ -94,27 +119,17 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
     e.preventDefault();
     if (!nom || !telephone) return;
 
-    if (editingClient && editingClient.id) {
-      const updated: Client = {
-        ...editingClient,
-        nom,
-        telephone,
-        email,
-      };
-      await db.clients.update(editingClient.id, updated);
-      await pushToSyncQueue('UPDATE', 'clients', updated);
-    } else {
-      const newClient: Client = {
-        nom,
-        telephone,
-        email,
-        total_dette: 0,
-      };
-      const newId = await db.clients.add(newClient);
-      await pushToSyncQueue('INSERT', 'clients', { id: newId, ...newClient });
+    try {
+      if (editingClient?.id) {
+        await apiPut(`/clients/${editingClient.id}`, { nom, telephone, email });
+      } else {
+        await apiPost('/clients', { nom, telephone, email, total_dette: 0 });
+      }
+      setIsModalOpen(false);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement du client.");
     }
-
-    setIsModalOpen(false);
   };
 
   const handleDeleteClient = async (id: number) => {
@@ -124,9 +139,12 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       danger: true,
       confirmLabel: 'Supprimer',
     });
-    if (ok) {
-      await db.clients.delete(id);
-      await pushToSyncQueue('DELETE', 'clients', { id });
+    if (!ok) return;
+    try {
+      await apiDelete(`/clients/${id}`);
+      await reload();
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
 
@@ -139,7 +157,8 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
     setIsPaymentModalOpen(true);
   };
 
-  // Confirm payment settlement
+  // Confirm payment settlement — le serveur calcule dette_avant/dette_apres et ajuste la
+  // dette du client dans une seule transaction (voir server/src/routes/reglements.js).
   const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payingClient || !payingClient.id || !reglementAmount) return;
@@ -150,19 +169,9 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       return;
     }
 
-    const dateNow = new Date().toISOString();
-    let detteAvant = payingClient.total_dette || 0;
-    let newDebt = 0;
-
-    const reglementSaved = await db.transaction('rw', db.clients, db.reglements, async () => {
-      const fresh = await db.clients.get(payingClient.id!);
-      detteAvant = fresh?.total_dette ?? payingClient.total_dette;
-      newDebt = Math.max(0, detteAvant - amountPaid);
-      await db.clients.update(payingClient.id!, { total_dette: newDebt });
-
-      const reglementData: Reglement = {
-        date: dateNow,
-        client_id: payingClient.id!,
+    try {
+      const reglementSaved = await apiPost<Reglement>('/reglements', {
+        client_id: payingClient.id,
         client_nom: payingClient.nom,
         montant: amountPaid,
         mode_paiement: paymentMode,
@@ -170,27 +179,19 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         vendeur_nom: vendeur?.nom || 'Caissier',
         vendeur_identifiant: vendeur?.identifiant,
         zone_id: activeZoneId ?? null,
-        dette_avant: detteAvant,
-        dette_apres: newDebt,
         type: 'paiement_dette',
         note: paymentNote.trim() || undefined,
-      };
+      });
 
-      const regId = await db.reglements.add(reglementData);
-      return { ...reglementData, id: regId };
-    });
+      setIsPaymentModalOpen(false);
+      setPayingClient(null);
+      await reload();
 
-    await pushToSyncQueue('UPDATE', 'clients', {
-      id: payingClient.id,
-      total_dette: newDebt,
-    });
-    await pushToSyncQueue('INSERT', 'reglements', reglementSaved);
-
-    setIsPaymentModalOpen(false);
-    setPayingClient(null);
-
-    // Ouvre le reçu du règlement
-    setSelectedReceiptReglement(reglementSaved);
+      // Ouvre le reçu du règlement
+      setSelectedReceiptReglement(reglementSaved);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement du règlement.");
+    }
   };
 
   const exportClientsCSV = () => {
@@ -259,6 +260,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
   const historyReglements = historyClient?.id
     ? reglements.filter((reg) => reg.client_id === historyClient.id)
     : [];
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+  }
 
   return (
     <div className="space-y-6">
