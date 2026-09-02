@@ -1,29 +1,35 @@
 # API iVente (VPS)
 
-API backend pour les données métier (produits, ventes, clients, stock...), hébergée sur le
-VPS Hostinger (`api.azanga.tech`). Supabase reste uniquement responsable de l'authentification
-(inscription, connexion, réinitialisation de mot de passe) — chaque requête envoyée ici doit
-porter le jeton Supabase de l'utilisateur (`Authorization: Bearer <token>`), vérifié via le
-JWKS public de Supabase (`server/src/auth.js`) : aucun secret Supabase à stocker côté VPS.
+API backend pour toutes les données métier (produits, ventes, clients, stock, personnel...),
+hébergée sur le VPS Hostinger (`api.azanga.tech`). L'app est online-only : plus de Dexie/
+IndexedDB côté client, toutes les pages passent par cette API.
 
-## État actuel (phase 1)
+Supabase reste responsable de l'authentification (inscription, connexion, réinitialisation de
+mot de passe). Chaque requête envoyée ici porte le jeton Supabase de l'utilisateur
+(`Authorization: Bearer <token>`), vérifié via le JWKS public de Supabase (`src/auth.js`) —
+aucun secret Supabase à stocker côté VPS pour ça.
 
-Un seul module est branché de bout en bout pour valider le pipeline complet
-(GitHub → image Docker → VPS → Postgres → Caddy/HTTPS → auth Supabase) :
+Exception : la gestion du personnel (création d'un employé avec mot de passe, changement de
+mot de passe par l'admin) utilise la clé **service_role** de Supabase (`src/supabaseAdmin.js`)
+pour agir sur les comptes au nom de l'admin — cette clé ne vit que dans l'environnement du
+VPS, jamais dans le bundle envoyé au navigateur.
 
-- `GET /health` — public, vérifie que l'API et Postgres répondent.
-- `GET/POST/PUT/DELETE /produits` — authentifié, CRUD complet.
+## Ressources
 
-Les autres ressources (clients, fournisseurs, ventes, lignes_vente, achats_stock, retours,
-personnel, zones, categories, settings, licence) suivront le même patron
-(`src/routes/<ressource>.js` + table dans `src/schema.sql`) une fois cette base validée.
+Toutes authentifiées sauf `/health` et `/licences/*` (appelées avant connexion) :
+produits, categories, zones, fournisseurs, clients, personnel (+ `/me`, +
+`/:id/mot-de-passe`), settings, licence, ventes (+ lignes), achats-stock, ajustements-stock,
+retours, reglements, paniers-en-attente. Les écritures qui touchent plusieurs tables (vente,
+retour, achat, ajustement, règlement) sont chacune une vraie transaction Postgres — voir
+`src/db.js` (`withTransaction`) et les fichiers correspondants dans `src/routes/`.
 
 ## Développement local
 
 ```bash
 cd server
 npm install
-DATABASE_URL=postgres://... SUPABASE_URL=https://cyzipoluiwvhgrizytll.supabase.co npm run dev
+DATABASE_URL=postgres://... SUPABASE_URL=https://cyzipoluiwvhgrizytll.supabase.co \
+  SUPABASE_SERVICE_ROLE_KEY=... LICENSE_SECRET=... npm run dev
 ```
 
 ## Déploiement
@@ -35,13 +41,6 @@ ce Nginx existant qui sert de reverse proxy HTTPS vers elle (voir `deploy/nginx-
 1. Un push sur `main` touchant `server/**` déclenche `.github/workflows/deploy-api.yml`,
    qui construit l'image Docker et la publie sur `ghcr.io/abdine24/sales-api:latest`.
 2. Le projet Docker Compose sur le VPS (`vente-api`, voir `deploy/docker-compose.yml`) est
-   créé/mis à jour via les outils MCP `VPS_createNewProjectV1` / `VPS_updateProjectV1`.
-3. **Une seule fois**, en SSH sur le VPS : ajouter le bloc Nginx de `deploy/nginx-api.conf`
-   et lancer `certbot --nginx -d api.azanga.tech` (instructions dans ce fichier).
-
-## Prochaine étape côté app
-
-`src/App.tsx` et toutes les pages utilisent encore Dexie (IndexedDB) comme source de données.
-La migration vers cette API se fera page par page (le plus simple d'abord), en remplaçant
-`useLiveQuery(() => db.x...)` par des appels à un client API (`src/services/api.ts`, à créer),
-et en supprimant Dexie, `useSync`/`pushToSyncQueue` une fois toutes les pages migrées.
+   mis à jour via l'outil MCP `VPS_updateProjectV1` (récupère la nouvelle image).
+3. Variables d'environnement fournies au déploiement (jamais dans le compose file lui-même) :
+   `POSTGRES_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LICENSE_SECRET`.

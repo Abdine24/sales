@@ -39,6 +39,10 @@ services:
       DATABASE_URL: postgres://vente:${POSTGRES_PASSWORD}@postgres:5432/vente
       SUPABASE_URL: ${SUPABASE_URL}
       LICENSE_SECRET: ${LICENSE_SECRET}
+      # Clé service_role Supabase — pouvoirs d'admin complets sur les comptes (créer un
+      # employé avec mot de passe, changer le mot de passe de quelqu'un d'autre). Uniquement
+      # ici, jamais dans le bundle front. Voir server/src/supabaseAdmin.js.
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
 
 volumes:
   pg_data:

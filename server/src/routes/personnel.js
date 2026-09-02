@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { requireAdmin } from '../auth.js';
+import { getSupabaseAdmin } from '../supabaseAdmin.js';
 
 export const personnelRouter = Router();
 
@@ -42,11 +44,55 @@ personnelRouter.get('/me', async (req, res) => {
   res.json(rows[0]);
 });
 
+// Crée un profil personnel. Deux cas :
+//  1. Bootstrap (principal=true) : le tout premier admin de la boutique, qui vient de créer
+//     son propre compte Supabase (OTP, voir AuthGate) — supabase_user_id est déjà fourni,
+//     pas de mot de passe à gérer ici. Autorisé uniquement s'il n'existe aucun principal.
+//  2. Ajout d'un membre par un admin : celui-ci fixe directement le mot de passe (product
+//     decision : c'est l'admin qui gère les identifiants de son équipe, pas chacun pour soi).
+//     Le compte Supabase est alors créé ici, côté serveur, via la clé service_role.
 personnelRouter.post('/', async (req, res) => {
   const body = req.body || {};
   if (!body.nom || !body.username || !body.role) {
     return res.status(400).json({ error: 'nom, username et role sont requis.' });
   }
+
+  const isBootstrap = body.principal === true;
+  if (isBootstrap) {
+    const { rows: existing } = await pool.query('select 1 from personnel where principal=true limit 1');
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'Un administrateur principal existe déjà pour cette boutique.' });
+    }
+  } else {
+    const { rows: caller } = await pool.query('select role from personnel where supabase_user_id=$1', [req.user.id]);
+    if (caller.length === 0 || caller[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Réservé aux administrateurs.' });
+    }
+  }
+
+  let supabaseUserId = body.supabase_user_id || null;
+  let createdSupabaseUser = false;
+  if (!supabaseUserId) {
+    if (!body.email || !body.password) {
+      return res.status(400).json({ error: 'email et password sont requis pour créer le compte.' });
+    }
+    if (body.password.length < 6) {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+    }
+    try {
+      const { data, error } = await getSupabaseAdmin().auth.admin.createUser({
+        email: body.email.trim().toLowerCase(),
+        password: body.password,
+        email_confirm: true,
+      });
+      if (error) return res.status(409).json({ error: error.message || 'Impossible de créer le compte pour cet email.' });
+      supabaseUserId = data.user.id;
+      createdSupabaseUser = true;
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Échec de la création du compte." });
+    }
+  }
+
   const identifiant = body.identifiant || (await generateUniqueIdentifiant());
   try {
     const { rows } = await pool.query(
@@ -58,8 +104,8 @@ personnelRouter.post('/', async (req, res) => {
         identifiant,
         body.nom,
         body.username.trim().toLowerCase(),
-        body.email ?? null,
-        body.supabase_user_id ?? req.user.id,
+        body.email ? body.email.trim().toLowerCase() : null,
+        supabaseUserId,
         body.role,
         body.actif ?? true,
         body.principal ?? false,
@@ -68,14 +114,40 @@ personnelRouter.post('/', async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) {
+    // Évite de laisser un compte Supabase orphelin (créé ici mais jamais rattaché) si
+    // l'écriture du profil échoue juste après (ex: nom d'utilisateur déjà pris).
+    if (createdSupabaseUser) {
+      await getSupabaseAdmin().auth.admin.deleteUser(supabaseUserId).catch(() => {});
+    }
     if (err.code === '23505') {
-      return res.status(409).json({ error: "Ce nom d'utilisateur ou ce compte existe déjà." });
+      return res.status(409).json({ error: "Ce nom d'utilisateur ou cet identifiant existe déjà." });
     }
     throw err;
   }
 });
 
-personnelRouter.put('/:id', async (req, res) => {
+// Change le mot de passe d'un membre — réservé aux admins (c'est l'admin qui gère les
+// identifiants de son équipe, voir aussi POST / ci-dessus).
+personnelRouter.put('/:id/mot-de-passe', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
+  const password = req.body?.password;
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+  }
+
+  const { rows } = await pool.query('select supabase_user_id from personnel where id=$1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
+  if (!rows[0].supabase_user_id) {
+    return res.status(409).json({ error: "Ce profil n'est rattaché à aucun compte de connexion." });
+  }
+
+  const { error } = await getSupabaseAdmin().auth.admin.updateUserById(rows[0].supabase_user_id, { password });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ success: true });
+});
+
+personnelRouter.put('/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
   const body = req.body || {};
@@ -95,7 +167,7 @@ personnelRouter.put('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-personnelRouter.delete('/:id', async (req, res) => {
+personnelRouter.delete('/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
   const { rowCount } = await pool.query('delete from personnel where id=$1', [id]);
