@@ -3,7 +3,7 @@
 export const isElectron = (): boolean =>
   typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
 
-// Force le garde "connexion requise" même en navigateur — utile pour tester le mode
-// online-only sans construire l'exécutable Electron (VITE_REQUIRE_ONLINE=true dans .env).
-export const isOnlineRequired = (): boolean =>
-  isElectron() || import.meta.env.VITE_REQUIRE_ONLINE === 'true';
+// L'app est online-only partout (navigateur, PWA, Electron) : les données vivent sur le VPS,
+// plus dans Dexie/IndexedDB local. Toujours vrai désormais — la fonction reste pour garder un
+// seul point d'appel dans le code (OnlineRequiredGate) plutôt que de coder "true" en dur.
+export const isOnlineRequired = (): boolean => true;

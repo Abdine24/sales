@@ -2,13 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { isOnlineRequired } from '../utils/electron';
 
-// Bloque l'usage de l'app tant qu'il n'y a pas de connexion Internet — actif uniquement
-// dans l'exécutable Electron (ou en forçant VITE_REQUIRE_ONLINE=true).
-//
-// La version navigateur/PWA reste utilisable hors-ligne pour l'instant (les données vivent
-// encore dans Dexie/IndexedDB). Ce garde prépare la bascule vers un mode où les données
-// vivent uniquement dans Supabase : à ce moment-là, il devra s'appliquer partout, pas
-// seulement dans Electron.
+// Bloque l'usage de l'app tant qu'il n'y a pas de connexion Internet — actif partout
+// (navigateur, PWA, Electron). L'app est online-only : les données vivent sur l'API du VPS,
+// plus dans Dexie/IndexedDB local, donc rien ne peut fonctionner hors-ligne de toute façon.
 export const OnlineRequiredGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [checking, setChecking] = useState(false);
