@@ -6,8 +6,10 @@ import { pushToSyncQueue } from '../hooks/useSync';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { useDialog } from '../components/ui/DialogProvider';
 
 export const Categories: React.FC = () => {
+  const { confirm, alert } = useDialog();
   const categories = useLiveQuery(() => db.categories.orderBy('nom').toArray(), []) || [];
   const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
   const [activeTab, setActiveTab] = useState<'categories' | 'variantes'>('categories');
@@ -39,7 +41,7 @@ export const Categories: React.FC = () => {
       (category) => category.nom.toLowerCase() === normalizedName.toLowerCase() && category.id !== editingCategory?.id
     );
     if (duplicate) {
-      alert('Cette catégorie existe déjà.');
+      await alert('Cette catégorie existe déjà.');
       return;
     }
 
@@ -58,10 +60,17 @@ export const Categories: React.FC = () => {
 
   const deleteCategory = async (category: Categorie) => {
     if (produits.some((produit) => produit.categorie === category.nom)) {
-      alert('Impossible de supprimer une catégorie utilisée par un produit.');
+      await alert('Impossible de supprimer une catégorie utilisée par un produit.');
       return;
     }
-    if (!category.id || !confirm(`Supprimer la catégorie ${category.nom} ?`)) return;
+    if (!category.id) return;
+    const ok = await confirm({
+      title: 'Supprimer la catégorie',
+      message: `Supprimer la catégorie « ${category.nom} » ?`,
+      danger: true,
+      confirmLabel: 'Supprimer',
+    });
+    if (!ok) return;
     await db.categories.delete(category.id);
     await pushToSyncQueue('DELETE', 'categories', { id: category.id });
   };
@@ -80,7 +89,7 @@ export const Categories: React.FC = () => {
 
     if (editingVariant) {
       if (variants.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase() && variant !== editingVariant)) {
-        alert('Cette variante existe déjà.');
+        await alert('Cette variante existe déjà.');
         return;
       }
       const affectedProducts = produits.filter((produit) => produit.variantes?.includes(editingVariant));
@@ -98,7 +107,7 @@ export const Categories: React.FC = () => {
       const produit = produits.find((item) => item.id === Number(variantProductId));
       if (!produit?.id) return;
       if (produit.variantes?.some((variant) => variant.toLowerCase() === normalizedName.toLowerCase())) {
-        alert('Ce produit possède déjà cette variante.');
+        await alert('Ce produit possède déjà cette variante.');
         return;
       }
       const updated: Produit = { ...produit, variantes: [...(produit.variantes || []), normalizedName] };
@@ -109,7 +118,13 @@ export const Categories: React.FC = () => {
   };
 
   const deleteVariant = async (variant: string) => {
-    if (!confirm(`Supprimer la variante ${variant} de tous les produits ?`)) return;
+    const ok = await confirm({
+      title: 'Supprimer la variante',
+      message: `Supprimer la variante « ${variant} » de tous les produits ?`,
+      danger: true,
+      confirmLabel: 'Supprimer',
+    });
+    if (!ok) return;
     const affectedProducts = produits.filter((produit) => produit.variantes?.includes(variant));
     for (const produit of affectedProducts) {
       if (!produit.id) continue;

@@ -1,25 +1,66 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
-import { Dashboard } from './pages/Dashboard';
-import { POS } from './pages/POS';
-import { Stock } from './pages/Stock';
-import { Clients } from './pages/Clients';
-import { Fournisseurs } from './pages/Fournisseurs';
-import { SyncManager } from './pages/SyncManager';
-import { Categories } from './pages/Categories';
 import { initializeSeedData } from './db/seed';
 import { AuthGate } from './pages/AuthGate';
-import { Personnel } from './pages/Personnel';
-import { Settings } from './pages/Settings';
-import { AUTH_REQUIRED, canAccess } from './services/localAuth';
-import { Personnel as PersonnelUser } from './db/db';
+import { canAccess, firstAllowedPage } from './services/localAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import { LicenceGate } from './components/LicenceGate';
+import { OnlineRequiredGate } from './components/OnlineRequiredGate';
+import { Loader2, Lock } from 'lucide-react';
 
-function AuthenticatedApp({ personnel }: { personnel: PersonnelUser }) {
+// Chargement à la demande : le bundle initial n'embarque plus recharts,
+// les grosses pages, etc. — elles arrivent quand l'utilisateur les ouvre.
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const POS = lazy(() => import('./pages/POS').then((m) => ({ default: m.POS })));
+const Ventes = lazy(() => import('./pages/Ventes').then((m) => ({ default: m.Ventes })));
+const Stock = lazy(() => import('./pages/Stock').then((m) => ({ default: m.Stock })));
+const Clients = lazy(() => import('./pages/Clients').then((m) => ({ default: m.Clients })));
+const Fournisseurs = lazy(() => import('./pages/Fournisseurs').then((m) => ({ default: m.Fournisseurs })));
+const SyncManager = lazy(() => import('./pages/SyncManager').then((m) => ({ default: m.SyncManager })));
+const Categories = lazy(() => import('./pages/Categories').then((m) => ({ default: m.Categories })));
+const Personnel = lazy(() => import('./pages/Personnel').then((m) => ({ default: m.Personnel })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+
+function PageFallback() {
+  return (
+    <div className="flex-1 flex items-center justify-center py-20 text-slate-400">
+      <Loader2 className="w-6 h-6 animate-spin" />
+    </div>
+  );
+}
+
+function AccessDenied({ onGoHome }: { onGoHome: () => void }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 p-10">
+      <div className="p-4 rounded-3xl bg-rose-500/10 text-rose-500">
+        <Lock className="w-8 h-8" />
+      </div>
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Accès restreint</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
+          Votre rôle ne vous permet pas d'ouvrir cette page.
+        </p>
+      </div>
+      <button
+        onClick={onGoHome}
+        className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+      >
+        Retour à l'accueil
+      </button>
+    </div>
+  );
+}
+
+function AuthenticatedApp() {
+  const { personnel } = useAuth();
+  
   useEffect(() => {
     initializeSeedData().catch((err) =>
       console.error('Failed to initialize seed data:', err)
     );
   }, []);
+
+  if (!personnel) return null;
 
   return (
     <AppLayout personnel={personnel}>
@@ -27,50 +68,61 @@ function AuthenticatedApp({ personnel }: { personnel: PersonnelUser }) {
         const navigate = (page: Parameters<typeof setCurrentPage>[0]) => {
           if (canAccess(personnel, page)) setCurrentPage(page);
         };
-        switch (currentPage) {
-          case 'dashboard':
-            return <Dashboard onNavigate={navigate} activeZoneId={activeZoneId} />;
-          case 'pos':
-            return <POS activeZoneId={activeZoneId} vendeur={personnel} />;
-          case 'stock':
-            return <Stock activeZoneId={activeZoneId} />;
-          case 'clients':
-            return <Clients />;
-          case 'fournisseurs':
-            return <Fournisseurs />;
-          case 'categories':
-            return <Categories />;
-          case 'personnel':
-            return <Personnel currentUser={personnel} />;
-          case 'settings':
-            return <Settings />;
-          case 'sync':
-            return <SyncManager />;
-          default:
-            return <Dashboard onNavigate={navigate} activeZoneId={activeZoneId} />;
+
+        // Garde au rendu : empêche l'affichage d'une page non autorisée
+        // (ex. un caissier qui arriverait sur le tableau de bord)
+        if (!canAccess(personnel, currentPage)) {
+          return (
+            <AccessDenied
+              onGoHome={() => setCurrentPage(firstAllowedPage(personnel) as typeof currentPage)}
+            />
+          );
         }
+
+        const page = (() => {
+          switch (currentPage) {
+            case 'pos':
+              return <POS activeZoneId={activeZoneId} vendeur={personnel} />;
+            case 'ventes':
+              return <Ventes activeZoneId={activeZoneId} vendeur={personnel} />;
+            case 'stock':
+              return <Stock activeZoneId={activeZoneId} />;
+            case 'clients':
+              return <Clients activeZoneId={activeZoneId} vendeur={personnel} />;
+            case 'fournisseurs':
+              return <Fournisseurs />;
+            case 'categories':
+              return <Categories />;
+            case 'personnel':
+              return <Personnel currentUser={personnel} />;
+            case 'settings':
+              return <Settings />;
+            case 'sync':
+              return <SyncManager />;
+            case 'dashboard':
+            default:
+              return <Dashboard onNavigate={navigate} activeZoneId={activeZoneId} />;
+          }
+        })();
+
+        return <Suspense fallback={<PageFallback />}>{page}</Suspense>;
       }}
     </AppLayout>
   );
 }
 
 export function App() {
-  if (!AUTH_REQUIRED) {
-    const localAdmin: PersonnelUser = {
-      nom: 'Administrateur local',
-      identifiant: 'LOCALADM01',
-      username: 'admin-local',
-      password_hash: '',
-      role: 'admin',
-      actif: true,
-      principal: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    return <AuthenticatedApp personnel={localAdmin} />;
-  }
-
-  return <AuthGate>{(personnel) => <AuthenticatedApp personnel={personnel} />}</AuthGate>;
+  return (
+    <OnlineRequiredGate>
+      <AuthProvider>
+        <AuthGate>
+          <LicenceGate>
+            <AuthenticatedApp />
+          </LicenceGate>
+        </AuthGate>
+      </AuthProvider>
+    </OnlineRequiredGate>
+  );
 }
 
 export default App;

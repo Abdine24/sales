@@ -16,9 +16,11 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
+import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 
 export const Fournisseurs: React.FC = () => {
+  const { confirm } = useDialog();
   const fournisseurs = useLiveQuery(() => db.fournisseurs.toArray(), []) || [];
   const achats = useLiveQuery(() => db.achats_stock.toArray(), []) || [];
 
@@ -74,7 +76,13 @@ export const Fournisseurs: React.FC = () => {
   };
 
   const handleDeleteFournisseur = async (id: number) => {
-    if (confirm('Voulez-vous supprimer ce fournisseur ?')) {
+    const ok = await confirm({
+      title: 'Supprimer le fournisseur',
+      message: 'Voulez-vous supprimer ce fournisseur ?',
+      danger: true,
+      confirmLabel: 'Supprimer',
+    });
+    if (ok) {
       await db.fournisseurs.delete(id);
       await pushToSyncQueue('DELETE', 'fournisseurs', { id });
     }

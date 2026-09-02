@@ -1,3 +1,10 @@
 node_modules
 .env
 .env.local
+
+# Sorties de build — régénérées par CI (voir .github/workflows/deploy.yml)
+dist
+dev-dist
+
+# Sortie electron-builder (exécutable .exe, installeur NSIS)
+release

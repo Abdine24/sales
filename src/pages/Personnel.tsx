@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { KeyRound, ShieldCheck, UserPlus, Users, Edit2, Copy } from 'lucide-react';
 import { db, Personnel as PersonnelRecord, PersonnelRole } from '../db/db';
+import { pushToSyncQueue } from '../hooks/useSync';
 import { generateUniquePersonnelIdentifier, makePasswordHash, roleLabel } from '../services/localAuth';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -22,6 +23,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
   const [editingPerson, setEditingPerson] = useState<PersonnelRecord | null>(null);
   const [nom, setNom] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<PersonnelRole>('gerant');
   const [zoneId, setZoneId] = useState<number | ''>('');
@@ -31,6 +33,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     setEditingPerson(null);
     setNom('');
     setUsername('');
+    setEmail('');
     setPassword('');
     setRole('gerant');
     setZoneId(zones.length === 1 ? zones[0].id || '' : '');
@@ -42,6 +45,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     setEditingPerson(person);
     setNom(person.nom);
     setUsername(person.username);
+    setEmail(person.email || '');
     setPassword('');
     setRole(person.role);
     setZoneId(person.zone_id || '');
@@ -53,11 +57,25 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     event.preventDefault();
     setError('');
     const normalizedUsername = username.trim().toLowerCase();
-    const duplicate = personnel.find((person) => person.username === normalizedUsername && person.id !== editingPerson?.id);
-    if (duplicate) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError('L’adresse email est obligatoire pour sécuriser le compte.');
+      return;
+    }
+
+    const duplicateUsername = personnel.find((person) => person.username === normalizedUsername && person.id !== editingPerson?.id);
+    if (duplicateUsername) {
       setError('Ce nom d’utilisateur existe déjà.');
       return;
     }
+
+    const duplicateEmail = personnel.find((person) => (person.email || '').trim().toLowerCase() === normalizedEmail && person.id !== editingPerson?.id);
+    if (duplicateEmail) {
+      setError('Cette adresse email est déjà utilisée par un autre membre.');
+      return;
+    }
+
     if (!editingPerson && password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères.');
       return;
@@ -80,6 +98,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
       identifiant: editingPerson?.identifiant || await generateUniquePersonnelIdentifier(),
       nom: nom.trim(),
       username: normalizedUsername,
+      email: normalizedEmail,
       role: editingPerson?.principal ? 'admin' : role,
       actif: editingPerson?.actif ?? true,
       principal: editingPerson?.principal ?? false,
@@ -89,14 +108,25 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
       password_hash: editingPerson?.password_hash || await makePasswordHash(password),
     };
     if (password) updated.password_hash = await makePasswordHash(password);
-    if (updated.id) await db.personnel.put(updated);
-    else await db.personnel.add(updated);
+
+    let personId = updated.id;
+    if (updated.id) {
+      await db.personnel.put(updated);
+    } else {
+      personId = await db.personnel.add(updated);
+    }
+
+    // On ne synchronise jamais le hash du mot de passe (géré séparément par l'auth serveur)
+    const { password_hash, ...syncable } = { ...updated, id: personId };
+    await pushToSyncQueue(updated.id ? 'UPDATE' : 'INSERT', 'personnel', syncable);
     setIsModalOpen(false);
   };
 
   const toggleActive = async (person: PersonnelRecord) => {
     if (person.principal) return;
-    await db.personnel.update(person.id!, { actif: !person.actif, updated_at: new Date().toISOString() });
+    const updated_at = new Date().toISOString();
+    await db.personnel.update(person.id!, { actif: !person.actif, updated_at });
+    await pushToSyncQueue('UPDATE', 'personnel', { id: person.id, actif: !person.actif, updated_at });
   };
 
   if (currentUser.role !== 'admin') {
@@ -127,8 +157,12 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center"><Users className="w-5 h-5" /></div>
                 <div>
                   <div className="font-bold text-slate-900 dark:text-white">{person.nom}</div>
-                  <div className="text-xs text-slate-500">@{person.username}</div>
-                  <div className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1"><Copy className="w-3 h-3" /> ID: {person.identifiant}</div>
+                  <div className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">@{person.username}</span>
+                    <span className="text-slate-400">•</span>
+                    <span>{person.email || 'Email non défini'}</span>
+                  </div>
+                  <div className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5"><Copy className="w-3 h-3" /> ID: {person.identifiant}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -146,8 +180,10 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
         <form onSubmit={savePerson} className="space-y-4">
           <input required value={nom} onChange={(event) => setNom(event.target.value)} placeholder="Nom complet" className="w-full glass-input px-4 py-3 rounded-xl" />
           <input required value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Nom d’utilisateur" className="w-full glass-input px-4 py-3 rounded-xl" />
+          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Adresse email" className="w-full glass-input px-4 py-3 rounded-xl" />
           <select value={role} disabled={editingPerson?.principal} onChange={(event) => setRole(event.target.value as PersonnelRole)} className="w-full glass-input px-4 py-3 rounded-xl text-slate-900 dark:text-white">
-            <option value="gerant">Gérant - vue et actions limitées</option>
+            <option value="caissier">Caissier - caisse et clients uniquement</option>
+            <option value="gerant">Gérant - tableau de bord restreint</option>
             <option value="admin">Administrateur - accès complet</option>
           </select>
           <select required={role === 'gerant'} value={zoneId} disabled={editingPerson?.principal} onChange={(event) => setZoneId(event.target.value ? Number(event.target.value) : '')} className="w-full glass-input px-4 py-3 rounded-xl text-slate-900 dark:text-white">

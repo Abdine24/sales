@@ -28,13 +28,16 @@ DATABASE_URL=postgres://... SUPABASE_URL=https://cyzipoluiwvhgrizytll.supabase.c
 
 ## Déploiement
 
+Le VPS fait déjà tourner un Nginx (pour un bot Telegram + d'autres sites) qui occupe les
+ports 80/443 — l'API ne les touche pas. Son conteneur n'expose que `127.0.0.1:3000`, et c'est
+ce Nginx existant qui sert de reverse proxy HTTPS vers elle (voir `deploy/nginx-api.conf`).
+
 1. Un push sur `main` touchant `server/**` déclenche `.github/workflows/deploy-api.yml`,
    qui construit l'image Docker et la publie sur `ghcr.io/abdine24/sales-api:latest`.
-2. **Une seule fois**, après le premier build : rendre le package GHCR public
-   (GitHub → profil → Packages → sales-api → Package settings → Change visibility → Public),
-   sinon le VPS ne pourra pas télécharger l'image.
-3. Le projet Docker Compose sur le VPS (`vente-api`, voir `deploy/docker-compose.yml`) est mis
-   à jour avec `VPS_updateProjectV1` pour récupérer la nouvelle image.
+2. Le projet Docker Compose sur le VPS (`vente-api`, voir `deploy/docker-compose.yml`) est
+   créé/mis à jour via les outils MCP `VPS_createNewProjectV1` / `VPS_updateProjectV1`.
+3. **Une seule fois**, en SSH sur le VPS : ajouter le bloc Nginx de `deploy/nginx-api.conf`
+   et lancer `certbot --nginx -d api.azanga.tech` (instructions dans ce fichier).
 
 ## Prochaine étape côté app
 

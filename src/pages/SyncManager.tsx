@@ -9,6 +9,8 @@ import {
   Wifi,
   WifiOff,
   Trash2,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { useSync } from '../hooks/useSync';
@@ -16,15 +18,23 @@ import { isSupabaseConfigured } from '../services/supabase';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { useDialog } from '../components/ui/DialogProvider';
 
 export const SyncManager: React.FC = () => {
+  const { confirm } = useDialog();
   const syncItems = useLiveQuery(() => db.file_attente_sync.reverse().toArray(), []) || [];
-  const { isOnline, pendingCount, isSyncing, triggerSync } = useSync();
+  const { isOnline, pendingCount, failedCount, isSyncing, triggerSync, retryFailed } = useSync();
 
   const supabaseActive = isSupabaseConfigured();
 
   const handleClearHistory = async () => {
-    if (confirm('Voulez-vous effacer la file d\'attente de synchronisation ?')) {
+    const ok = await confirm({
+      title: 'Effacer la file de synchronisation',
+      message: 'Voulez-vous effacer la file d\'attente de synchronisation ?',
+      danger: true,
+      confirmLabel: 'Effacer',
+    });
+    if (ok) {
       await db.file_attente_sync.clear();
     }
   };
@@ -49,6 +59,16 @@ export const SyncManager: React.FC = () => {
           >
             Vider l'historique
           </Button>
+          {failedCount > 0 && (
+            <Button
+              variant="glass"
+              icon={<RotateCcw className="w-4 h-4 text-amber-500" />}
+              onClick={retryFailed}
+              disabled={!isOnline}
+            >
+              Réessayer les échecs ({failedCount})
+            </Button>
+          )}
           <Button
             variant="primary"
             icon={<RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />}
@@ -189,9 +209,13 @@ export const SyncManager: React.FC = () => {
                         <Badge variant="green" size="sm">
                           <CheckCircle2 className="w-3 h-3" /> Synchronisé
                         </Badge>
+                      ) : item.status === 'echec' ? (
+                        <Badge variant="red" size="sm" title={item.last_error}>
+                          <AlertTriangle className="w-3 h-3" /> Échec ({item.attempts ?? 0})
+                        </Badge>
                       ) : (
-                        <Badge variant="amber" dot size="sm">
-                          En Attente
+                        <Badge variant="amber" dot size="sm" title={item.last_error}>
+                          {item.attempts ? `Réessai (${item.attempts})` : 'En Attente'}
                         </Badge>
                       )}
                     </td>

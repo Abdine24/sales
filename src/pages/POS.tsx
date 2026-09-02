@@ -9,26 +9,40 @@ import {
   Trash2,
   CheckCircle2,
   Printer,
-  CreditCard,
+  Smartphone,
   Banknote,
   Receipt,
   UserCheck,
   AlertCircle,
   Package,
+  Clock,
+  ArchiveRestore,
+  Layers,
+  ShoppingBag,
+  X,
+  Camera,
+  Barcode as BarcodeIcon,
+  MessageSquare,
+  Send,
+  Download,
+  Landmark,
 } from 'lucide-react';
-import { db, Produit, Client, Vente } from '../db/db';
+import { db, Produit, VarianteProduit, Client, Vente, PanierLigne } from '../db/db';
 import { pushToSyncQueue } from '../hooks/useSync';
+import { useGlobalBarcodeScanner } from '../hooks/useGlobalBarcodeScanner';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { formatCfa } from '../utils/currency';
+import { useDialog } from '../components/ui/DialogProvider';
+import { ReceiptPrint, ReceiptData } from '../components/ReceiptPrint';
+import { ProductCard, AddToCartPayload } from '../components/ProductCard';
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
+import { formatCfa, parseAmount } from '../utils/currency';
+import { openWhatsAppReceipt } from '../utils/whatsapp';
+import { generateInvoiceA4Pdf } from '../utils/pdfInvoice';
 
-interface CartItem {
-  produit: Produit;
-  quantite: number;
-  variante?: string;
-}
+type CartItem = PanierLigne;
 
 interface POSProps {
   activeZoneId: number | null;
@@ -36,82 +50,355 @@ interface POSProps {
 }
 
 export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
+  const { confirm, alert } = useDialog();
   const produits = useLiveQuery(() => db.produits.toArray(), []) || [];
   const clients = useLiveQuery(() => db.clients.toArray(), []) || [];
+  const settings = useLiveQuery(() => db.settings.get('principale'), []) || null;
 
   const [search, setSearch] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tous');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-  const [variantProduct, setVariantProduct] = useState<Produit | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState('');
+  const [selectedVariableProduct, setSelectedVariableProduct] = useState<Produit | null>(null);
+  const [modalAttributes, setModalAttributes] = useState<Record<string, string>>({});
+  const [modalQuantity, setModalQuantity] = useState<number>(1);
+
+  const paniersEnAttente = useLiveQuery(() => {
+    return db.paniers_en_attente
+      .filter((p) => !vendeur?.id || p.vendeur_id === vendeur.id || p.vendeur_id === null)
+      .toArray();
+  }, [vendeur?.id]) || [];
+
+  const [isPanierModalOpen, setIsPanierModalOpen] = useState(false);
+  const [panierReference, setPanierReference] = useState('');
+  const [showPanierList, setShowPanierList] = useState(false);
+  const [printFormat, setPrintFormat] = useState<'a4' | 'thermique'>('thermique');
+
+  React.useEffect(() => {
+    if (settings?.print_format_default) {
+      setPrintFormat(settings.print_format_default);
+    }
+  }, [settings?.print_format_default]);
 
   // Modal Checkout & Receipt States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'especes' | 'carte' | 'virement'>('carte');
+  const [paymentMethod, setPaymentMethod] = useState<'especes' | 'mobile_money' | 'virement'>('especes');
   const [remiseInput, setRemiseInput] = useState<string>('0');
   const [montantPayeInput, setMontantPayeInput] = useState<string>('');
-  const [completedSale, setCompletedSale] = useState<{ vente: Vente; items: CartItem[] } | null>(null);
+  const [completedSale, setCompletedSale] = useState<{
+    vente: Vente;
+    items: CartItem[];
+    clientTelephone?: string;
+    clientNom?: string;
+  } | null>(null);
+  const [completedPhoneInput, setCompletedPhoneInput] = useState<string>('');
+
+  const handleOpenVariableModal = (produit: Produit) => {
+    setSelectedVariableProduct(produit);
+    setModalQuantity(1);
+    if (produit.attributs && produit.attributs.length > 0) {
+      const initAttrs: Record<string, string> = {};
+      produit.attributs.forEach((attr) => {
+        if (attr.valeurs && attr.valeurs.length > 0) {
+          initAttrs[attr.nom] = attr.valeurs[0];
+        }
+      });
+      setModalAttributes(initAttrs);
+    } else {
+      setModalAttributes({});
+    }
+  };
+
+  const modalResolvedVariant = useMemo<VarianteProduit | null>(() => {
+    if (!selectedVariableProduct || !selectedVariableProduct.variantes_detaillees || selectedVariableProduct.variantes_detaillees.length === 0) {
+      return null;
+    }
+    const matched = selectedVariableProduct.variantes_detaillees.find((v) =>
+      Object.entries(modalAttributes).every(
+        ([nomAttr, valAttr]) => v.attributs && v.attributs[nomAttr] === valAttr
+      )
+    );
+    return matched || selectedVariableProduct.variantes_detaillees[0];
+  }, [selectedVariableProduct, modalAttributes]);
+
+  const modalVariantLabel = useMemo(() => {
+    if (!modalResolvedVariant || !modalResolvedVariant.attributs) return '';
+    return Object.entries(modalResolvedVariant.attributs)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(' · ');
+  }, [modalResolvedVariant]);
+
+  const handleAddModalVariantToCart = () => {
+    if (!selectedVariableProduct || !modalResolvedVariant || !selectedVariableProduct.id) return;
+    if ((modalResolvedVariant.stock ?? 0) <= 0 || modalQuantity <= 0) return;
+
+    handleProductCardAddToCart({
+      type: 'variable',
+      productId: selectedVariableProduct.id,
+      variantId: modalResolvedVariant.id,
+      produit: selectedVariableProduct,
+      variante: modalResolvedVariant,
+      varianteLabel: modalVariantLabel || 'Variante',
+      prix: Number(modalResolvedVariant.prix) || 0,
+      quantite: modalQuantity,
+    });
+
+    setSelectedVariableProduct(null);
+  };
+
+  const handleMettreEnAttente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!panierReference.trim() || cart.length === 0) return;
+    await db.paniers_en_attente.add({
+      date: new Date().toISOString(),
+      nom_reference: panierReference,
+      lignes: cart,
+      total: totalCart,
+      vendeur_id: vendeur.id ?? null,
+    });
+    setCart([]);
+    setPanierReference('');
+    setIsPanierModalOpen(false);
+  };
+
+  const handleRestaurerPanier = async (id: number) => {
+    const panier = await db.paniers_en_attente.get(id);
+    if (panier) {
+      if (cart.length > 0) {
+        const ok = await confirm('Cela va écraser le panier en cours. Voulez-vous continuer ?');
+        if (!ok) return;
+      }
+      // Ré-hydrate les produits depuis la base : prix / stock à jour, articles supprimés retirés
+      const restored = panier.lignes
+        .map((ligne) => {
+          const current = produits.find((p) => p.id === ligne.produit.id);
+          return current ? { ...ligne, produit: current } : null;
+        })
+        .filter((ligne): ligne is CartItem => ligne !== null);
+      setCart(restored);
+      await db.paniers_en_attente.delete(id);
+      setShowPanierList(false);
+    }
+  };
+
+  const handleDeletePanier = async (id: number) => {
+    const ok = await confirm({
+      message: 'Supprimer ce panier en attente ?',
+      danger: true,
+      confirmLabel: 'Supprimer',
+    });
+    if (ok) {
+      await db.paniers_en_attente.delete(id);
+    }
+  };
 
   // Filter Categories
   const categories = useMemo(() => {
-    const set = new Set(produits.map((p) => p.categorie));
+    const set = new Set(produits.map((p) => p.categorie || 'Général'));
     return ['Tous', ...Array.from(set)];
   }, [produits]);
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
     return produits.filter((p) => {
+      const pNom = (p.nom || '').toLowerCase();
+      const pCode = (p.code_barres || '').toLowerCase();
+      const searchLower = search.toLowerCase().trim();
       const matchSearch =
-        p.nom.toLowerCase().includes(search.toLowerCase()) ||
-        p.code_barres.includes(search);
+        searchLower === '' ||
+        pNom.includes(searchLower) ||
+        pCode.includes(searchLower);
       const matchCat =
-        selectedCategory === 'Tous' || p.categorie === selectedCategory;
-      return matchSearch && matchCat && (activeZoneId === null || p.zone_id === activeZoneId);
+        selectedCategory === 'Tous' || (p.categorie || 'Général') === selectedCategory;
+      return matchSearch && matchCat && (activeZoneId === null || !p.zone_id || p.zone_id === activeZoneId);
     });
   }, [produits, search, selectedCategory, activeZoneId]);
 
   // Cart Totals
   const totalCart = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.produit.prix * item.quantite, 0);
+    return cart.reduce((sum, item) => sum + (item.prix_unitaire ?? item.produit.prix) * item.quantite, 0);
   }, [cart]);
 
-  const numericRemise = Math.min(Math.max(parseFloat(remiseInput) || 0, 0), totalCart);
+  const numericRemise = Math.min(Math.max(parseAmount(remiseInput), 0), totalCart);
   const totalApresRemise = Math.max(0, totalCart - numericRemise);
 
-  // Add to cart
-  const addToCart = (produit: Produit, variante?: string) => {
-    if (produit.stock <= 0) return;
-    setCart((prev) => {
-      const existing = prev.find((i) => i.produit.id === produit.id && i.variante === variante);
-      if (existing) {
-        if (existing.quantite >= produit.stock) return prev; // max stock reached
-        return prev.map((i) =>
-          i.produit.id === produit.id && i.variante === variante ? { ...i, quantite: i.quantite + 1 } : i
+  // Add to cart from ProductCard or Modal (Simple or Variable)
+  const handleProductCardAddToCart = (payload: AddToCartPayload) => {
+    const qtyToAdd = payload.quantite && payload.quantite > 0 ? payload.quantite : 1;
+    if (payload.type === 'simple') {
+      const produit = payload.produit;
+      if ((produit.stock ?? 0) <= 0) return;
+      setCart((prev) => {
+        const existingIndex = prev.findIndex(
+          (i) => i.produit.id === payload.productId && !i.variant_id
         );
-      } else {
-        return [...prev, { produit, quantite: 1, variante }];
-      }
-    });
+        if (existingIndex > -1) {
+          const item = prev[existingIndex];
+          if (item.quantite + qtyToAdd > produit.stock) {
+            const maxAdd = Math.max(0, produit.stock - item.quantite);
+            if (maxAdd <= 0) return prev;
+            const copy = [...prev];
+            copy[existingIndex] = { ...item, quantite: item.quantite + maxAdd };
+            return copy;
+          }
+          const copy = [...prev];
+          copy[existingIndex] = { ...item, quantite: item.quantite + qtyToAdd };
+          return copy;
+        }
+        return [
+          ...prev,
+          {
+            produit,
+            quantite: Math.min(qtyToAdd, produit.stock),
+            prix_unitaire: payload.prix,
+          },
+        ];
+      });
+    } else {
+      // Variable product
+      const { produit, variante, variantId, varianteLabel, prix } = payload;
+      if ((variante.stock ?? 0) <= 0) return;
+      setCart((prev) => {
+        const existingIndex = prev.findIndex(
+          (i) => i.produit.id === payload.productId && i.variant_id === variantId
+        );
+        if (existingIndex > -1) {
+          const item = prev[existingIndex];
+          if (item.quantite + qtyToAdd > variante.stock) {
+            const maxAdd = Math.max(0, variante.stock - item.quantite);
+            if (maxAdd <= 0) return prev;
+            const copy = [...prev];
+            copy[existingIndex] = { ...item, quantite: item.quantite + maxAdd };
+            return copy;
+          }
+          const copy = [...prev];
+          copy[existingIndex] = { ...item, quantite: item.quantite + qtyToAdd };
+          return copy;
+        }
+        return [
+          ...prev,
+          {
+            produit,
+            quantite: Math.min(qtyToAdd, variante.stock),
+            variant_id: variantId,
+            variante: varianteLabel,
+            prix_unitaire: prix,
+          },
+        ];
+      });
+    }
   };
 
+  // Fallback simple click (ex: barcode scanner)
   const handleProductClick = (produit: Produit) => {
-    if (produit.variantes && produit.variantes.length > 0) {
-      setVariantProduct(produit);
-      setSelectedVariant(produit.variantes[0]);
+    if (produit.is_variable && produit.variantes_detaillees && produit.variantes_detaillees.length > 0) {
+      const firstVar = produit.variantes_detaillees[0];
+      const label = Object.entries(firstVar.attributs).map(([k, v]) => `${k}: ${v}`).join(' · ');
+      handleProductCardAddToCart({
+        type: 'variable',
+        productId: produit.id!,
+        variantId: firstVar.id,
+        produit,
+        variante: firstVar,
+        varianteLabel: label,
+        prix: firstVar.prix,
+      });
       return;
     }
-    addToCart(produit);
+    if (produit.id) {
+      handleProductCardAddToCart({
+        type: 'simple',
+        productId: produit.id,
+        produit,
+        prix: produit.prix,
+      });
+    }
   };
 
+  // Traitement direct lors d'un scan de code-barres (Caméra ou Douchette)
+  const handleBarcodeScan = (scannedCode: string) => {
+    const query = scannedCode.trim();
+    if (!query) return;
+
+    let matchedProduct: Produit | undefined = undefined;
+    let matchedVariant: VarianteProduit | undefined = undefined;
+
+    for (const p of produits) {
+      if (p.is_variable && p.variantes_detaillees) {
+        const v = p.variantes_detaillees.find((vr) => vr.code_barres === query);
+        if (v) {
+          matchedProduct = p;
+          matchedVariant = v;
+          break;
+        }
+      }
+      if (p.code_barres === query) {
+        matchedProduct = p;
+        break;
+      }
+    }
+
+    if (matchedProduct) {
+      if (matchedVariant) {
+        const label = Object.entries(matchedVariant.attributs || {}).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        handleProductCardAddToCart({
+          type: 'variable',
+          productId: matchedProduct.id!,
+          variantId: matchedVariant.id,
+          produit: matchedProduct,
+          variante: matchedVariant,
+          varianteLabel: label,
+          prix: Number(matchedVariant.prix) || 0,
+          quantite: 1,
+        });
+      } else {
+        handleProductCardAddToCart({
+          type: 'simple',
+          productId: matchedProduct.id!,
+          produit: matchedProduct,
+          prix: Number(matchedProduct.prix) || 0,
+          quantite: 1,
+        });
+      }
+      setSearch('');
+    } else {
+      // Si aucun produit exact trouvé, filtrer la liste par le code
+      setSearch(query);
+    }
+  };
+
+  // Capture les scans de douchette même si le focus n'est pas dans le champ de recherche
+  // (ex: le caissier vient de cliquer sur un produit ou un bouton). Désactivé pendant qu'une
+  // modale est ouverte pour ne pas interférer avec sa propre gestion de la touche Entrée.
+  useGlobalBarcodeScanner({
+    enabled:
+      !selectedVariableProduct &&
+      !isCheckoutOpen &&
+      !isPanierModalOpen &&
+      !showPanierList &&
+      !isScannerOpen &&
+      !completedSale,
+    onScan: handleBarcodeScan,
+  });
+
   // Update cart item quantity
-  const updateQuantity = (produitId: number, delta: number, variante?: string) => {
+  const updateQuantity = (produitId: number, delta: number, variantId?: string) => {
     setCart((prev) =>
       prev
         .map((item) => {
-          if (item.produit.id === produitId && item.variante === variante) {
+          if (item.produit.id === produitId && item.variant_id === variantId) {
             const newQty = item.quantite + delta;
-            if (newQty > item.produit.stock) return item;
+            
+            // Calcul du stock max disponible
+            let maxStock = item.produit.stock;
+            if (item.variant_id && item.produit.variantes_detaillees) {
+              const v = item.produit.variantes_detaillees.find((vr) => vr.id === item.variant_id);
+              if (v) maxStock = v.stock;
+            }
+
+            if (newQty > maxStock) return item;
             return newQty > 0 ? { ...item, quantite: newQty } : null;
           }
           return item;
@@ -129,7 +416,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   };
 
   // Calculate debt or change
-  const numericMontantPaye = parseFloat(montantPayeInput) || 0;
+  const numericMontantPaye = parseAmount(montantPayeInput);
   const resteAPayer = Math.max(0, totalApresRemise - numericMontantPaye);
   const meRendre = Math.max(0, numericMontantPaye - totalApresRemise);
 
@@ -138,7 +425,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
     if (cart.length === 0) return;
 
     if (resteAPayer > 0 && !selectedClientId) {
-      alert('Veuillez sélectionner un client pour enregistrer le reste à payer en dette !');
+      await alert('Veuillez sélectionner un client pour enregistrer le reste à payer en dette !');
       return;
     }
 
@@ -168,51 +455,144 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
       vendeur_identifiant: vendeur.identifiant,
     };
 
-    // 1. Save Vente to Dexie
-    await db.ventes.add(newVente);
+    // Écriture atomique : vente + lignes + stock + dette client dans une seule transaction Dexie
+    let updatedClientDebt: number | null = null;
+    try {
+      await db.transaction('rw', db.ventes, db.lignes_vente, db.produits, db.clients, async () => {
+        // 1. Contrôle de stock frais pour tous les articles avant toute écriture
+        const stockFrais = new Map<number, Produit>();
+        for (const item of cart) {
+          if (!item.produit.id) continue;
+          let frais = stockFrais.get(item.produit.id);
+          if (!frais) {
+            const fetched = await db.produits.get(item.produit.id);
+            if (!fetched) throw new Error(`Produit introuvable : ${item.produit.nom}`);
+            frais = fetched;
+            stockFrais.set(item.produit.id, frais);
+          }
 
-    // 2. Save Lignes de Vente & Decrement Stock
-    for (const item of cart) {
-      if (item.produit.id) {
-        await db.lignes_vente.add({
-          vente_id: saleId,
-          produit_id: item.produit.id,
-          produit_nom: item.produit.nom,
-          variante: item.variante,
-          quantite: item.quantite,
-          prix_unitaire: item.produit.prix,
-          cout_unitaire: item.produit.cout_achat_unitaire,
-        });
+          if (item.variant_id && frais.variantes_detaillees) {
+            const v = frais.variantes_detaillees.find((vr) => vr.id === item.variant_id);
+            if (!v || v.stock < item.quantite) {
+              throw new Error(`Stock insuffisant pour « ${frais.nom} (${item.variante || item.variant_id}) » : il reste ${v?.stock ?? 0} unité(s).`);
+            }
+          } else {
+            if (frais.stock < item.quantite) {
+              throw new Error(`Stock insuffisant pour « ${frais.nom} » : il reste ${frais.stock} unité(s).`);
+            }
+          }
+        }
 
-        // Update local stock
-        const newStock = Math.max(0, item.produit.stock - item.quantite);
-        await db.produits.update(item.produit.id, { stock: newStock });
-      }
+        // 2. Enregistre la vente
+        await db.ventes.add(newVente);
+
+        // 3. Lignes de vente + décrément du stock
+        for (const item of cart) {
+          if (!item.produit.id) continue;
+          const frais = stockFrais.get(item.produit.id)!;
+          const unitPrice = item.prix_unitaire ?? frais.prix;
+
+          await db.lignes_vente.add({
+            vente_id: saleId,
+            produit_id: item.produit.id,
+            variant_id: item.variant_id,
+            produit_nom: frais.nom,
+            variante: item.variante,
+            quantite: item.quantite,
+            prix_unitaire: unitPrice,
+            cout_unitaire: frais.cout_achat_unitaire,
+          });
+
+          if (item.variant_id && frais.variantes_detaillees) {
+            const vIndex = frais.variantes_detaillees.findIndex((vr) => vr.id === item.variant_id);
+            if (vIndex > -1) {
+              frais.variantes_detaillees[vIndex].stock -= item.quantite;
+            }
+            frais.stock = frais.variantes_detaillees.reduce((sum, vr) => sum + vr.stock, 0);
+            await db.produits.update(item.produit.id, {
+              stock: frais.stock,
+              variantes_detaillees: frais.variantes_detaillees,
+            });
+          } else {
+            frais.stock -= item.quantite;
+            await db.produits.update(item.produit.id, { stock: frais.stock });
+          }
+        }
+
+        // 4. Met à jour la dette client (relue dans la transaction)
+        if (selectedClient?.id && resteAPayer > 0) {
+          const freshClient = await db.clients.get(selectedClient.id);
+          updatedClientDebt = (freshClient?.total_dette || 0) + resteAPayer;
+          await db.clients.update(selectedClient.id, { total_dette: updatedClientDebt });
+        }
+      });
+    } catch (err) {
+      await alert({
+        title: 'Vente non enregistrée',
+        message: err instanceof Error ? err.message : "La vente a échoué : aucune donnée n'a été enregistrée.",
+      });
+      return;
     }
 
-    // 3. Update Client Debt if partial/credit payment
-    if (selectedClient && selectedClient.id && resteAPayer > 0) {
-      const updatedDebt = (selectedClient.total_dette || 0) + resteAPayer;
-      await db.clients.update(selectedClient.id, { total_dette: updatedDebt });
+    // 5. File de synchronisation (hors transaction, après succès)
+    await pushToSyncQueue('INSERT', 'ventes', newVente);
+    for (const item of cart) {
+      if (!item.produit.id) continue;
+      const unitPrice = item.prix_unitaire ?? item.produit.prix;
+      await pushToSyncQueue('INSERT', 'lignes_vente', {
+        vente_id: saleId,
+        produit_id: item.produit.id,
+        variant_id: item.variant_id ?? null,
+        produit_nom: item.produit.nom,
+        variante: item.variante ?? null,
+        quantite: item.quantite,
+        prix_unitaire: unitPrice,
+      });
+    }
+    if (selectedClient?.id && updatedClientDebt !== null) {
       await pushToSyncQueue('UPDATE', 'clients', {
         id: selectedClient.id,
-        total_dette: updatedDebt,
+        total_dette: updatedClientDebt,
       });
     }
 
-    // 4. Push Vente to Sync Queue
-    await pushToSyncQueue('INSERT', 'ventes', newVente);
-
-    // 5. Trigger Confetti
+    // 6. Confettis + reçu
     confetti({
       particleCount: 80,
       spread: 70,
       origin: { y: 0.6 },
     });
 
-    // 6. Set receipt state & reset cart
-    setCompletedSale({ vente: newVente, items: [...cart] });
+    const completedPayload = {
+      vente: newVente,
+      items: [...cart],
+      clientTelephone: selectedClient?.telephone,
+      clientNom: selectedClient?.nom,
+    };
+
+    setCompletedSale(completedPayload);
+    setCompletedPhoneInput(selectedClient?.telephone || '');
     setIsCheckoutOpen(false);
+
+    // Auto-open WhatsApp si activé dans les paramètres et si le client a un numéro
+    if (settings?.whatsapp_enabled && settings?.whatsapp_auto_open && selectedClient?.telephone) {
+      setTimeout(() => {
+        openWhatsAppReceipt({
+          vente: newVente,
+          lignes: cart.map((item) => ({
+            nom: item.produit.nom,
+            variante: item.variante,
+            quantite: item.quantite,
+            prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+          })),
+          clientTelephone: selectedClient.telephone,
+          clientNom: selectedClient.nom,
+          settings,
+          downloadPdf: true,
+        });
+      }, 500);
+    }
+
     setCart([]);
   };
 
@@ -221,21 +601,66 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
       {/* LEFT COLUMN: Product Catalog */}
       <div className="flex-1 flex flex-col min-w-0 space-y-4">
         {/* Search & Category Filter Header */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between min-w-0">
+          {/* Search bar with dynamic expanding width */}
+          <div
+            className={`relative transition-all duration-300 ease-out shrink-0 ${
+              isSearchFocused || search
+                ? 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px]'
+                : 'w-full sm:w-60 md:w-72'
+            }`}
+          >
+            <Search
+              className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                isSearchFocused ? 'text-blue-500' : 'text-slate-400'
+              }`}
+            />
             <input
               type="text"
-              placeholder="Rechercher par nom ou scanner un code-barres..."
+              placeholder="Rechercher par nom ou code-barres..."
               value={search}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                const query = search.trim();
+                if (!query) return;
+                // Une douchette code-barres tape le code puis « Entrée »
+                const exact = filteredProducts.find((p) => p.code_barres === query);
+                const target = exact ?? (filteredProducts.length === 1 ? filteredProducts[0] : null);
+                if (target) {
+                  handleProductClick(target);
+                  setSearch('');
+                }
+              }}
+              aria-label="Rechercher un produit ou scanner un code-barres"
+              className="w-full glass-input pl-10 pr-16 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white transition-all shadow-xs"
             />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-full transition-colors"
+                  title="Effacer la recherche"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsScannerOpen(true)}
+                className="p-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 active:scale-95 transition-all"
+                title="Scanner un code-barres avec la caméra"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Category Badges */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {/* Category Badges with Micro-Scrollbar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 micro-scrollbar flex-1 min-w-0">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -253,66 +678,20 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-4">
+        <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 auto-rows-max content-start">
           {filteredProducts.map((produit) => {
-            const inCart = cart.filter((i) => i.produit.id === produit.id).reduce((sum, item) => sum + item.quantite, 0);
-            const isOutOfStock = produit.stock <= 0;
-            const isLowStock = produit.stock <= produit.min_stock;
+            const inCart = cart
+              .filter((i) => i.produit.id === produit.id)
+              .reduce((sum, item) => sum + item.quantite, 0);
 
             return (
-              <motion.div
+              <ProductCard
                 key={produit.id}
-                whileHover={isOutOfStock ? undefined : { scale: 1.02, y: -2 }}
-                whileTap={isOutOfStock ? undefined : { scale: 0.96 }}
-                onClick={() => !isOutOfStock && handleProductClick(produit)}
-                className={`glass-card rounded-2xl p-4 flex flex-col justify-between cursor-pointer relative overflow-hidden transition-all border ${
-                  inCart > 0
-                    ? 'ring-2 ring-blue-500 border-blue-400 dark:border-blue-500 bg-blue-500/5'
-                    : isOutOfStock
-                    ? 'opacity-50 cursor-not-allowed border-rose-300 dark:border-rose-950'
-                    : 'hover:border-blue-300 dark:hover:border-white/20'
-                }`}
-              >
-                {/* Product Badge Header */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                    <Package className="w-5 h-5" />
-                  </div>
-                  {isOutOfStock ? (
-                    <Badge variant="red" size="sm">
-                      Épuisé
-                    </Badge>
-                  ) : isLowStock ? (
-                    <Badge variant="amber" size="sm">
-                      Reste {produit.stock}
-                    </Badge>
-                  ) : (
-                    <Badge variant="gray" size="sm">
-                      Stock: {produit.stock}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug">
-                    {produit.nom}
-                  </h4>
-                  <p className="text-xs text-slate-400">{produit.categorie}</p>
-                </div>
-
-                {/* Price & Quantity Indicator */}
-                <div className="mt-3 pt-2 border-t border-slate-200/50 dark:border-white/10 flex items-center justify-between">
-                  <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">
-                    {formatCfa(produit.prix)}
-                  </span>
-                  {inCart > 0 && (
-                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center shadow-md">
-                      {inCart}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
+                produit={produit}
+                inCartCount={inCart}
+                onAddToCart={handleProductCardAddToCart}
+                onOpenVariableModal={handleOpenVariableModal}
+              />
             );
           })}
         </div>
@@ -328,14 +707,38 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
               Ticket de Caisse
             </h3>
           </div>
-          {cart.length > 0 && (
-            <button
-              onClick={() => setCart([])}
-              className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Vider
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {paniersEnAttente.length > 0 && (
+              <button
+                onClick={() => setShowPanierList(true)}
+                className="text-xs text-blue-500 hover:text-blue-600 font-semibold flex items-center gap-1 relative"
+              >
+                <ArchiveRestore className="w-4 h-4" /> En attente
+                <span className="absolute -top-1.5 -right-2 bg-blue-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                  {paniersEnAttente.length}
+                </span>
+              </button>
+            )}
+            {cart.length > 0 && (
+              <>
+                <button
+                  onClick={() => setIsPanierModalOpen(true)}
+                  className="text-xs text-amber-500 hover:text-amber-600 font-semibold flex items-center gap-1"
+                  title="Mettre en attente"
+                >
+                  <Clock className="w-4 h-4" /> Pause
+                </button>
+                <button
+                  onClick={async () => {
+                    if (await confirm({ message: 'Vider le panier ?', danger: true, confirmLabel: 'Vider' })) setCart([]);
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Client Selection Selector */}
@@ -371,7 +774,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
             <AnimatePresence>
               {cart.map((item) => (
                 <motion.div
-                  key={`${item.produit.id}-${item.variante || 'default'}`}
+                  key={`${item.produit.id}-${item.variant_id || item.variante || 'default'}`}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -382,14 +785,15 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                       {item.produit.nom}
                     </h5>
                     <span className="text-[11px] text-slate-400">
-                      {item.variante ? `${item.variante} · ` : ''}{formatCfa(item.produit.prix)} × {item.quantite}
+                      {item.variante ? `${item.variante} · ` : ''}
+                      {formatCfa(item.prix_unitaire ?? item.produit.prix)} × {item.quantite}
                     </span>
                   </div>
 
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => item.produit.id && updateQuantity(item.produit.id, -1, item.variante)}
+                      onClick={() => item.produit.id && updateQuantity(item.produit.id, -1, item.variant_id)}
                       className="p-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300"
                     >
                       <Minus className="w-3.5 h-3.5" />
@@ -398,7 +802,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                       {item.quantite}
                     </span>
                     <button
-                      onClick={() => item.produit.id && updateQuantity(item.produit.id, 1, item.variante)}
+                      onClick={() => item.produit.id && updateQuantity(item.produit.id, 1, item.variant_id)}
                       className="p-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -437,37 +841,148 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         </div>
       </GlassCard>
 
-      {/* VARIANT SELECTION MODAL */}
+      {/* VARIABLE PRODUCT SELECTION MODAL */}
       <Modal
-        isOpen={!!variantProduct}
-        onClose={() => setVariantProduct(null)}
-        title={`Choisir une variante - ${variantProduct?.nom || ''}`}
+        isOpen={!!selectedVariableProduct}
+        onClose={() => setSelectedVariableProduct(null)}
+        title={selectedVariableProduct ? `Choisir l'option — ${selectedVariableProduct.nom}` : ''}
       >
-        {variantProduct && (
-          <div className="space-y-4">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
-              Variante du produit
-            </label>
-            <select
-              value={selectedVariant}
-              onChange={(event) => setSelectedVariant(event.target.value)}
-              className="w-full glass-input px-3 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-            >
-              {(variantProduct.variantes || []).map((variante) => (
-                <option key={variante} value={variante}>{variante}</option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setVariantProduct(null)}>Annuler</Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  addToCart(variantProduct, selectedVariant);
-                  setVariantProduct(null);
-                }}
-              >
-                Ajouter au panier
-              </Button>
+        {selectedVariableProduct && modalResolvedVariant && (
+          <div className="space-y-5">
+            {/* Header info */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-100/70 dark:bg-slate-850 border border-slate-200/60 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                    {selectedVariableProduct.nom}
+                  </h4>
+                  <span className="text-xs text-slate-400">
+                    {selectedVariableProduct.categorie}
+                  </span>
+                </div>
+              </div>
+              <Badge variant="purple" size="sm">
+                Produit Variable
+              </Badge>
+            </div>
+
+            {/* Interactive Attribute Selectors */}
+            {selectedVariableProduct.attributs && selectedVariableProduct.attributs.length > 0 ? (
+              <div className="space-y-4">
+                {selectedVariableProduct.attributs.map((attr) => (
+                  <div key={attr.nom} className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>{attr.nom}</span>
+                      <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                        {modalAttributes[attr.nom] || 'Non sélectionné'}
+                      </span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {attr.valeurs.map((val) => {
+                        const isSelected = modalAttributes[attr.nom] === val;
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() =>
+                              setModalAttributes((prev) => ({
+                                ...prev,
+                                [attr.nom]: val,
+                              }))
+                            }
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 scale-[1.02]'
+                                : 'glass-card text-slate-700 dark:text-slate-300 hover:border-blue-300 dark:hover:border-white/20'
+                            }`}
+                          >
+                            {val}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Resolved Variant Price & Stock Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] uppercase tracking-wider font-extrabold text-slate-400">
+                  Variante Sélectionnée
+                </span>
+                <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                  {modalVariantLabel || modalResolvedVariant.id}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {modalResolvedVariant.stock > 0 ? (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> En stock ({modalResolvedVariant.stock} dispos)
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> Épuisé pour cette combinaison
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[11px] uppercase tracking-wider font-extrabold text-slate-400">
+                  Prix Unitaire
+                </span>
+                <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                  {formatCfa(modalResolvedVariant.prix)}
+                </div>
+              </div>
+            </div>
+
+            {/* Quantity Selector & Action */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500">Quantité :</span>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/60 dark:border-white/10">
+                  <button
+                    type="button"
+                    disabled={modalQuantity <= 1}
+                    onClick={() => setModalQuantity((q) => Math.max(1, q - 1))}
+                    className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-8 text-center text-xs font-black text-slate-900 dark:text-white">
+                    {modalQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={modalQuantity >= modalResolvedVariant.stock}
+                    onClick={() => setModalQuantity((q) => Math.min(modalResolvedVariant.stock, q + 1))}
+                    className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setSelectedVariableProduct(null)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={handleAddModalVariantToCart}
+                  disabled={modalResolvedVariant.stock <= 0}
+                  className="font-bold shadow-lg shadow-blue-500/25"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-1.5" />
+                  Ajouter au Panier ({formatCfa(modalResolvedVariant.prix * modalQuantity)})
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -502,16 +1017,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={() => setPaymentMethod('carte')}
-                className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
-                  paymentMethod === 'carte'
-                    ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                    : 'glass-card text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                <CreditCard className="w-5 h-5" /> Carte Bancaire
-              </button>
-              <button
+                type="button"
                 onClick={() => setPaymentMethod('especes')}
                 className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'especes'
@@ -522,6 +1028,18 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                 <Banknote className="w-5 h-5" /> Espèces
               </button>
               <button
+                type="button"
+                onClick={() => setPaymentMethod('mobile_money')}
+                className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                  paymentMethod === 'mobile_money'
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'glass-card text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <Smartphone className="w-5 h-5" /> Mobile money
+              </button>
+              <button
+                type="button"
                 onClick={() => setPaymentMethod('virement')}
                 className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'virement'
@@ -529,7 +1047,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                     : 'glass-card text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <Receipt className="w-5 h-5" /> Virement / Autre
+                <Landmark className="w-5 h-5" /> Virement
               </button>
             </div>
           </div>
@@ -538,13 +1056,11 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
-                Remise (CFA)
+                Remise (F)
               </label>
               <input
-                type="number"
-                min="0"
-                max={totalCart}
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={remiseInput}
                 onChange={(e) => setRemiseInput(e.target.value)}
                 className="w-full glass-input px-4 py-3 rounded-2xl text-lg font-bold text-slate-900 dark:text-white"
@@ -552,11 +1068,11 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
-                Montant Versé par le Client (CFA)
+                Montant Versé par le Client (F)
               </label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={montantPayeInput}
                 onChange={(e) => setMontantPayeInput(e.target.value)}
                 className="w-full glass-input px-4 py-3 rounded-2xl text-lg font-bold text-slate-900 dark:text-white"
@@ -610,6 +1126,29 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
           onClose={() => setCompletedSale(null)}
           title="Reçu de Caisse - Vente Validée"
         >
+          {/* Reçu imprimable (masqué à l'écran, visible seulement à l'impression) */}
+          <ReceiptPrint
+            format={printFormat}
+            settings={settings}
+            data={{
+              ref: completedSale.vente.id,
+              date: completedSale.vente.date,
+              client_nom: completedSale.vente.client_nom,
+              vendeur_nom: completedSale.vente.vendeur_nom,
+              vendeur_identifiant: completedSale.vente.vendeur_identifiant,
+              methode_paiement: completedSale.vente.methode_paiement,
+              remise: completedSale.vente.remise,
+              total: completedSale.vente.total,
+              montant_paye: completedSale.vente.montant_paye,
+              reste_a_payer: completedSale.vente.reste_a_payer,
+              lignes: completedSale.items.map((item) => ({
+                nom: item.produit.nom,
+                variante: item.variante,
+                quantite: item.quantite,
+                prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+              })),
+            } satisfies ReceiptData}
+          />
           <div className="space-y-4">
             <div className="text-center p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
               <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-1" />
@@ -634,7 +1173,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                     {item.produit.nom}{item.variante ? ` - ${item.variante}` : ''} ({item.quantite}x)
                   </span>
                   <span className="font-semibold">
-                    {formatCfa(item.produit.prix * item.quantite)}
+                    {formatCfa((item.prix_unitaire ?? item.produit.prix) * item.quantite)}
                   </span>
                 </div>
               ))}
@@ -663,18 +1202,271 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="glass"
-                icon={<Printer className="w-4 h-4" />}
-                onClick={() => window.print()}
-              >
-                Imprimer le Reçu
-              </Button>
-              <Button variant="primary" onClick={() => setCompletedSale(null)}>
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={printFormat}
+                  onChange={(e) => setPrintFormat(e.target.value as 'a4' | 'thermique')}
+                  className="glass-input px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white"
+                >
+                  <option value="thermique">Thermique (80mm)</option>
+                  <option value="a4">Facture A4</option>
+                </select>
+                <Button
+                  variant="glass"
+                  icon={<Printer className="w-4 h-4" />}
+                  onClick={() => window.print()}
+                >
+                  Imprimer
+                </Button>
+              </div>
+              <Button variant="primary" className="w-full sm:w-auto" onClick={() => setCompletedSale(null)}>
                 Terminer
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+      {/* MODAL: Mettre le panier en attente */}
+      <Modal isOpen={isPanierModalOpen} onClose={() => setIsPanierModalOpen(false)} title="Mettre le panier en attente">
+        <form onSubmit={handleMettreEnAttente} className="space-y-4">
+          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+            Référence du panier (Ex: Nom du client)
+          </label>
+          <input
+            autoFocus
+            required
+            value={panierReference}
+            onChange={(e) => setPanierReference(e.target.value)}
+            className="w-full glass-input px-4 py-3 rounded-xl text-slate-900 dark:text-white"
+            placeholder="Client t-shirt rouge..."
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setIsPanierModalOpen(false)}>Annuler</Button>
+            <Button type="submit" variant="primary">Enregistrer en attente</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL: Liste des paniers en attente */}
+      <Modal isOpen={showPanierList} onClose={() => setShowPanierList(false)} title="Paniers en attente">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {paniersEnAttente.length === 0 ? (
+            <p className="text-slate-500 text-sm italic text-center py-4">Aucun panier en attente.</p>
+          ) : (
+            paniersEnAttente.map((panier) => (
+              <div key={panier.id} className="glass-card p-4 rounded-xl flex items-center justify-between border border-slate-200/50 dark:border-white/10">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">{panier.nom_reference}</h4>
+                  <p className="text-xs text-slate-400">
+                    {new Date(panier.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} • {formatCfa(panier.total)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => panier.id && handleDeletePanier(panier.id)}
+                    className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <Button variant="primary" size="sm" onClick={() => panier.id && handleRestaurerPanier(panier.id)}>
+                    Reprendre
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      {/* MODAL: Scanner de Code-barres Caméra */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleBarcodeScan}
+        continuous
+        title="Scanner Caisse (Caméra)"
+      />
+
+      {/* MODAL: Vente Enregistrée, Reçu & WhatsApp */}
+      {completedSale && (
+        <Modal
+          isOpen={Boolean(completedSale)}
+          onClose={() => setCompletedSale(null)}
+          title="Vente enregistrée avec succès 🎉"
+        >
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto mb-2 shadow-lg shadow-emerald-500/30">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
+                Paiement Validé : {formatCfa(completedSale.vente.total)}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Réf : <span className="font-mono font-bold text-slate-700 dark:text-slate-300">#{completedSale.vente.id.substring(0, 8).toUpperCase()}</span>
+                {completedSale.clientNom && ` • Client : ${completedSale.clientNom}`}
+              </p>
+            </div>
+
+            {/* Actions WhatsApp & Facture PDF */}
+            <div className="space-y-3 pt-1">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-emerald-500" />
+                    WhatsApp Reçu & Remerciement
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                    PDF A4 Inclus
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Smartphone className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                    <input
+                      type="tel"
+                      value={completedPhoneInput}
+                      onChange={(e) => setCompletedPhoneInput(e.target.value)}
+                      placeholder="Numéro WhatsApp du client (ex: 97000000)"
+                      className="w-full glass-input pl-9 pr-3 py-2 rounded-xl text-xs font-mono font-bold"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25 shrink-0"
+                    icon={<Send className="w-3.5 h-3.5" />}
+                    disabled={!completedPhoneInput.trim()}
+                    onClick={() => {
+                      openWhatsAppReceipt({
+                        vente: completedSale.vente,
+                        lignes: completedSale.items.map((item) => ({
+                          nom: item.produit.nom,
+                          variante: item.variante,
+                          quantite: item.quantite,
+                          prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+                        })),
+                        clientTelephone: completedPhoneInput.trim(),
+                        clientNom: completedSale.clientNom,
+                        settings,
+                        downloadPdf: true,
+                      });
+                    }}
+                  >
+                    Envoyer WhatsApp & PDF
+                  </Button>
+                </div>
+                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+                  ⚡ Télécharge instantanément la <strong>Facture officielle A4 (PDF)</strong> et pré-remplit le message WhatsApp avec le nom du client et la liste complète des articles.
+                </p>
+              </div>
+
+              {/* Téléchargement direct PDF A4 */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-white/10">
+                <div className="text-xs">
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5 text-blue-500" />
+                    Télécharger la Facture A4 (PDF)
+                  </div>
+                  <div className="text-slate-400 text-[11px]">Format pleine page officiel avec tableau et totaux</div>
+                </div>
+                <Button
+                  type="button"
+                  variant="glass"
+                  size="sm"
+                  icon={<Download className="w-3.5 h-3.5 text-blue-500" />}
+                  onClick={() => {
+                    generateInvoiceA4Pdf({
+                      vente: completedSale.vente,
+                      lignes: completedSale.items.map((item) => ({
+                        nom: item.produit.nom,
+                        variante: item.variante,
+                        quantite: item.quantite,
+                        prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+                      })),
+                      clientNom: completedSale.clientNom,
+                      clientTelephone: completedPhoneInput || completedSale.clientTelephone,
+                      settings,
+                      autoDownload: true,
+                    });
+                  }}
+                >
+                  Télécharger PDF
+                </Button>
+              </div>
+
+              {/* Format selection */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Format d'impression physique
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPrintFormat('thermique')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      printFormat === 'thermique'
+                        ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                        : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Rouleau 80mm / 58mm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintFormat('a4')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      printFormat === 'a4'
+                        ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                        : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Facture A4
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-200/60 dark:border-white/10">
+              <Button variant="ghost" onClick={() => setCompletedSale(null)}>
+                Nouvelle Vente
+              </Button>
+              <Button
+                variant="primary"
+                icon={<Printer className="w-4 h-4" />}
+                onClick={() => window.print()}
+              >
+                Imprimer Ticket
+              </Button>
+            </div>
+
+            {completedSale && (
+              <ReceiptPrint
+                data={{
+                  ref: completedSale.vente.id,
+                  date: completedSale.vente.date,
+                  client_nom: completedSale.vente.client_nom,
+                  vendeur_nom: completedSale.vente.vendeur_nom,
+                  methode_paiement: completedSale.vente.methode_paiement,
+                  lignes: completedSale.items.map((item) => ({
+                    nom: item.produit.nom,
+                    variante: item.variante,
+                    quantite: item.quantite,
+                    prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+                  })),
+                  remise: completedSale.vente.remise,
+                  total: completedSale.vente.total,
+                  montant_paye: completedSale.vente.montant_paye,
+                  reste_a_payer: completedSale.vente.reste_a_payer,
+                }}
+                format={printFormat}
+                settings={settings}
+              />
+            )}
           </div>
         </Modal>
       )}

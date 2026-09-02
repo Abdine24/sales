@@ -2,6 +2,11 @@
 # Déployé sur le VPS via l'outil MCP VPS_createNewProjectV1 (projet "vente-api").
 # Les valeurs sensibles (mots de passe, clés) ne sont JAMAIS ici — elles sont fournies au
 # déploiement via le paramètre `environment`, séparément de ce fichier.
+#
+# Pas de reverse proxy ici (pas de Caddy) : les ports 80/443 du VPS sont déjà utilisés par
+# le Nginx existant (bot Telegram + autres sites). L'API n'expose son port que sur
+# 127.0.0.1 — uniquement accessible depuis le VPS lui-même — et c'est le Nginx déjà en place
+# qui fait office de reverse proxy HTTPS vers elle (voir server/deploy/nginx-api.conf).
 
 services:
   postgres:
@@ -25,27 +30,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      # Publié uniquement sur localhost — jamais exposé directement à internet. Le Nginx du
+      # VPS (hors Docker) proxy api.azanga.tech vers 127.0.0.1:3000.
+      - "127.0.0.1:3000:3000"
     environment:
       PORT: 3000
       DATABASE_URL: postgres://vente:${POSTGRES_PASSWORD}@postgres:5432/vente
       SUPABASE_URL: ${SUPABASE_URL}
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      - api
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-    command: >
-      sh -c "printf 'api.azanga.tech {\n\treverse_proxy api:3000\n}\n' > /etc/caddy/Caddyfile &&
-             caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"
+      LICENSE_SECRET: ${LICENSE_SECRET}
 
 volumes:
   pg_data:
-  caddy_data:
-  caddy_config:

@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
 
 interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass' | 'success';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
@@ -51,7 +51,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {icon && <span className="shrink-0">{icon}</span>}
-      <span>{children}</span>
+      {children && <span>{children}</span>}
     </motion.button>
   );
 };

@@ -37,6 +37,30 @@
   background: rgba(142, 142, 147, 0.5);
 }
 
+/* Micro Thin Scrollbar (pour barres de catégories, puces, filtres horizontaux) */
+.micro-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 142, 147, 0.3) transparent;
+}
+
+.micro-scrollbar::-webkit-scrollbar {
+  height: 3px;
+  width: 3px;
+}
+
+.micro-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.micro-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(142, 142, 147, 0.35);
+  border-radius: 9999px;
+}
+
+.micro-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 142, 147, 0.65);
+}
+
 /* Glassmorphism Utilities */
 .glass-panel {
   background-color: var(--bg-glass-light);
@@ -74,6 +98,7 @@
   background: rgba(241, 245, 249, 0.8);
   border: 1px solid rgba(203, 213, 225, 0.6);
   transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .dark .glass-input {
@@ -94,6 +119,146 @@
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.35);
 }
 
+/* Mode 3: Forêt Émeraude & Jade (Vert Luxueux) */
+.dark.theme-emerald {
+  --bg-glass-dark: rgba(4, 20, 14, 0.88);
+  --border-glass-dark: rgba(16, 185, 129, 0.2);
+  --shadow-glass-dark: 0 10px 35px rgba(0, 0, 0, 0.7);
+}
+
+.dark.theme-emerald,
+.dark.theme-emerald body,
+.dark.theme-emerald .bg-slate-950,
+.dark.theme-emerald .bg-slate-900 {
+  background-color: #03140c !important;
+}
+
+.dark.theme-emerald .glass-panel {
+  background-color: rgba(4, 20, 14, 0.85);
+  border-color: rgba(16, 185, 129, 0.18);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.65);
+}
+
+.dark.theme-emerald .glass-card {
+  background: rgba(8, 30, 22, 0.78);
+  border-color: rgba(16, 185, 129, 0.16);
+  box-shadow: 0 4px 25px -2px rgba(0, 0, 0, 0.45);
+}
+
+.dark.theme-emerald .glass-input {
+  background: rgba(4, 20, 14, 0.8);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dark.theme-emerald .glass-input:focus {
+  background: rgba(6, 28, 20, 0.95);
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+}
+
+/* Mode 4: Clair Haute Définition / Solid & Bordures Prononcées (Sans effet Glass) */
+.theme-contrast {
+  --bg-glass-light: #ffffff;
+  --border-glass-light: #cbd5e1;
+  --shadow-glass-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.theme-contrast,
+.theme-contrast body,
+.theme-contrast .bg-slate-100 {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-contrast .glass-panel {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+}
+
+.theme-contrast .glass-card {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.theme-contrast .glass-input {
+  background-color: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.theme-contrast .glass-input:focus {
+  background-color: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* Apple-like Custom Date Inputs & Calendar Picker Theme */
+input[type="date"] {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+.dark input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.9) brightness(1.2);
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  font-family: inherit;
+  padding: 0 2px;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  font-family: inherit;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  color: rgba(148, 163, 184, 0.9);
+  padding: 0 1px;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  font-family: inherit;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 2px;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus,
+input[type="date"]::-webkit-datetime-edit-year-field:focus {
+  background-color: rgba(0, 122, 255, 0.2);
+  color: #007AFF;
+  outline: none;
+}
+
 /* Pulsing network badge */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -102,4 +267,179 @@
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+/* Date Picker styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* ==========================================================================
+   Reçus imprimables
+   ========================================================================== */
+.print-receipt {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+/* Page nommée pour le format thermique 80 mm */
+@page thermique {
+  size: 80mm auto;
+  margin: 3mm;
+}
+
+@media print {
+  /* On masque l'application, on ne montre que le reçu */
+  body > #root {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .print-receipt {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #000;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .print-receipt[data-format="thermique"] {
+    page: thermique;
+  }
+
+  .receipt-body {
+    margin: 0 auto;
+    color: #000;
+  }
+
+  .receipt-thermique {
+    width: 72mm;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .receipt-a4 {
+    width: 100%;
+    max-width: 180mm;
+    font-size: 12px;
+  }
+
+  .receipt-head {
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .receipt-head h1 {
+    font-size: 1.25em;
+    font-weight: 800;
+    margin: 0 0 2px;
+  }
+
+  .receipt-logo {
+    max-height: 64px;
+    max-width: 60%;
+    margin: 0 auto 4px;
+    object-fit: contain;
+  }
+
+  .receipt-muted {
+    margin: 0;
+    font-size: 0.85em;
+    color: #333;
+  }
+
+  .receipt-sep {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .receipt-meta > div,
+  .receipt-totals > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .receipt-lines {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt-lines th,
+  .receipt-lines td {
+    text-align: right;
+    padding: 2px 0;
+    vertical-align: top;
+  }
+
+  .receipt-lines th:first-child,
+  .receipt-lines td:first-child {
+    text-align: left;
+  }
+
+  .receipt-lines thead th {
+    border-bottom: 1px solid #000;
+    font-size: 0.85em;
+    text-transform: uppercase;
+  }
+
+  .receipt-total-line {
+    font-weight: 800;
+    font-size: 1.1em;
+    border-top: 1px solid #000;
+    padding-top: 3px;
+    margin-top: 3px;
+  }
+
+  .receipt-due {
+    font-weight: 700;
+  }
+
+  .receipt-foot {
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .receipt-foot p {
+    margin: 2px 0;
+  }
+
+  /* Impression planches et rouleaux de codes-barres */
+  #printable-barcode-sheet {
+    display: grid !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .barcode-sticker {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    border: 1px solid #999 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
 }
