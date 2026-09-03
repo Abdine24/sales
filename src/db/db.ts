@@ -107,6 +107,9 @@ export interface Licence {
   duree_jours?: number | null;
   // Date d'expiration calculée (activee_le + duree_jours), ISO. Null = illimitée.
   expire_le?: string | null;
+  // true dès qu'un essai gratuit de 7 jours a été activé une fois — ne redevient jamais false,
+  // même après l'avoir remplacé par une clé payante (voir server/src/routes/licenceStatus.js).
+  trial_used?: boolean;
 }
 
 export interface Client {

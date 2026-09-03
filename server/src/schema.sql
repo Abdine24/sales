@@ -215,8 +215,15 @@ create table if not exists licence (
   cle text not null,
   activee_le timestamptz not null default now(),
   duree_jours integer,
-  expire_le timestamptz
+  expire_le timestamptz,
+  -- Une fois passé à true, ne redescend jamais à false (voir licenceStatus.js) : l'essai
+  -- gratuit de 7 jours ne doit pouvoir être utilisé qu'une seule fois par boutique, même après
+  -- l'avoir remplacé par une clé payante.
+  trial_used boolean not null default false
 );
+-- Migration pour les installations existantes (CREATE TABLE IF NOT EXISTS ne touche pas aux
+-- tables déjà créées) : rejoué à chaque démarrage, sans effet une fois la colonne en place.
+alter table licence add column if not exists trial_used boolean not null default false;
 
 -- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
 -- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin

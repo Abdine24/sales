@@ -140,31 +140,9 @@ export const LicenceSection: React.FC = () => {
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
             Activer ou renouveler votre clé de licence
           </label>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                const trialKey = await requestTrialLicenseKey();
-                setCle(trialKey);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
-              }
-            }}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition"
-          >
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            Essai gratuit (7 jours)
-          </button>
-        </div>
-        <form onSubmit={submitRenewal} className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              value={cle}
-              onChange={(e) => setCle(e.target.value)}
-              placeholder="IVTE-0365-XXXXXXXX-XXXXXXXX"
-              className="w-full glass-input pl-10 pr-28 py-3 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white font-mono uppercase font-bold"
-            />
+          {licence?.trial_used ? (
+            <span className="text-xs font-semibold text-slate-400">Essai gratuit déjà utilisé</span>
+          ) : (
             <button
               type="button"
               onClick={async () => {
@@ -175,12 +153,40 @@ export const LicenceSection: React.FC = () => {
                   setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
                 }
               }}
-              className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-              title="Remplir avec une clé d'essai 7 jours"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Essai 7j</span>
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              Essai gratuit (7 jours)
             </button>
+          )}
+        </div>
+        <form onSubmit={submitRenewal} className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              value={cle}
+              onChange={(e) => setCle(e.target.value)}
+              placeholder="IVTE-0365-XXXXXXXX-XXXXXXXX"
+              className={`w-full glass-input pl-10 py-3 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white font-mono uppercase font-bold ${licence?.trial_used ? 'pr-4' : 'pr-28'}`}
+            />
+            {!licence?.trial_used && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const trialKey = await requestTrialLicenseKey();
+                    setCle(trialKey);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
+                  }
+                }}
+                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                title="Remplir avec une clé d'essai 7 jours"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Essai 7j</span>
+              </button>
+            )}
           </div>
           <Button type="submit" variant="primary" disabled={submitting || !cle.trim()} icon={<Sparkles className="w-4 h-4" />}>
             {submitting ? 'Vérification...' : 'Valider la clé'}
