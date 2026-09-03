@@ -37,6 +37,10 @@ jobs:
           VITE_SUPABASE_URL: https://cyzipoluiwvhgrizytll.supabase.co
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5emlwb2x1aXd2aGdyaXp5dGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2MDk1MzksImV4cCI6MjEwMzE4NTUzOX0.2RUyJonwkoDa2Jshlofxyc6s7kiFa__C_ZTpm6rv5Vg
           VITE_API_URL: https://api.azanga.tech
+          # Domaine racine multi-tenant : chaque boutique vit sur <slug>.azanga.tech — voir
+          # src/services/tenant.ts. Une seule build sert toutes les boutiques (pas de valeur
+          # par boutique ici, juste le domaine commun).
+          VITE_ROOT_DOMAIN: azanga.tech
         run: npm run build
 
       - name: Setup Pages

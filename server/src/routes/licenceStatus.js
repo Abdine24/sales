@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
+
 import { validateLicenseKey } from '../licence.js';
 
 export const licenceStatusRouter = Router();
@@ -10,8 +10,8 @@ const computeExpiry = (activeeLe, days) => {
   return new Date(new Date(activeeLe).getTime() + cappedDays * 24 * 60 * 60 * 1000).toISOString();
 };
 
-licenceStatusRouter.get('/', async (_req, res) => {
-  const { rows } = await pool.query("select * from licence where id='principale'");
+licenceStatusRouter.get('/', async (req, res) => {
+  const { rows } = await req.tenantPool.query("select * from licence where id='principale'");
   res.json(rows[0] || null);
 });
 
@@ -30,7 +30,7 @@ licenceStatusRouter.post('/activer', async (req, res) => {
   // c'est la vraie porte, la génération n'est qu'un confort côté client.
   const isTrial = validation.days === 7;
   if (isTrial) {
-    const { rows: existing } = await pool.query("select trial_used from licence where id='principale'");
+    const { rows: existing } = await req.tenantPool.query("select trial_used from licence where id='principale'");
     if (existing[0]?.trial_used) {
       return res.status(409).json({ error: "L'essai gratuit de 7 jours a déjà été utilisé pour cette boutique — choisis un abonnement payant pour continuer." });
     }
@@ -38,7 +38,7 @@ licenceStatusRouter.post('/activer', async (req, res) => {
 
   const activeeLe = new Date().toISOString();
   const expireLe = computeExpiry(activeeLe, validation.days);
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `insert into licence (id, cle, activee_le, duree_jours, expire_le, trial_used)
      values ('principale', $1, $2, $3, $4, $5)
      on conflict (id) do update set cle=excluded.cle, activee_le=excluded.activee_le,

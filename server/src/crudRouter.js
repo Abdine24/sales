@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { pool } from './db.js';
 
 // Fabrique un routeur CRUD simple (GET liste, POST, PUT, DELETE) pour les ressources dont
 // les colonnes correspondent 1:1 aux champs envoyés par le client, sans logique métier
@@ -7,14 +6,16 @@ import { pool } from './db.js';
 // constantes internes définies par le code serveur (jamais dérivées d'une requête cliente),
 // donc l'interpolation directe dans le SQL ci-dessous n'est pas une injection : les seules
 // valeurs qui viennent du client passent par des paramètres liés ($1, $2...).
+// Chaque handler lit req.tenantPool (posé par tenantResolver.js) plutôt qu'un pool global —
+// ce routeur est générique par boutique, jamais lié à une base précise à sa création.
 export function crudRouter({ table, columns, requiredColumns = [], jsonColumns = [], orderBy = 'id asc' }) {
   const router = Router();
 
   const encode = (col, value) =>
     jsonColumns.includes(col) && value !== undefined && value !== null ? JSON.stringify(value) : value;
 
-  router.get('/', async (_req, res) => {
-    const { rows } = await pool.query(`select * from ${table} order by ${orderBy}`);
+  router.get('/', async (req, res) => {
+    const { rows } = await req.tenantPool.query(`select * from ${table} order by ${orderBy}`);
     res.json(rows);
   });
 
@@ -32,7 +33,7 @@ export function crudRouter({ table, columns, requiredColumns = [], jsonColumns =
     const insertSql = providedCols.length
       ? `insert into ${table} (${providedCols.join(',')}) values (${placeholders.join(',')}) returning *`
       : `insert into ${table} default values returning *`;
-    const { rows } = await pool.query(insertSql, providedCols.map((c) => encode(c, body[c])));
+    const { rows } = await req.tenantPool.query(insertSql, providedCols.map((c) => encode(c, body[c])));
     res.status(201).json(rows[0]);
   });
 
@@ -44,12 +45,12 @@ export function crudRouter({ table, columns, requiredColumns = [], jsonColumns =
     // leur valeur actuelle (évite qu'un champ omis par le client ne soit écrasé par NULL).
     const providedCols = columns.filter((c) => body[c] !== undefined);
     if (providedCols.length === 0) {
-      const { rows } = await pool.query(`select * from ${table} where id=$1`, [id]);
+      const { rows } = await req.tenantPool.query(`select * from ${table} where id=$1`, [id]);
       if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
       return res.json(rows[0]);
     }
     const setClause = providedCols.map((c, i) => `${c}=$${i + 1}`).join(',');
-    const { rows } = await pool.query(
+    const { rows } = await req.tenantPool.query(
       `update ${table} set ${setClause} where id=$${providedCols.length + 1} returning *`,
       [...providedCols.map((c) => encode(c, body[c])), id]
     );
@@ -60,7 +61,7 @@ export function crudRouter({ table, columns, requiredColumns = [], jsonColumns =
   router.delete('/:id', async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
-    const { rowCount } = await pool.query(`delete from ${table} where id=$1`, [id]);
+    const { rowCount } = await req.tenantPool.query(`delete from ${table} where id=$1`, [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Introuvable.' });
     res.status(204).send();
   });

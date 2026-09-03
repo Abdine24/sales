@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { getSupabaseAdmin } from '../supabaseAdmin.js';
+import { recordUtilisateurBoutique } from '../personnelLookup.js';
 
 export const personnelRouter = Router();
 
@@ -13,17 +13,17 @@ const generateIdentifiant = () => {
   return Array.from(bytes).map((b) => RANDOM_ALPHABET[b % RANDOM_ALPHABET.length]).join('');
 };
 
-const generateUniqueIdentifiant = async () => {
+const generateUniqueIdentifiant = async (tenantPool) => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const identifiant = generateIdentifiant();
-    const { rows } = await pool.query('select 1 from personnel where identifiant=$1', [identifiant]);
+    const { rows } = await tenantPool.query('select 1 from personnel where identifiant=$1', [identifiant]);
     if (rows.length === 0) return identifiant;
   }
   throw new Error("Impossible de générer un identifiant unique — réessaie.");
 };
 
-personnelRouter.get('/', async (_req, res) => {
-  const { rows } = await pool.query('select * from personnel order by nom asc');
+personnelRouter.get('/', async (req, res) => {
+  const { rows } = await req.tenantPool.query('select * from personnel order by nom asc');
   res.json(rows);
 });
 
@@ -31,15 +31,16 @@ personnelRouter.get('/', async (_req, res) => {
 // Renvoie 404 si le jeton Supabase est valide mais qu'aucun profil local n'a encore été créé
 // pour cet utilisateur (ex: compte tout juste activé).
 personnelRouter.get('/me', async (req, res) => {
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     'select * from personnel where supabase_user_id=$1 or (email=$2 and supabase_user_id is null)',
     [req.user.id, req.user.email]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Aucun profil personnel pour ce compte.' });
   // Rattrape les comptes créés avant la liaison supabase_user_id.
   if (!rows[0].supabase_user_id) {
-    await pool.query('update personnel set supabase_user_id=$1 where id=$2', [req.user.id, rows[0].id]);
+    await req.tenantPool.query('update personnel set supabase_user_id=$1 where id=$2', [req.user.id, rows[0].id]);
     rows[0].supabase_user_id = req.user.id;
+    await recordUtilisateurBoutique(req.user.id, req.boutique.id, rows[0].email);
   }
   res.json(rows[0]);
 });
@@ -59,12 +60,12 @@ personnelRouter.post('/', async (req, res) => {
 
   const isBootstrap = body.principal === true;
   if (isBootstrap) {
-    const { rows: existing } = await pool.query('select 1 from personnel where principal=true limit 1');
+    const { rows: existing } = await req.tenantPool.query('select 1 from personnel where principal=true limit 1');
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Un administrateur principal existe déjà pour cette boutique.' });
     }
   } else {
-    const { rows: caller } = await pool.query('select role from personnel where supabase_user_id=$1', [req.user.id]);
+    const { rows: caller } = await req.tenantPool.query('select role from personnel where supabase_user_id=$1', [req.user.id]);
     if (caller.length === 0 || caller[0].role !== 'admin') {
       return res.status(403).json({ error: 'Réservé aux administrateurs.' });
     }
@@ -93,9 +94,9 @@ personnelRouter.post('/', async (req, res) => {
     }
   }
 
-  const identifiant = body.identifiant || (await generateUniqueIdentifiant());
+  const identifiant = body.identifiant || (await generateUniqueIdentifiant(req.tenantPool));
   try {
-    const { rows } = await pool.query(
+    const { rows } = await req.tenantPool.query(
       `insert into personnel
         (identifiant, nom, username, email, supabase_user_id, role, actif, principal, zone_id)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -112,6 +113,13 @@ personnelRouter.post('/', async (req, res) => {
         body.zone_id ?? null,
       ]
     );
+    // Écrit la correspondance utilisateur Supabase -> boutique dans la base de contrôle, pour
+    // que resolveTenant (tenantResolver.js) sache plus tard à quelle boutique cet utilisateur
+    // appartient — que ce soit l'admin qui vient de faire son bootstrap, ou un employé que
+    // l'admin vient d'ajouter (les deux passent par ici, avec un supabase_user_id à ce stade).
+    if (supabaseUserId) {
+      await recordUtilisateurBoutique(supabaseUserId, req.boutique.id, rows[0].email);
+    }
     res.status(201).json(rows[0]);
   } catch (err) {
     // Ne JAMAIS supprimer automatiquement le compte Supabase ici, même s'il vient d'être créé
@@ -141,7 +149,7 @@ personnelRouter.put('/:id/mot-de-passe', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
   }
 
-  const { rows } = await pool.query('select supabase_user_id from personnel where id=$1', [id]);
+  const { rows } = await req.tenantPool.query('select supabase_user_id from personnel where id=$1', [id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
   if (!rows[0].supabase_user_id) {
     return res.status(409).json({ error: "Ce profil n'est rattaché à aucun compte de connexion." });
@@ -159,12 +167,12 @@ personnelRouter.put('/:id', requireAdmin, async (req, res) => {
   const columns = ['nom', 'username', 'email', 'role', 'actif', 'principal', 'zone_id'];
   const provided = columns.filter((c) => body[c] !== undefined);
   if (provided.length === 0) {
-    const { rows } = await pool.query('select * from personnel where id=$1', [id]);
+    const { rows } = await req.tenantPool.query('select * from personnel where id=$1', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
     return res.json(rows[0]);
   }
   const setClause = provided.map((c, i) => `${c}=$${i + 1}`).join(',') + ', updated_at=now()';
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `update personnel set ${setClause} where id=$${provided.length + 1} returning *`,
     [...provided.map((c) => body[c]), id]
   );
@@ -175,7 +183,7 @@ personnelRouter.put('/:id', requireAdmin, async (req, res) => {
 personnelRouter.delete('/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
-  const { rowCount } = await pool.query('delete from personnel where id=$1', [id]);
+  const { rowCount } = await req.tenantPool.query('delete from personnel where id=$1', [id]);
   if (rowCount === 0) return res.status(404).json({ error: 'Introuvable.' });
   res.status(204).send();
 });

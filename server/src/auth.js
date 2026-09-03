@@ -1,8 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { pool } from './db.js';
+import { getCallerPersonnel } from './personnelLookup.js';
 
 // Vérifie les jetons émis par Supabase Auth via son JWKS public — aucun secret partagé à
-// stocker sur le VPS, juste l'URL publique du projet Supabase.
+// stocker sur le VPS, juste l'URL publique du projet Supabase. Un seul projet Supabase sert
+// toutes les boutiques (voir plan multi-tenant) : ce middleware identifie QUI se connecte,
+// pas à QUELLE boutique — c'est le rôle de resolveTenant (tenantResolver.js), monté juste
+// après dans la chaîne pour chaque route métier.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 if (!SUPABASE_URL) {
   throw new Error('SUPABASE_URL manquant — nécessaire pour vérifier les jetons des utilisateurs.');
@@ -30,13 +33,15 @@ export async function requireAuth(req, res, next) {
   }
 }
 
-// À utiliser après requireAuth. Réservé aux opérations sensibles (créer un employé, changer
-// le mot de passe de quelqu'un d'autre...) : vérifie que l'utilisateur authentifié a bien le
-// rôle admin dans la table personnel, pas seulement un jeton Supabase valide.
+// À utiliser après requireAuth ET resolveTenant (a besoin de req.tenantPool). Réservé aux
+// opérations sensibles (créer un employé, changer le mot de passe de quelqu'un d'autre...) :
+// vérifie que l'utilisateur authentifié a bien le rôle admin dans la table personnel DE LA
+// BOUTIQUE COURANTE, pas seulement un jeton Supabase valide.
 export async function requireAdmin(req, res, next) {
-  const { rows } = await pool.query('select role from personnel where supabase_user_id=$1', [req.user.id]);
-  if (rows.length === 0 || rows[0].role !== 'admin') {
+  const person = await getCallerPersonnel(req);
+  if (!person || person.role !== 'admin') {
     return res.status(403).json({ error: 'Réservé aux administrateurs.' });
   }
+  req.callerPersonnel = person;
   next();
 }

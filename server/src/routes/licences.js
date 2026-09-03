@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
 import { generateLicenseKey, validateLicenseKey } from '../licence.js';
 import { simpleRateLimit } from '../rateLimit.js';
 
@@ -22,11 +21,11 @@ licencesRouter.post('/valider', validateLimiter, (req, res) => {
 // boutique. Les durées payantes ne sont générées que via le script CLI
 // (server/../scripts/generate-license.mjs), exécuté uniquement par l'administrateur de la
 // boutique — jamais exposées en HTTP.
-licencesRouter.post('/essai', trialLimiter, async (_req, res) => {
+licencesRouter.post('/essai', trialLimiter, async (req, res) => {
   // Vérifié ici (avant même de signer une clé) ET re-vérifié à l'activation (voir
   // licenceStatus.js) : sans ce deuxième contrôle, une clé d'essai obtenue une première fois
   // légitimement resterait valide indéfiniment en la re-soumettant.
-  const { rows } = await pool.query("select trial_used from licence where id='principale'");
+  const { rows } = await req.tenantPool.query("select trial_used from licence where id='principale'");
   if (rows[0]?.trial_used) {
     return res.status(409).json({ error: "L'essai gratuit de 7 jours a déjà été utilisé pour cette boutique." });
   }

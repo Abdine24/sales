@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { pool, withTransaction } from '../db.js';
+
 
 export const retoursRouter = Router();
 
-retoursRouter.get('/', async (_req, res) => {
-  const { rows } = await pool.query('select * from retours order by date desc');
+retoursRouter.get('/', async (req, res) => {
+  const { rows } = await req.tenantPool.query('select * from retours order by date desc');
   res.json(rows);
 });
 
@@ -18,7 +18,7 @@ retoursRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Le retour doit contenir au moins une ligne.' });
   }
 
-  const result = await withTransaction(async (client) => {
+  const result = await req.withTenantTransaction(async (client) => {
     // 1. Remise en stock
     for (const ligne of lignes) {
       const { rows } = await client.query('select * from produits where id=$1 for update', [ligne.produit_id]);

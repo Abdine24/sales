@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
 import { simpleRateLimit } from '../rateLimit.js';
 
 export const motDePasseOublieRouter = Router();
@@ -14,7 +13,7 @@ motDePasseOublieRouter.post('/', limiter, async (req, res) => {
   const email = (req.body?.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'email requis.' });
 
-  const { rows } = await pool.query('select id, nom, role, actif from personnel where email=$1', [email]);
+  const { rows } = await req.tenantPool.query('select id, nom, role, actif from personnel where email=$1', [email]);
   const person = rows[0];
 
   // Email inconnu de notre base : on n'envoie rien du tout, jamais (pas d'appel à Supabase).
@@ -30,7 +29,7 @@ motDePasseOublieRouter.post('/', limiter, async (req, res) => {
 
   // Membre de l'équipe connu : on prévient l'admin, pas d'email envoyé à personne.
   if (person.actif) {
-    await pool.query(
+    await req.tenantPool.query(
       `insert into notifications (type, message, target_role, related_personnel_id)
        values ('password_reset_request', $1, 'admin', $2)`,
       [`${person.nom} demande une réinitialisation de son mot de passe.`, person.id]

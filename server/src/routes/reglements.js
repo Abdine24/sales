@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pool, withTransaction } from '../db.js';
+
 
 export const reglementsRouter = Router();
 
@@ -11,7 +11,7 @@ reglementsRouter.get('/', async (req, res) => {
     params.push(client_id);
     where = `where client_id = $${params.length}`;
   }
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `select * from reglements ${where} order by date desc`,
     params
   );
@@ -28,7 +28,7 @@ reglementsRouter.post('/', async (req, res) => {
   }
 
   try {
-    const result = await withTransaction(async (client) => {
+    const result = await req.withTenantTransaction(async (client) => {
       const clientRows = await client.query('select * from clients where id=$1 for update', [body.client_id]);
       if (clientRows.rows.length === 0) throw Object.assign(new Error('Client introuvable.'), { status: 404 });
       const detteAvant = Number(clientRows.rows[0].total_dette) || 0;

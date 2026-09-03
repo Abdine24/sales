@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pool, withTransaction } from '../db.js';
+
 
 export const ventesRouter = Router();
 
@@ -11,14 +11,14 @@ ventesRouter.get('/', async (req, res) => {
     params.push(zone_id);
     where = `where zone_id = $${params.length}`;
   }
-  const { rows } = await pool.query(`select * from ventes ${where} order by date desc`, params);
+  const { rows } = await req.tenantPool.query(`select * from ventes ${where} order by date desc`, params);
   res.json(rows);
 });
 
 // Toutes les lignes de vente, à plat — le frontend les associe à chaque vente par vente_id
 // (même pattern que l'ancien accès Dexie, pour limiter la casse pendant la migration).
-ventesRouter.get('/lignes/all', async (_req, res) => {
-  const { rows } = await pool.query('select * from lignes_vente order by id asc');
+ventesRouter.get('/lignes/all', async (req, res) => {
+  const { rows } = await req.tenantPool.query('select * from lignes_vente order by id asc');
   res.json(rows);
 });
 
@@ -38,7 +38,7 @@ ventesRouter.post('/', async (req, res) => {
   }
 
   try {
-    const result = await withTransaction(async (client) => {
+    const result = await req.withTenantTransaction(async (client) => {
       const venteId = crypto.randomUUID();
       const date = new Date().toISOString();
 
