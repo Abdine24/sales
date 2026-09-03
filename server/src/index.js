@@ -23,6 +23,9 @@ import { reglementsRouter } from './routes/reglements.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { motDePasseOublieRouter } from './routes/motDePasseOublie.js';
 import { plateformeRouter } from './routes/plateforme.js';
+import { facturesRouter } from './routes/factures.js';
+import { applySchemaToTenant } from './schemaApply.js';
+import { getTenantPool } from './tenantDb.js';
 
 const app = express();
 // Nécessaire derrière un reverse proxy (Nginx) pour que req.ip reflète le vrai visiteur
@@ -74,17 +77,37 @@ app.use('/ajustements-stock', requireAuth, resolveTenant, ajustementsStockRouter
 app.use('/retours', requireAuth, resolveTenant, retoursRouter);
 app.use('/reglements', requireAuth, resolveTenant, reglementsRouter);
 app.use('/notifications', requireAuth, resolveTenant, notificationsRouter);
+app.use('/factures', requireAuth, resolveTenant, facturesRouter);
 
 const PORT = process.env.PORT || 3000;
 
+// Rejoue schema.sql (idempotent — CREATE TABLE IF NOT EXISTS / ALTER TABLE ... ADD COLUMN IF
+// NOT EXISTS partout) contre CHAQUE boutique active à chaque démarrage de l'API, pas seulement
+// au provisioning d'une nouvelle. Sans ça, une évolution du schéma (nouvelle table/colonne,
+// comme `factures`/`facture_sequences` ou `settings.receipt_template_id`) n'existerait que pour
+// les boutiques créées APRÈS le déploiement du changement — toutes les boutiques déjà en place
+// resteraient bloquées sur l'ancien schéma indéfiniment. Une boutique isolée en échec (base
+// injoignable, etc.) ne doit jamais empêcher le démarrage de l'API pour toutes les autres.
+async function migrateExistingTenants() {
+  const { rows: boutiques } = await controlPlanePool.query(`select slug, db_name from boutiques where status='active'`);
+  for (const b of boutiques) {
+    try {
+      await applySchemaToTenant(getTenantPool(b.db_name));
+    } catch (err) {
+      console.error(`Échec de la migration du schéma pour la boutique "${b.slug}" :`, err);
+    }
+  }
+  console.log(`Schéma vérifié/mis à jour pour ${boutiques.length} boutique(s) active(s).`);
+}
+
 async function start() {
-  // Seule la base de contrôle est initialisée au démarrage — le schéma métier (schema.sql)
-  // n'est appliqué qu'aux bases boutiques, une par une, lors de leur provisioning (voir
-  // routes/boutiques.js) ou de la bascule initiale (voir server/deploy/README-wildcard-tls.md).
+  // Seule la base de contrôle a SON schéma appliqué directement ici — celui de chaque boutique
+  // est rejoué séparément par migrateExistingTenants() (nouvelles boutiques ET existantes).
   await applyControlPlaneSchema();
   // Vérifie que la connexion de maintenance (utilisée pour CREATE DATABASE) fonctionne dès
   // le démarrage plutôt que d'échouer silencieusement à la première création de boutique.
   await maintenancePool.query('select 1');
+  await migrateExistingTenants();
   app.listen(PORT, () => {
     console.log(`API iVente démarrée sur le port ${PORT}`);
   });

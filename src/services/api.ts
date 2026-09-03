@@ -102,3 +102,23 @@ export const apiGet = <T>(path: string) => apiRequest<T>('GET', path);
 export const apiPost = <T>(path: string, body?: unknown) => apiRequest<T>('POST', path, body);
 export const apiPut = <T>(path: string, body?: unknown) => apiRequest<T>('PUT', path, body);
 export const apiDelete = (path: string) => apiRequest<void>('DELETE', path);
+
+// GET authentifié dont la réponse n'est PAS du JSON (ex: un PDF généré côté serveur — voir
+// utils/pdfInvoice.ts) — même en-têtes que apiGet, mais renvoie le corps brut en Blob.
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const token = await getAccessToken();
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: { Authorization: `Bearer ${token}`, ...tenantHeaders() },
+    });
+  } catch {
+    throw new ApiError("Impossible de joindre le serveur. Vérifie ta connexion internet.");
+  }
+  if (!response.ok) {
+    // Le serveur répond en JSON pour ses erreurs même sur cette route — on réutilise
+    // handleResponse pour extraire le message plutôt que de le dupliquer ici.
+    await handleResponse(response);
+  }
+  return response.blob();
+}

@@ -266,31 +266,37 @@ export function generateInvoiceA4Pdf({
   return doc;
 }
 
-// Point d'entrée unique pour générer une facture/reçu de vente — bascule vers le moteur de
-// templates HTML (voir receiptTemplateEngine.ts, src/templates/receipts/) si la boutique a
-// choisi un modèle dans Réglages > Templates de reçus (settings.receipt_template_id), sinon
-// garde le design intégré ci-dessus tel quel. Async (le rendu HTML->PDF l'est intrinsèquement,
-// via jsPDF.html()) — remplace generateInvoiceA4Pdf dans tous les appels réels de l'app ;
-// generateInvoiceA4Pdf reste exporté et utilisable directement (ex: pour un aperçu forcé du
-// design "Classique" depuis la galerie de templates).
-export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Promise<jsPDF> {
+// Déclenche le téléchargement d'un Blob PDF — équivalent de jsPDF's doc.save(), pour le chemin
+// qui ne passe plus par jsPDF (le PDF vient déjà tout fait du serveur, voir plus bas).
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  // Laisse le navigateur démarrer le téléchargement avant de libérer l'URL.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Point d'entrée unique pour générer une facture/reçu de vente — si la boutique a choisi un
+// modèle dans Réglages > Templates de reçus (settings.receipt_template_id), le PDF est
+// généré CÔTÉ SERVEUR par Puppeteer/Chromium (voir server/src/routes/factures.js) : texte
+// vectoriel réel, pagination native, numérotation légale de facture — plus aucune limite propre
+// au rendu HTML dans le navigateur. Sans modèle choisi ("Classique"), reste le design jsPDF
+// vectoriel ci-dessus, généré ici même — sert aussi de secours si l'API est injoignable.
+export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Promise<jsPDF | void> {
   const templateId = params.settings?.receipt_template_id;
-  if (templateId) {
-    const { getReceiptTemplate } = await import('../templates/receipts');
-    const template = await getReceiptTemplate(templateId);
-    if (template) {
-      const { renderReceiptPdf } = await import('./receiptTemplateEngine');
-      return renderReceiptPdf(
-        template.html,
-        {
-          vente: params.vente,
-          lignes: params.lignes,
-          clientNom: params.clientNom,
-          clientTelephone: params.clientTelephone,
-          settings: params.settings,
-        },
-        params.autoDownload !== false
-      );
+  if (templateId && params.vente.id) {
+    try {
+      const { apiGetBlob } = await import('../services/api');
+      const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
+      const blob = await apiGetBlob(`/factures/${params.vente.id}.pdf${query}`);
+      if (params.autoDownload !== false) {
+        downloadBlob(blob, `Facture-${params.vente.id.substring(0, 8)}.pdf`);
+      }
+      return;
+    } catch (err) {
+      console.error('Échec de la génération PDF côté serveur, repli sur le design Classique :', err);
     }
   }
   return generateInvoiceA4Pdf(params);

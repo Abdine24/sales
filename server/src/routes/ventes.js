@@ -104,7 +104,31 @@ ventesRouter.post('/', async (req, res) => {
         }
       }
 
-      // 4. Dette client (relue avec verrou dans la transaction)
+      // 4. Numérotation légale de facture — allouée ICI, atomiquement, à la validation de la
+      // vente (jamais à l'ouverture du PDF : sinon un aperçu suivi d'une annulation
+      // consommerait un numéro pour rien). `update ... returning` sur une ligne par année
+      // sérialise les ventes concurrentes sur ce verrou de ligne — deux validations simultanées
+      // obtiennent forcément deux valeurs consécutives, jamais la même (voir schema.sql).
+      const annee = new Date(date).getFullYear();
+      await client.query(
+        `insert into facture_sequences (annee, dernier_sequence) values ($1, 0)
+         on conflict (annee) do nothing`,
+        [annee]
+      );
+      const { rows: seqRows } = await client.query(
+        `update facture_sequences set dernier_sequence = dernier_sequence + 1
+         where annee = $1
+         returning dernier_sequence`,
+        [annee]
+      );
+      const sequence = seqRows[0].dernier_sequence;
+      const numeroFacture = `FAC-${annee}-${String(sequence).padStart(4, '0')}`;
+      await client.query(
+        `insert into factures (vente_id, numero, annee, sequence) values ($1,$2,$3,$4)`,
+        [venteId, numeroFacture, annee, sequence]
+      );
+
+      // 5. Dette client (relue avec verrou dans la transaction)
       let updatedClientDebt = null;
       if (body.client_id && (body.reste_a_payer || 0) > 0) {
         const { rows } = await client.query('select total_dette from clients where id=$1 for update', [body.client_id]);
@@ -116,7 +140,7 @@ ventesRouter.post('/', async (req, res) => {
 
       const { rows: venteRows } = await client.query('select * from ventes where id=$1', [venteId]);
       const { rows: ligneRows } = await client.query('select * from lignes_vente where vente_id=$1', [venteId]);
-      return { vente: venteRows[0], lignes: ligneRows, client_total_dette: updatedClientDebt };
+      return { vente: venteRows[0], lignes: ligneRows, client_total_dette: updatedClientDebt, numero_facture: numeroFacture };
     });
     res.status(201).json(result);
   } catch (err) {

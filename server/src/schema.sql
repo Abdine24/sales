@@ -242,3 +242,28 @@ create table if not exists notifications (
 );
 create index if not exists idx_notifications_target_role on notifications(target_role, read);
 create index if not exists idx_notifications_target_personnel on notifications(target_personnel_id, read);
+
+-- Numérotation légale des factures — une ligne par année, verrouillée (UPDATE ... RETURNING)
+-- pour allouer le prochain numéro de façon atomique sous concurrence (voir routes/ventes.js).
+-- Un rollback de vente laisse un trou dans la séquence (comportement standard, identique à une
+-- séquence Postgres native) ; deux ventes ne peuvent en revanche jamais recevoir le même numéro.
+create table if not exists facture_sequences (
+  annee integer primary key,
+  dernier_sequence integer not null default 0
+);
+
+-- Une ligne par vente ayant reçu un numéro de facture — jamais modifiée ni supprimée après
+-- création (une correction se fait par avoir, pas en réécrivant une facture émise).
+-- nb_impressions permet d'afficher "DUPLICATA" à partir de la 2e génération du PDF (voir
+-- routes/factures.js) sans jamais stocker le PDF lui-même (régénéré à la demande).
+create table if not exists factures (
+  id bigserial primary key,
+  vente_id text not null unique references ventes(id) on delete cascade,
+  numero text not null unique,
+  annee integer not null,
+  sequence integer not null,
+  emise_le timestamptz not null default now(),
+  nb_impressions integer not null default 0,
+  unique (annee, sequence)
+);
+create index if not exists idx_factures_vente on factures(vente_id);

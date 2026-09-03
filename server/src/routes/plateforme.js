@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { controlPlanePool } from '../controlPlaneDb.js';
 import { getTenantPool } from '../tenantDb.js';
 import { simpleRateLimit } from '../rateLimit.js';
+import { RECEIPT_TEMPLATES } from '../templates/receipts/index.js';
 
 // Espace propriétaire de la plateforme — vue d'ensemble de toutes les boutiques, réglages
 // globaux (numéro WhatsApp, téléphone de contact) et diffusion de messages dans la cloche de
@@ -72,16 +73,17 @@ plateformeRouter.get('/config', async (_req, res) => {
   res.json(rows[0] || { whatsapp_number: null, contact_phone: null });
 });
 
-// Templates publics — lus par toutes les boutiques pour construire leur menu Paramètres.
-// Ne contient pas le html brut par défaut pour alléger la requête (sauf demande spécifique).
-plateformeRouter.get('/templates/public', async (req, res) => {
-  const { includeHtml } = req.query;
-  const { rows } = await controlPlanePool.query(
-    includeHtml === 'true'
-      ? `select id, nom, description, html from receipt_templates order by created_at desc`
-      : `select id, nom, description from receipt_templates order by created_at desc`
+// Templates publics — lus par toutes les boutiques pour construire la galerie de Réglages >
+// Templates de reçus. La génération du PDF (aperçu ou vraie facture) se fait entièrement côté
+// serveur (voir routes/factures.js) : le client n'a plus besoin du HTML brut, seulement de
+// quoi afficher la liste (id/nom/description) — d'où le "select" restreint ci-dessous, jamais
+// la colonne `html`, même pour les modèles dynamiques.
+plateformeRouter.get('/templates/public', async (_req, res) => {
+  const staticList = RECEIPT_TEMPLATES.map(({ id, nom, description }) => ({ id, nom, description }));
+  const { rows: dynamicList } = await controlPlanePool.query(
+    `select id, nom, description from receipt_templates order by created_at desc`
   );
-  res.json(rows);
+  res.json([...staticList, ...dynamicList]);
 });
 
 plateformeRouter.use(requireOwner);

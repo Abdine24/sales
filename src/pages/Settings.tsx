@@ -28,8 +28,17 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { LicenceSection } from '../components/LicenceSection';
 import { playScanBeep } from '../utils/barcode';
 import { generateInvoiceA4Pdf, type InvoiceItem } from '../utils/pdfInvoice';
-import { RECEIPT_TEMPLATES, getReceiptTemplate, type ReceiptTemplateMeta } from '../templates/receipts';
 import { apiGetPublic } from '../services/api';
+
+// Un modèle de reçu tel que renvoyé par GET /plateforme/templates/public — fusion des modèles
+// embarqués au serveur et de ceux ajoutés dynamiquement par le propriétaire (voir
+// server/src/routes/plateforme.js). Jamais le HTML lui-même ici : la génération PDF (aperçu ou
+// facture réelle) se fait entièrement côté serveur désormais (server/src/routes/factures.js).
+interface ReceiptTemplateMeta {
+  id: string;
+  nom: string;
+  description: string;
+}
 
 // Vente/lignes fictives — uniquement pour l'aperçu PDF d'un template depuis cette page, jamais
 // enregistrées ni envoyées nulle part.
@@ -199,19 +208,22 @@ export const Settings: React.FC = () => {
   };
 
   // Génère un vrai PDF avec des données d'exemple pour voir le rendu d'un modèle avant de le
-  // choisir — utilise directement les réglages actuels (nom, logo, IFU...) pour un aperçu fidèle.
+  // choisir. Pour un modèle HTML (id non nul), le rendu se fait entièrement côté serveur
+  // (Puppeteer — voir server/src/routes/factures.js, route /apercu.pdf) avec les VRAIS réglages
+  // de la boutique (nom, logo, IFU...) pour un aperçu fidèle. "Classique" (id null) reste généré
+  // ici même, comme avant.
   const previewReceiptTemplate = async (templateId: string | null) => {
     setPreviewingTemplateId(templateId);
     try {
       if (templateId) {
-        const template = await getReceiptTemplate(templateId);
-        if (!template) return;
-        const { renderReceiptPdf } = await import('../utils/receiptTemplateEngine');
-        await renderReceiptPdf(
-          template.html,
-          { vente: PREVIEW_VENTE, lignes: PREVIEW_LIGNES, clientNom: PREVIEW_VENTE.client_nom, clientTelephone: '22670000000', settings },
-          true
-        );
+        const { apiGetBlob } = await import('../services/api');
+        const blob = await apiGetBlob(`/factures/apercu.pdf?template_id=${encodeURIComponent(templateId)}`);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Apercu.pdf';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
         generateInvoiceA4Pdf({
           vente: PREVIEW_VENTE,
@@ -751,7 +763,7 @@ export const Settings: React.FC = () => {
 
           <div className="space-y-2.5 mt-4">
             {/* "Classique" = le design intégré historique, toujours disponible (id null) */}
-            {[{ id: null as string | null, nom: 'Classique', description: 'Le design par défaut d\'iVente Pro.' }, ...RECEIPT_TEMPLATES, ...customTemplates].map(
+            {[{ id: null as string | null, nom: 'Classique', description: 'Le design par défaut d\'iVente Pro.' }, ...customTemplates].map(
               (tpl) => {
                 const selected = receiptTemplateId === tpl.id;
                 const previewing = previewingTemplateId === tpl.id;

@@ -28,22 +28,21 @@
         }
 
         body {
-            background-color: #e5e5ea;
+            background-color: #ffffff;
             font-family: 'Inter', -apple-system, sans-serif;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
 
         .a4-page {
+            /* Ni min-height: 297mm ni flex sur cet élément : imposer la hauteur d'une page A4
+               forçait le pied de page à "déborder" sur une 2e page pour la moindre facture,
+               même de 2 articles à peine — un flex-container n'a de toute façon pas de notion
+               de saut de page. Ici, la page grandit avec son contenu ; c'est Puppeteer/Chromium
+               qui découpe en pages A4 réelles au moment de l'impression (voir pdfRenderer.js).
+               La largeur seule suffit à fixer la mise en page interne. */
             width: 210mm;
-            min-height: 297mm;
-            margin: 40px auto;
             background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
         }
 
         /* --- EN-TÊTE --- */
@@ -54,6 +53,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
+            break-inside: avoid;
         }
 
         .logo {
@@ -86,6 +86,18 @@
             text-align: right;
         }
 
+        .duplicata-badge {
+            display: inline-block;
+            background-color: #ff3b30;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
         .receipt-meta {
             font-size: 13px;
             color: #a1a1a6;
@@ -104,6 +116,7 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 40px;
+            break-inside: avoid;
         }
 
         .info-card {
@@ -131,47 +144,36 @@
         /* --- TABLEAU DES PRODUITS --- */
         table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 10px;
-            margin-bottom: 30px;
+            border-collapse: collapse;
+        }
+
+        thead {
+            display: table-header-group; /* répète l'en-tête du tableau sur chaque page imprimée */
+        }
+
+        tr {
+            break-inside: avoid; /* une ligne d'article ne se coupe jamais entre deux pages */
         }
 
         th {
             text-align: left;
-            padding: 0 15px 10px 15px;
+            padding: 8px 15px;
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
+            border-bottom: 2px solid var(--border-soft);
         }
 
         th.text-right { text-align: right; }
         th.text-center { text-align: center; }
 
-        tbody tr {
-            background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        }
-
         tbody td {
-            padding: 16px 15px;
+            padding: 14px 15px;
             font-size: 14px;
-            border-top: 1px solid var(--border-soft);
             border-bottom: 1px solid var(--border-soft);
             vertical-align: middle;
-        }
-
-        tbody td:first-child {
-            border-left: 1px solid var(--border-soft);
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
-        }
-
-        tbody td:last-child {
-            border-right: 1px solid var(--border-soft);
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
         }
 
         .index-number {
@@ -214,6 +216,7 @@
             display: flex;
             justify-content: flex-end;
             margin-top: 20px;
+            break-inside: avoid;
         }
 
         .totals-card {
@@ -248,6 +251,7 @@
             border-top: 1px solid var(--border-soft);
             padding: 30px 40px;
             text-align: center;
+            break-inside: avoid; /* jamais coupé entre deux pages */
         }
 
         .thank-you {
@@ -270,17 +274,6 @@
             content: "•";
             margin-left: 15px;
         }
-
-        @media print {
-            body { background: white; }
-            .a4-page {
-                margin: 0;
-                border-radius: 0;
-                box-shadow: none;
-                width: 100%;
-                height: 100%;
-            }
-        }
     </style>
 </head>
 <body>
@@ -295,6 +288,7 @@
             </div>
 
             <div>
+                <!--IF_DUPLICATA--><span class="duplicata-badge">{duplicata}</span><!--/IF_DUPLICATA-->
                 <h2 class="receipt-title">FACTURE</h2>
                 <div class="receipt-meta">
                     <p><strong>Réf:</strong> {ref}</p>
