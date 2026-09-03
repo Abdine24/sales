@@ -27,22 +27,22 @@ export interface WhatsAppReceiptParams {
 /**
  * Génère la chaîne formatée des produits et de leurs prix
  */
-export function formatProductsList(lignes: InvoiceItem[], remise?: number): string {
+export function formatProductsList(lignes: InvoiceItem[]): string {
   if (!lignes || lignes.length === 0) return 'Aucun article';
 
-  const itemsText = lignes
+  return lignes
     .map((l) => {
       const varSuffix = l.variante ? ` (${l.variante})` : '';
       const totalLigne = l.prix_unitaire * l.quantite;
-      return `▫️ *${l.quantite}x* ${l.nom}${varSuffix} : _${formatCfa(totalLigne)}_ (${formatCfa(l.prix_unitaire)}/u)`;
+      return `* ${l.quantite}x ${l.nom}${varSuffix} : ${formatCfa(totalLigne)} (${formatCfa(l.prix_unitaire)}/unité)`;
     })
     .join('\n');
+}
 
-  let text = itemsText;
-  if (remise && remise > 0) {
-    text += `\n🎁 *Remise commerciale accordée :* -${formatCfa(remise)}`;
-  }
-  return text;
+// Le message par défaut salue différemment selon l'heure de la vente — "Bonsoir" à partir de
+// 14h (convention voulue pour ce commerce), "Bonjour" avant.
+function greetingFor(date: string | Date): string {
+  return new Date(date).getHours() >= 14 ? 'Bonsoir' : 'Bonjour';
 }
 
 /**
@@ -66,7 +66,7 @@ export function generateWhatsAppReceiptText({
   });
 
   const ref = (vente.id || '').substring(0, 8).toUpperCase();
-  const formattedProducts = formatProductsList(lignes, vente.remise);
+  const formattedProducts = formatProductsList(lignes);
   const totalFormatted = formatCfa(vente.total);
   const payeFormatted = formatCfa(vente.montant_paye);
   const remiseFormatted = vente.remise ? formatCfa(vente.remise) : '0 F';
@@ -107,38 +107,36 @@ export function generateWhatsAppReceiptText({
     );
   }
 
-  // Template par défaut complet et ultra-pro
+  // Template par défaut — texte brut, sans emoji, salutation adaptée à l'heure de la vente.
   let totalsSection = `━━━━━━━━━━━━━━━━━━━━━\n`;
+  totalsSection += `TOTAL : ${totalFormatted}\n`;
   if (vente.remise && vente.remise > 0) {
-    const sousTotal = lignes.reduce((acc, l) => acc + l.prix_unitaire * l.quantite, 0);
-    totalsSection += `▫️ Sous-total : ${formatCfa(sousTotal)}\n`;
-    totalsSection += `▫️ Remise accordée : -${formatCfa(vente.remise)}\n`;
+    totalsSection += `Remise : ${remiseFormatted}\n`;
   }
-  totalsSection += `💰 *TOTAL : ${totalFormatted}*\n`;
-  totalsSection += `💵 Montant payé : ${payeFormatted}\n`;
+  totalsSection += `Montant payé : ${payeFormatted}\n`;
 
   if (vente.reste_a_payer && vente.reste_a_payer > 0) {
-    totalsSection += `⚠️ *Reste dû (Crédit) : ${resteFormatted}*\n`;
+    totalsSection += `Reste dû (Crédit) : ${resteFormatted}\n`;
   } else if (vente.montant_paye > vente.total) {
-    totalsSection += `🪙 Monnaie rendue : ${formatCfa(vente.montant_paye - vente.total)}\n`;
+    totalsSection += `Monnaie rendue : ${formatCfa(vente.montant_paye - vente.total)}\n`;
   }
 
-  let footerSection = `\n━━━━━━━━━━━━━━━━━━━━━\n`;
+  let footerSection = `━━━━━━━━━━━━━━━━━━━━━\n`;
   if (settings?.slogan) {
-    footerSection += `📍 _${settings.slogan}_\n`;
+    footerSection += `${settings.slogan}\n`;
   }
   if (settings?.telephone) {
-    footerSection += `📞 Contact : ${settings.telephone}\n`;
+    footerSection += `Contact : ${settings.telephone}\n`;
   }
-  footerSection += `\n📎 _Votre facture complète au format PDF A4 est en pièce jointe._\n`;
-  footerSection += `Merci pour votre fidélité et à très bientôt chez *${storeName}* ! 🤝`;
+  footerSection += `\nVotre facture complète au format PDF A4 est en pièce jointe.\n`;
+  footerSection += `Merci pour votre fidélité et à très bientôt chez ${storeName} !`;
 
   return (
-    `🧾 *REÇU D'ACHAT - ${storeName.toUpperCase()}*\n` +
-    `📅 Date : ${dateStr}\n` +
-    `🔖 Réf : #${ref}\n\n` +
-    `Bonjour *${clientNameDisplay}*, toute notre équipe vous remercie chaleureusement pour votre achat et votre confiance ! ✨\n\n` +
-    `📦 *DÉTAIL DES ARTICLES :*\n` +
+    `REÇU D'ACHAT - ${storeName.toUpperCase()}\n` +
+    `Date : ${dateStr}\n` +
+    `Réf : #${ref}\n\n` +
+    `${greetingFor(vente.date)} ${clientNameDisplay}, toute notre équipe vous remercie chaleureusement pour votre achat et votre confiance !\n\n` +
+    `Détails des articles\n\n` +
     `${formattedProducts}\n\n` +
     `${totalsSection}` +
     `${footerSection}`
