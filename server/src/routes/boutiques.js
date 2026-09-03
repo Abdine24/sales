@@ -4,13 +4,8 @@ import { controlPlanePool } from '../controlPlaneDb.js';
 import { applySchemaToTenant } from '../schemaApply.js';
 import { simpleRateLimit } from '../rateLimit.js';
 import { SLUG_RE, RESERVED_SLUGS } from '../tenantResolver.js';
-import { sendEmail } from '../mailer.js';
 
 export const boutiquesRouter = Router();
-
-// Notifié à chaque nouvelle boutique créée — l'exploitant de la plateforme, pas la boutique
-// elle-même. Optionnel (voir mailer.js) : rien ne se passe si non configuré.
-const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL;
 
 // Rare et volontairement strict — créer une boutique déclenche un vrai CREATE DATABASE, pas
 // une simple écriture. 10/heure/IP laisse largement de la place à un vrai essai/erreur de
@@ -65,21 +60,11 @@ boutiquesRouter.post('/', limiter, async (req, res) => {
       `update boutiques set status='active', provisioned_at=now() where id=$1`,
       [boutique.id]
     );
-
-    if (PLATFORM_ADMIN_EMAIL) {
-      // sendEmail() n'échoue jamais bruyamment (voir mailer.js) — une notification qui ne
-      // part pas ne doit jamais faire échouer une boutique déjà correctement provisionnée.
-      await sendEmail({
-        to: PLATFORM_ADMIN_EMAIL,
-        subject: `Nouvelle boutique créée : ${nom}`,
-        html: `<p>Une nouvelle boutique vient d'être créée sur iVente Pro.</p>
-               <ul>
-                 <li><strong>Nom :</strong> ${nom}</li>
-                 <li><strong>Adresse :</strong> ${slug}.azanga.tech</li>
-                 <li><strong>Créée le :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'UTC' })} UTC</li>
-               </ul>`,
-      });
-    }
+    // Pas de notification par email ici : à ce stade on n'a que le nom et l'adresse de la
+    // boutique, pas encore l'email de son admin (recueilli seulement à l'étape suivante,
+    // l'activation avec OTP) — voir routes/personnel.js, POST / (branche bootstrap), qui
+    // envoie les deux emails (utilisateur puis exploitant de la plateforme) une fois la
+    // boutique réellement activée.
   } catch (err) {
     await controlPlanePool.query(`update boutiques set status='failed' where id=$1`, [boutique.id]);
     await closePool(dbName).catch(() => {});

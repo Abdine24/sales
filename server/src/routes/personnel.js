@@ -2,8 +2,14 @@ import { Router } from 'express';
 import { requireAdmin } from '../auth.js';
 import { getSupabaseAdmin } from '../supabaseAdmin.js';
 import { recordUtilisateurBoutique } from '../personnelLookup.js';
+import { sendEmail } from '../mailer.js';
 
 export const personnelRouter = Router();
+
+// Notifié après CHAQUE activation réussie d'une nouvelle boutique (pas à la simple création —
+// voir POST / ci-dessous) — l'exploitant de la plateforme, pas la boutique elle-même.
+// Optionnel (voir mailer.js) : rien ne se passe si non configuré.
+const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL;
 
 const RANDOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O/1/I
 
@@ -132,6 +138,37 @@ personnelRouter.post('/', async (req, res) => {
     if (supabaseUserId) {
       await recordUtilisateurBoutique(supabaseUserId, req.boutique.id, rows[0].email);
     }
+
+    // Bootstrap réussi : la boutique est désormais réellement activée (compte admin créé et
+    // vérifié par OTP, voir AuthGate.tsx) — le bon moment pour prévenir, dans l'ordre demandé :
+    // d'abord l'utilisateur qui vient de créer son compte, puis l'exploitant de la plateforme.
+    // Ni l'un ni l'autre email ne doit faire échouer la requête s'il ne part pas (sendEmail()
+    // avale déjà ses propres erreurs, voir mailer.js).
+    if (isBootstrap && rows[0].email) {
+      const boutiqueUrl = `https://${req.boutique.slug}.azanga.tech/`;
+      await sendEmail({
+        to: rows[0].email,
+        subject: 'Ta boutique iVente est prête',
+        html: `<p>Bonjour ${rows[0].nom},</p>
+               <p>Ta boutique <strong>${req.boutique.nom}</strong> est activée et prête à l'emploi.</p>
+               <p>Adresse de connexion : <a href="${boutiqueUrl}">${boutiqueUrl}</a></p>
+               <p>Identifiant : <strong>${rows[0].username}</strong></p>`,
+      });
+      if (PLATFORM_ADMIN_EMAIL) {
+        await sendEmail({
+          to: PLATFORM_ADMIN_EMAIL,
+          subject: `Boutique activée : ${req.boutique.nom}`,
+          html: `<p>Une boutique vient d'être activée sur iVente Pro.</p>
+                 <ul>
+                   <li><strong>Nom :</strong> ${req.boutique.nom}</li>
+                   <li><strong>Adresse :</strong> ${boutiqueUrl}</li>
+                   <li><strong>Admin :</strong> ${rows[0].nom} (${rows[0].email})</li>
+                   <li><strong>Activée le :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'UTC' })} UTC</li>
+                 </ul>`,
+        });
+      }
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) {
     // Ne JAMAIS supprimer automatiquement le compte Supabase ici, même s'il vient d'être créé
