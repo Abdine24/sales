@@ -40,6 +40,23 @@ async function lookupBoutique(hostname) {
   return null;
 }
 
+// Fenêtre transitoire de bascule (voir plan multi-tenant §5, étape 3 et §7) : tant que le
+// site reste joignable sur une adresse qui n'est pas encore reconnue comme un sous-domaine de
+// boutique (ex: l'ancienne adresse GitHub Pages, avant que app.azanga.tech ne soit branché),
+// le frontend n'envoie AUCUN en-tête X-Tenant-Host (voir src/services/tenant.ts) plutôt qu'un
+// nom d'hôte trompeur. Une requête sans en-tête du tout est donc traitée comme visant la
+// boutique historique "principale" plutôt que rejetée — exactement le comportement d'avant le
+// passage au multi-tenant. Partagé par resolveTenant ET resolveTenantPublic : les deux
+// reçoivent ce genre de requête pendant la bascule (l'activation de licence et le mot de passe
+// oublié sont des routes publiques, tout autant concernées). À retirer une fois la bascule
+// confirmée partout (voir plan §7).
+async function resolveWithTransitionalFallback(hostname) {
+  const boutique = await lookupBoutique(hostname);
+  if (boutique || hostname) return boutique;
+  const { rows } = await controlPlanePool.query("select * from boutiques where slug='principale'");
+  return rows[0] || null;
+}
+
 // Attache la boutique résolue + son pool à la requête, pour que le handler de route (et tout
 // middleware suivant) n'ait plus à savoir comment le tenant a été déterminé.
 function attachTenant(req, boutique) {
@@ -52,7 +69,7 @@ function attachTenant(req, boutique) {
 // Résout uniquement depuis l'en-tête X-Tenant-Host envoyé par le frontend.
 export async function resolveTenantPublic(req, res, next) {
   try {
-    const boutique = await lookupBoutique(req.headers['x-tenant-host']);
+    const boutique = await resolveWithTransitionalFallback(req.headers['x-tenant-host']);
     if (!boutique) return res.status(404).json({ error: 'Boutique introuvable.' });
     if (boutique.status !== 'active') {
       return res.status(409).json({ error: "Cette boutique n'est pas (ou plus) disponible." });
@@ -70,19 +87,7 @@ export async function resolveTenantPublic(req, res, next) {
 // données d'une autre boutique.
 export async function resolveTenant(req, res, next) {
   try {
-    const hostname = req.headers['x-tenant-host'];
-    let boutique = await lookupBoutique(hostname);
-
-    // Fenêtre transitoire de bascule (voir plan multi-tenant §5, étape 3) : tant que le
-    // frontend n'envoie pas encore systématiquement l'en-tête (déploiement front/API jamais
-    // atomique), une requête sans en-tête est traitée comme visant la boutique historique
-    // "principale" plutôt que rejetée — évite une coupure des utilisateurs existants pendant
-    // la bascule progressive. À retirer une fois la bascule confirmée partout (voir plan §7).
-    if (!boutique && !hostname) {
-      const { rows } = await controlPlanePool.query("select * from boutiques where slug='principale'");
-      boutique = rows[0] || null;
-    }
-
+    const boutique = await resolveWithTransitionalFallback(req.headers['x-tenant-host']);
     if (!boutique) return res.status(404).json({ error: 'Boutique introuvable.' });
     if (boutique.status !== 'active') {
       return res.status(409).json({ error: "Cette boutique n'est pas (ou plus) disponible." });
