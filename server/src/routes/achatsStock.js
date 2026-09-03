@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { pool, withTransaction } from '../db.js';
+
 
 export const achatsStockRouter = Router();
 
-achatsStockRouter.get('/', async (_req, res) => {
-  const { rows } = await pool.query('select * from achats_stock order by date desc');
+achatsStockRouter.get('/', async (req, res) => {
+  const { rows } = await req.tenantPool.query('select * from achats_stock order by date desc');
   res.json(rows);
 });
 
@@ -17,7 +17,7 @@ achatsStockRouter.post('/', async (req, res) => {
   }
 
   try {
-    const result = await withTransaction(async (client) => {
+    const result = await req.withTenantTransaction(async (client) => {
       const { rows: produitRows } = await client.query('select * from produits where id=$1 for update', [body.produit_id]);
       if (produitRows.length === 0) throw Object.assign(new Error('Produit introuvable.'), { status: 404 });
       const produit = produitRows[0];

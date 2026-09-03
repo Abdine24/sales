@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
 
 export const produitsRouter = Router();
 
@@ -28,7 +27,7 @@ produitsRouter.get('/', async (req, res) => {
     params.push(zone_id);
     where = `where zone_id = $${params.length}`;
   }
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `select * from produits ${where} order by nom asc`,
     params
   );
@@ -41,7 +40,7 @@ produitsRouter.post('/', async (req, res) => {
   if (!row.nom || !row.nom.trim()) {
     return res.status(400).json({ error: 'Le nom du produit est requis.' });
   }
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `insert into produits
       (nom, prix, cout_achat_unitaire, stock, code_barres, categorie, min_stock, image_url,
        variantes, is_variable, attributs, variantes_detaillees, zone_id)
@@ -61,7 +60,7 @@ produitsRouter.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
   const row = toRow(req.body || {});
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `update produits set
        nom=$1, prix=$2, cout_achat_unitaire=$3, stock=$4, code_barres=$5, categorie=$6,
        min_stock=$7, image_url=$8, variantes=$9, is_variable=$10, attributs=$11,
@@ -82,7 +81,7 @@ produitsRouter.put('/:id', async (req, res) => {
 produitsRouter.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
-  const { rowCount } = await pool.query('delete from produits where id=$1', [id]);
+  const { rowCount } = await req.tenantPool.query('delete from produits where id=$1', [id]);
   if (rowCount === 0) return res.status(404).json({ error: 'Produit introuvable.' });
   res.status(204).send();
 });

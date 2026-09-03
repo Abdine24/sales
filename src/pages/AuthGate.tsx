@@ -15,16 +15,29 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
+  Store,
 } from 'lucide-react';
 import { authenticate, createPrincipal, completePasswordReset } from '../services/localAuth';
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
 import { apiPostPublic } from '../services/api';
+import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 
-type AuthMode = 'login' | 'activation' | 'forgot-password' | 'reset-password';
+type AuthMode = 'create-boutique' | 'login' | 'activation' | 'forgot-password' | 'reset-password';
+
+// Dérive une adresse de boutique valable (voir SLUG_RE côté serveur, tenantResolver.js)
+// depuis le nom saisi — l'utilisateur peut ensuite l'ajuster librement.
+const slugify = (nom: string) =>
+  nom
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // accents (é -> e, etc.)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 31);
 
 // Champ mot de passe avec bouton afficher/masquer — évite les erreurs de saisie silencieuses
 // (fautes de frappe, mauvaise touche, clavier différent) qui ont causé plusieurs blocages de
@@ -73,8 +86,22 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     typeof window !== 'undefined' &&
     (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'));
 
-  const [mode, setMode] = useState<AuthMode>(() => (isPasswordRecoveryLink() ? 'reset-password' : 'login'));
+  const [mode, setMode] = useState<AuthMode>(() => {
+    if (isPasswordRecoveryLink()) return 'reset-password';
+    // Uniquement sur le domaine vitrine de la plateforme (azanga.tech / app.azanga.tech) :
+    // c'est le tout premier écran, pas le portail de connexion d'une boutique précise (voir
+    // services/tenant.ts). Tout autre hôte non reconnu — y compris l'ancienne adresse GitHub
+    // Pages pendant la bascule — affiche la connexion normale, sans perturber les
+    // utilisateurs déjà habitués à cette adresse.
+    if (isPlatformLandingHost()) return 'create-boutique';
+    return 'login';
+  });
   const [activationStep, setActivationStep] = useState<'form' | 'otp'>('form');
+
+  // Création de boutique (self-service, avant même qu'une boutique n'existe)
+  const [boutiqueNom, setBoutiqueNom] = useState('');
+  const [boutiqueSlug, setBoutiqueSlug] = useState('');
+  const [slugEditedManually, setSlugEditedManually] = useState(false);
 
   // Form Fields
   const [nom, setNom] = useState('');
@@ -138,6 +165,25 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   if (personnel) {
     return <>{children}</>;
   }
+
+  // 0. Création d'une nouvelle boutique (self-service) — provisionne une base dédiée côté
+  // serveur puis redirige vers le sous-domaine fraîchement créé, où l'écran d'activation
+  // habituel (licence + OTP + bootstrap admin) prend le relais sans aucune adaptation.
+  const handleCreateBoutique = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const result = await apiPostPublic<{ slug: string; nom: string }>('/boutiques', {
+        nom: boutiqueNom.trim(),
+        slug: boutiqueSlug.trim().toLowerCase(),
+      });
+      window.location.href = buildBoutiqueUrl(result.slug);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de créer la boutique pour le moment.');
+      setLoading(false);
+    }
+  };
 
   // Envoi de l'email de réinitialisation de mot de passe
   const handleSendResetEmail = async (event: React.FormEvent) => {
@@ -325,7 +371,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {/* Header */}
         <div className="flex items-center gap-3.5 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 shrink-0">
-            {mode === 'forgot-password' || mode === 'reset-password' ? (
+            {mode === 'create-boutique' ? (
+              <Store className="w-6 h-6" />
+            ) : mode === 'forgot-password' || mode === 'reset-password' ? (
               <ShieldAlert className="w-6 h-6" />
             ) : mode === 'activation' && activationStep === 'otp' ? (
               <ShieldCheck className="w-6 h-6" />
@@ -336,7 +384,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">iVente</h1>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-              {mode === 'login'
+              {mode === 'create-boutique'
+                ? 'Créer ma boutique'
+                : mode === 'login'
                 ? 'Connexion sécurisée'
                 : mode === 'forgot-password'
                 ? 'Mot de passe oublié'
@@ -348,6 +398,74 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </p>
           </div>
         </div>
+
+        {/* STEP 0 : CRÉATION DE BOUTIQUE (self-service, avant que quoi que ce soit n'existe) */}
+        {mode === 'create-boutique' && (
+          <form onSubmit={handleCreateBoutique} className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Donne un nom à ta boutique — ça devient aussi l'adresse à laquelle ton équipe s'y connectera.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Nom de la boutique
+              </label>
+              <div className="relative">
+                <Store className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <input
+                  required
+                  autoFocus
+                  value={boutiqueNom}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setBoutiqueNom(value);
+                    if (!slugEditedManually) setBoutiqueSlug(slugify(value));
+                  }}
+                  placeholder="ex: Boutique Fatou"
+                  className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Adresse de la boutique
+              </label>
+              <div className="relative">
+                <input
+                  required
+                  pattern="[a-z][a-z0-9-]{2,30}"
+                  title="Lettres minuscules, chiffres et tirets uniquement, doit commencer par une lettre."
+                  value={boutiqueSlug}
+                  onChange={(e) => {
+                    setSlugEditedManually(true);
+                    setBoutiqueSlug(e.target.value.toLowerCase());
+                  }}
+                  placeholder="boutique-fatou"
+                  className="w-full glass-input pl-4 pr-36 py-3 rounded-xl text-sm text-slate-900 dark:text-white font-mono"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
+                  .azanga.tech
+                </span>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full mt-2"
+              disabled={loading}
+              icon={<Store className="w-4 h-4" />}
+            >
+              {loading ? 'Création en cours...' : 'Créer ma boutique'}
+            </Button>
+          </form>
+        )}
 
         {/* STEP 1: LOGIN */}
         {mode === 'login' && (
@@ -757,7 +875,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </form>
         )}
 
-        {/* Footer Navigation */}
+        {/* Footer Navigation — rien à proposer ici sur l'écran de création de boutique : il
+            n'y a encore ni licence à activer ni compte auquel se connecter. */}
+        {mode !== 'create-boutique' && (
         <div className="mt-6 text-center border-t border-slate-200/50 dark:border-white/5 pt-4">
           {mode === 'login' ? (
             <button
@@ -787,6 +907,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </button>
           )}
         </div>
+        )}
       </div>
     </div>
   );

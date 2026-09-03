@@ -1,8 +1,19 @@
 // Client minimal pour l'API métier hébergée sur le VPS. Point d'entrée unique qui sera
 // réutilisé au fur et à mesure de la migration des pages hors de Dexie.
 import { getSupabase } from './supabase';
+import { getTenantHost } from './tenant';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'https://api.azanga.tech';
+
+// Toutes les boutiques partagent la même API (api.azanga.tech) — c'est cet en-tête qui
+// indique au serveur quelle boutique est concernée (voir server/src/tenantResolver.js), en
+// transmettant le nom d'hôte complet vu par le navigateur plutôt qu'un identifiant pré-découpé
+// côté client : le serveur fait toute la résolution (sous-domaine aujourd'hui, domaine
+// personnalisé plus tard), sans qu'aucun changement ne soit nécessaire ici à ce moment-là.
+function tenantHeaders(): Record<string, string> {
+  const host = getTenantHost();
+  return host ? { 'X-Tenant-Host': host } : {};
+}
 
 export class ApiError extends Error {
   constructor(message: string, public status?: number) {
@@ -37,7 +48,7 @@ export async function apiPostPublic<T>(path: string, body: unknown): Promise<T> 
   try {
     response = await fetch(`${API_URL}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...tenantHeaders() },
       body: JSON.stringify(body),
     });
   } catch {
@@ -65,6 +76,7 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...tenantHeaders(),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

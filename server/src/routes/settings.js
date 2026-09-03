@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pool } from '../db.js';
+
 
 export const settingsRouter = Router();
 
@@ -10,8 +10,8 @@ const COLUMNS = [
   'whatsapp_enabled', 'whatsapp_custom_message', 'whatsapp_auto_open',
 ];
 
-settingsRouter.get('/', async (_req, res) => {
-  const { rows } = await pool.query("select * from settings where id='principale'");
+settingsRouter.get('/', async (req, res) => {
+  const { rows } = await req.tenantPool.query("select * from settings where id='principale'");
   res.json(rows[0] || { id: 'principale', nom_site: 'iVente Pro' });
 });
 
@@ -22,7 +22,7 @@ settingsRouter.put('/', async (req, res) => {
   const insertCols = ['id', ...COLUMNS];
   const insertPlaceholders = insertCols.map((_, i) => `$${i + 1}`);
   const updateClause = COLUMNS.map((c) => `${c}=excluded.${c}`).join(',');
-  const { rows } = await pool.query(
+  const { rows } = await req.tenantPool.query(
     `insert into settings (${insertCols.join(',')}) values (${insertPlaceholders.join(',')})
      on conflict (id) do update set ${updateClause}
      returning *`,

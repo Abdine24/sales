@@ -36,6 +36,10 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       PORT: 3000
+      # Multi-tenant (voir server/src/db.js) : DATABASE_URL sert de gabarit pour TOUTES les
+      # connexions Postgres de l'API (base de contrôle, chaque base boutique, connexion de
+      # maintenance) — seul le nom de base change à chaque fois. Pas de variable séparée par
+      # usage : un déploiement d'une nouvelle boutique n'ajoute jamais de config ici.
       DATABASE_URL: postgres://vente:${POSTGRES_PASSWORD}@postgres:5432/vente
       SUPABASE_URL: ${SUPABASE_URL}
       LICENSE_SECRET: ${LICENSE_SECRET}
