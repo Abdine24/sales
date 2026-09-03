@@ -87,12 +87,62 @@ plateformeRouter.put('/config', async (req, res) => {
 });
 
 // Vue d'ensemble de toutes les boutiques — pour surveiller l'activité de la plateforme.
+// Enrichit chaque ligne avec deux informations qui vivent dans la base DE LA boutique
+// (téléphone de contact, nombre de zones activées) — control_plane ne les connaît pas, il
+// faut donc interroger le pool tenant de chacune. Volontairement tolérant : une boutique dont
+// la base n'est pas (ou plus) accessible (encore 'provisioning', ou 'failed') ne doit pas faire
+// échouer tout l'écran — elle apparaît juste avec ces deux champs à null/0.
 plateformeRouter.get('/boutiques', async (_req, res) => {
-  const { rows } = await controlPlanePool.query(
-    `select id, slug, nom, status, created_at, provisioned_at
+  const { rows: boutiques } = await controlPlanePool.query(
+    `select id, slug, nom, db_name, status, created_at, provisioned_at
      from boutiques order by created_at desc`
   );
-  res.json(rows);
+
+  const enriched = await Promise.all(
+    boutiques.map(async (b) => {
+      const { db_name, ...rest } = b;
+      try {
+        const pool = getTenantPool(db_name);
+        const [settingsResult, zonesResult] = await Promise.all([
+          pool.query(`select telephone from settings where id='principale'`),
+          pool.query(`select count(*)::int as n from zones where actif=true`),
+        ]);
+        return {
+          ...rest,
+          telephone: settingsResult.rows[0]?.telephone || null,
+          zones_actives: zonesResult.rows[0]?.n ?? 0,
+        };
+      } catch {
+        return { ...rest, telephone: null, zones_actives: null };
+      }
+    })
+  );
+
+  res.json(enriched);
+});
+
+// Active ou suspend une boutique — une boutique 'suspended' est immédiatement bloquée pour
+// TOUS ses utilisateurs (voir tenantResolver.js : resolveTenant/resolveTenantPublic renvoient
+// déjà 409 dès que status !== 'active', aucun autre changement nécessaire pour que ça prenne
+// effet). Volontairement limité aux boutiques déjà 'active' ou 'suspended' — une boutique
+// encore 'provisioning' ou tombée en 'failed' n'a pas forcément de base exploitable, ce n'est
+// pas à ce bouton de forcer un état incohérent.
+plateformeRouter.put('/boutiques/:id/statut', async (req, res) => {
+  const { id } = req.params;
+  const status = req.body && req.body.status;
+  if (status !== 'active' && status !== 'suspended') {
+    return res.status(400).json({ error: "Statut invalide — 'active' ou 'suspended' uniquement." });
+  }
+  const { rows } = await controlPlanePool.query(
+    `update boutiques set status=$1
+     where id=$2 and status in ('active','suspended')
+     returning id, slug, nom, status`,
+    [status, id]
+  );
+  if (rows.length === 0) {
+    return res.status(404).json({ error: 'Boutique introuvable ou dans un état non modifiable.' });
+  }
+  res.json(rows[0]);
 });
 
 // Diffuse un message dans la cloche de notifications des admins d'une boutique (ou de toutes).

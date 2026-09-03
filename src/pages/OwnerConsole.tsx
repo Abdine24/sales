@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck } from 'lucide-react';
+import { LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin, Power } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -14,6 +14,8 @@ interface Boutique {
   status: 'provisioning' | 'active' | 'suspended' | 'failed';
   created_at: string;
   provisioned_at: string | null;
+  telephone: string | null;
+  zones_actives: number | null;
 }
 
 interface PlatformConfigForm {
@@ -33,7 +35,7 @@ const statusBadge: Record<Boutique['status'], { variant: 'green' | 'amber' | 're
 // notifications des admins. Accessible via /proprietaire (voir App.tsx), authentification par
 // mot de passe dédié totalement séparée de Supabase (voir server/src/routes/plateforme.js).
 export const OwnerConsole: React.FC = () => {
-  const { toast, alert } = useDialog();
+  const { toast, alert, confirm } = useDialog();
   const [authed, setAuthed] = useState(() => !!getOwnerToken());
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -43,6 +45,31 @@ export const OwnerConsole: React.FC = () => {
   const [boutiques, setBoutiques] = useState<Boutique[]>([]);
   const [config, setConfig] = useState<PlatformConfigForm>({ whatsapp_number: '', contact_phone: '' });
   const [savingConfig, setSavingConfig] = useState(false);
+
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const toggleStatus = async (b: Boutique) => {
+    const nextStatus = b.status === 'active' ? 'suspended' : 'active';
+    if (nextStatus === 'suspended') {
+      const ok = await confirm({
+        title: `Désactiver "${b.nom}" ?`,
+        message: "Tous ses utilisateurs (y compris l'admin) perdront immédiatement l'accès — connexion et API bloquées jusqu'à réactivation.",
+        confirmLabel: 'Désactiver',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    setTogglingId(b.id);
+    try {
+      await ownerPut(`/plateforme/boutiques/${b.id}/statut`, { status: nextStatus });
+      setBoutiques((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: nextStatus } : x)));
+      toast(nextStatus === 'active' ? `"${b.nom}" réactivée.` : `"${b.nom}" désactivée.`);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec du changement de statut.');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const [annonceTarget, setAnnonceTarget] = useState<string>('all');
   const [annonceMessage, setAnnonceMessage] = useState('');
@@ -183,8 +210,11 @@ export const OwnerConsole: React.FC = () => {
               <tr className="text-left text-slate-400 border-b border-slate-200/60 dark:border-white/10">
                 <th className="py-2 pr-4 font-semibold">Boutique</th>
                 <th className="py-2 pr-4 font-semibold">Adresse</th>
+                <th className="py-2 pr-4 font-semibold">Téléphone</th>
+                <th className="py-2 pr-4 font-semibold">Zones actives</th>
                 <th className="py-2 pr-4 font-semibold">Statut</th>
                 <th className="py-2 pr-4 font-semibold">Créée le</th>
+                <th className="py-2 pr-4 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -192,6 +222,20 @@ export const OwnerConsole: React.FC = () => {
                 <tr key={b.id} className="border-b border-slate-200/40 dark:border-white/5">
                   <td className="py-2 pr-4 font-semibold text-slate-800 dark:text-slate-100">{b.nom}</td>
                   <td className="py-2 pr-4 font-mono text-slate-500">{b.slug}.azanga.tech</td>
+                  <td className="py-2 pr-4 text-slate-500">
+                    {b.telephone ? (
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {b.telephone}</span>
+                    ) : (
+                      <span className="text-slate-300 dark:text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4 text-slate-500">
+                    {b.zones_actives === null ? (
+                      <span className="text-slate-300 dark:text-slate-600">—</span>
+                    ) : (
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {b.zones_actives}</span>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">
                     <Badge variant={statusBadge[b.status].variant} size="sm">
                       {statusBadge[b.status].label}
@@ -200,11 +244,28 @@ export const OwnerConsole: React.FC = () => {
                   <td className="py-2 pr-4 text-slate-400">
                     {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </td>
+                  <td className="py-2 pr-4">
+                    {(b.status === 'active' || b.status === 'suspended') && (
+                      <button
+                        type="button"
+                        onClick={() => toggleStatus(b)}
+                        disabled={togglingId === b.id}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
+                          b.status === 'active'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        <Power className="w-3 h-3" />
+                        {togglingId === b.id ? '...' : b.status === 'active' ? 'Désactiver' : 'Réactiver'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {boutiques.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-slate-400">
+                  <td colSpan={7} className="py-6 text-center text-slate-400">
                     Aucune boutique.
                   </td>
                 </tr>
