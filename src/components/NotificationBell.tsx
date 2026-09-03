@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, KeyRound, Check } from 'lucide-react';
 import { apiGet, apiPut } from '../services/api';
 
@@ -20,6 +21,19 @@ const iconFor = (type: string) => {
 export const NotificationBell: React.FC = () => {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  // La cloche vit dans une barre d'outils avec overflow-x-auto (pour qu'elle scrolle sur
+  // petit écran) — un menu positionné en absolute serait donc rogné par ce conteneur. On le
+  // téléporte via un portail dans <body>, positionné en fixed selon la position du bouton.
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const toggleOpen = () => {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
+    setOpen((prev) => !prev);
+  };
 
   const reload = useCallback(async () => {
     try {
@@ -58,8 +72,9 @@ export const NotificationBell: React.FC = () => {
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={toggleOpen}
         className="relative p-2 rounded-xl glass-card text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors"
         title="Notifications"
       >
@@ -71,11 +86,14 @@ export const NotificationBell: React.FC = () => {
         )}
       </button>
 
-      {open && (
+      {open && menuPos && createPortal(
         <>
           {/* Zone invisible pour fermer le menu au clic extérieur */}
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto glass-panel rounded-2xl border border-slate-200/60 dark:border-white/10 shadow-xl z-40">
+          <div
+            className="fixed w-80 max-h-96 overflow-y-auto glass-panel rounded-2xl border border-slate-200/60 dark:border-white/10 shadow-xl z-40"
+            style={{ top: menuPos.top, right: menuPos.right }}
+          >
             <div className="p-3 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Notifications</span>
               {unreadCount > 0 && (
@@ -122,7 +140,8 @@ export const NotificationBell: React.FC = () => {
               </div>
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
