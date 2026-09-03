@@ -3,23 +3,27 @@ import { getTenantPool, withTenantTransaction } from './tenantDb.js';
 
 // Étiquettes de sous-domaine jamais attribuables à une boutique (déjà utilisées par la
 // plateforme elle-même, ou réservées pour éviter toute confusion).
-const RESERVED_SLUGS = new Set([
+export const RESERVED_SLUGS = new Set([
   'api', 'app', 'www', 'admin', 'mail', 'ftp', 'static', 'assets', 'support', 'help',
   'test', 'staging', 'ns1', 'ns2',
 ]);
 
+// Même domaine racine que VITE_ROOT_DOMAIN côté client (src/services/tenant.ts).
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'azanga.tech';
+
 export const SLUG_RE = /^[a-z][a-z0-9-]{2,30}$/;
 
-// Extrait l'étiquette de boutique d'un nom d'hôte du type "<slug>.azanga.tech". Exige au
-// moins 3 segments (slug + domaine + tld) pour ne jamais confondre "azanga.tech" lui-même
-// (ou "app.azanga.tech") avec une boutique.
+// Extrait l'étiquette de boutique d'un nom d'hôte du type "<slug>.azanga.tech" — exige que
+// l'hôte se termine bien par le domaine racine (pas juste "3 segments séparés par des
+// points" : "abdine24.github.io" en a 3 aussi, et ne doit JAMAIS être pris pour le slug
+// "abdine24" — d'où l'importance de cette vérification exacte, pas une heuristique).
 function extractSlug(hostname) {
   if (!hostname) return null;
   const host = String(hostname).split(':')[0].trim().toLowerCase();
-  const parts = host.split('.');
-  if (parts.length < 3) return null;
-  const slug = parts[0];
-  if (RESERVED_SLUGS.has(slug) || !SLUG_RE.test(slug)) return null;
+  const suffix = `.${ROOT_DOMAIN}`;
+  if (!host.endsWith(suffix)) return null;
+  const slug = host.slice(0, -suffix.length);
+  if (!slug || slug.includes('.') || RESERVED_SLUGS.has(slug) || !SLUG_RE.test(slug)) return null;
   return slug;
 }
 

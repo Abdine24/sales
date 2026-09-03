@@ -3,7 +3,7 @@ import { poolFor, closePool, maintenancePool } from '../db.js';
 import { controlPlanePool } from '../controlPlaneDb.js';
 import { applySchemaToTenant } from '../schemaApply.js';
 import { simpleRateLimit } from '../rateLimit.js';
-import { SLUG_RE } from '../tenantResolver.js';
+import { SLUG_RE, RESERVED_SLUGS } from '../tenantResolver.js';
 
 export const boutiquesRouter = Router();
 
@@ -11,11 +11,6 @@ export const boutiquesRouter = Router();
 // une simple écriture. 10/heure/IP laisse largement de la place à un vrai essai/erreur de
 // slug (nom déjà pris) sans permettre un bombardement de bases vides.
 const limiter = simpleRateLimit({ windowMs: 60 * 60_000, max: 10 });
-
-const RESERVED_SLUGS = new Set([
-  'api', 'app', 'www', 'admin', 'mail', 'ftp', 'static', 'assets', 'support', 'help',
-  'test', 'staging', 'ns1', 'ns2',
-]);
 
 // Crée une nouvelle boutique en libre-service : réserve son slug (sous-domaine), provisionne
 // une base Postgres dédiée avec le schéma métier complet. Ne nécessite aucun tenant résolu —

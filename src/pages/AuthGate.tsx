@@ -22,7 +22,7 @@ import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
 import { apiPostPublic } from '../services/api';
-import { hasResolvableTenant, buildBoutiqueUrl } from '../services/tenant';
+import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 
@@ -88,10 +88,12 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   const [mode, setMode] = useState<AuthMode>(() => {
     if (isPasswordRecoveryLink()) return 'reset-password';
-    // Aucune boutique déterminable depuis l'URL (domaine racine / app.azanga.tech) : on est
-    // dans le tout premier écran de la plateforme, pas sur le portail de connexion d'une
-    // boutique précise (voir services/tenant.ts).
-    if (!hasResolvableTenant()) return 'create-boutique';
+    // Uniquement sur le domaine vitrine de la plateforme (azanga.tech / app.azanga.tech) :
+    // c'est le tout premier écran, pas le portail de connexion d'une boutique précise (voir
+    // services/tenant.ts). Tout autre hôte non reconnu — y compris l'ancienne adresse GitHub
+    // Pages pendant la bascule — affiche la connexion normale, sans perturber les
+    // utilisateurs déjà habitués à cette adresse.
+    if (isPlatformLandingHost()) return 'create-boutique';
     return 'login';
   });
   const [activationStep, setActivationStep] = useState<'form' | 'otp'>('form');
