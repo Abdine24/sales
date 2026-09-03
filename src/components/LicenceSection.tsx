@@ -10,7 +10,7 @@ import { Badge } from './ui/Badge';
 import { useDialog } from './ui/DialogProvider';
 
 export const LicenceSection: React.FC = () => {
-  const { alert } = useDialog();
+  const { toast } = useDialog();
   const [licence, setLicence] = useState<Licence | null>(null);
   const [cle, setCle] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,10 +38,7 @@ export const LicenceSection: React.FC = () => {
       await renewLicence(cle);
       setCle('');
       await reloadLicence();
-      await alert({
-        title: 'Licence Activée avec Succès',
-        message: 'Votre nouvel abonnement a été validé et enregistré.',
-      });
+      toast('Licence activée avec succès — votre nouvel abonnement a été validé et enregistré.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Clé de licence invalide.');
     } finally {

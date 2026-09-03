@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { AlertTriangle, Info } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 
@@ -17,9 +18,15 @@ interface AlertOptions {
   confirmLabel?: string;
 }
 
+type ToastType = 'success' | 'error' | 'info';
+
 interface DialogApi {
   confirm: (options: ConfirmOptions | string) => Promise<boolean>;
   alert: (options: AlertOptions | string) => Promise<void>;
+  // Confirmation passagère, non bloquante — pour les succès fréquents (enregistrement, mise à
+  // jour...) où demander de cliquer "OK" à chaque fois serait plus gênant qu'utile. Réservez
+  // `alert()` aux cas qui ont vraiment besoin d'un accusé de réception (erreurs, avertissements).
+  toast: (message: React.ReactNode, type?: ToastType) => void;
 }
 
 const DialogContext = createContext<DialogApi | null>(null);
@@ -28,10 +35,40 @@ type DialogState =
   | { mode: 'confirm'; options: ConfirmOptions }
   | { mode: 'alert'; options: AlertOptions };
 
+interface ToastItem {
+  id: number;
+  message: React.ReactNode;
+  type: ToastType;
+}
+
+const TOAST_ICON: Record<ToastType, React.ElementType> = {
+  success: CheckCircle2,
+  error: XCircle,
+  info: Info,
+};
+
+const TOAST_STYLE: Record<ToastType, string> = {
+  success: 'bg-emerald-600 border-emerald-400/40',
+  error: 'bg-rose-600 border-rose-400/40',
+  info: 'bg-blue-600 border-blue-400/40',
+};
+
 export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<DialogState | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastIdRef = useRef(0);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const toast = useCallback<DialogApi['toast']>((message, type = 'success') => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    window.setTimeout(() => dismissToast(id), 4000);
+  }, [dismissToast]);
 
   const settle = useCallback((result: boolean) => {
     resolverRef.current?.(result);
@@ -62,8 +99,33 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const defaultTitle = isConfirm ? 'Confirmation' : 'Information';
 
   return (
-    <DialogContext.Provider value={{ confirm, alert }}>
+    <DialogContext.Provider value={{ confirm, alert, toast }}>
       {children}
+      {createPortal(
+        <div className="fixed top-4 right-4 z-[100] flex flex-col items-end gap-2 w-full max-w-sm pointer-events-none">
+          {toasts.map((item) => {
+            const Icon = TOAST_ICON[item.type];
+            return (
+              <div
+                key={item.id}
+                className={`animate-toast-in pointer-events-auto w-full flex items-start gap-2.5 p-3.5 rounded-2xl shadow-xl border text-white text-sm font-semibold ${TOAST_STYLE[item.type]}`}
+              >
+                <Icon className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">{item.message}</div>
+                <button
+                  type="button"
+                  onClick={() => dismissToast(item.id)}
+                  className="text-white/80 hover:text-white shrink-0"
+                  title="Fermer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>,
+        document.body
+      )}
       <Modal
         isOpen={isOpen && state !== null}
         onClose={() => settle(false)}

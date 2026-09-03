@@ -41,7 +41,7 @@ const MOTIF_LABELS: Record<MotifRetour, string> = {
 };
 
 export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
-  const { alert } = useDialog();
+  const { alert, toast } = useDialog();
   const [ventes, setVentes] = useState<Vente[]>([]);
   const [lignesVente, setLignesVente] = useState<LigneVente[]>([]);
   const [retours, setRetours] = useState<Retour[]>([]);
@@ -442,7 +442,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           onSuccess={async () => {
             setRetourVente(null);
             await reload();
-            await alert('Retour enregistré : le stock a été remis à jour.');
+            toast('Retour enregistré : le stock a été remis à jour.');
           }}
         />
       )}
