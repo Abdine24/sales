@@ -5,17 +5,64 @@
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('node:path');
 
+// Schéma d'URL personnalisé pour ramener l'utilisateur dans CETTE fenêtre installée après un
+// clic sur le lien de réinitialisation de mot de passe reçu par email, au lieu d'ouvrir un
+// onglet de navigateur externe qui ne revient jamais vers l'app (voir
+// src/services/supabaseAuth.ts, getRedirectUrl : en Electron, le lien envoyé à Supabase pointe
+// vers "ivente://reset-password" plutôt qu'une URL https — à ajouter aux "Redirect URLs"
+// autorisées dans le Dashboard Supabase pour que Supabase accepte d'y rediriger).
+const PROTOCOL = 'ivente';
+
+if (process.defaultApp) {
+  // Lancé via `electron .` (dev) plutôt qu'en tant qu'exécutable installé : Windows a besoin
+  // du chemin complet vers le script pour ré-invoquer correctement l'app au clic sur le lien.
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+// Trouve le premier argument de ligne de commande qui est un lien ivente:// — sur
+// Windows/Linux, cliquer sur un tel lien relance l'app avec ce lien en argument (capté soit au
+// tout premier lancement via process.argv, soit via l'évènement "second-instance" si l'app
+// tournait déjà).
+const extractDeepLink = (argv) => argv.find((arg) => arg.startsWith(`${PROTOCOL}://`)) || null;
+
 // Une seule instance de l'app à la fois — évite deux caisses ouvertes sur la même base locale.
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
   let mainWindow = null;
+  // Lien reçu avant que la fenêtre n'existe encore (premier lancement déclenché par le lien).
+  let pendingDeepLink = extractDeepLink(process.argv);
 
-  app.on('second-instance', () => {
+  const sendDeepLink = (url) => {
+    if (!url || !mainWindow) return;
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', () => mainWindow.webContents.send('deep-link', url));
+    } else {
+      mainWindow.webContents.send('deep-link', url);
+    }
+  };
+
+  app.on('second-instance', (_event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
+    }
+    const url = extractDeepLink(commandLine);
+    if (url) sendDeepLink(url);
+  });
+
+  // macOS reçoit le lien via cet évènement dédié plutôt que dans les arguments de commande.
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (mainWindow) {
+      sendDeepLink(url);
+    } else {
+      pendingDeepLink = url;
     }
   });
 
@@ -48,6 +95,11 @@ if (!gotLock) {
       mainWindow.webContents.openDevTools({ mode: 'detach' });
     } else {
       mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    }
+
+    if (pendingDeepLink) {
+      sendDeepLink(pendingDeepLink);
+      pendingDeepLink = null;
     }
   };
 

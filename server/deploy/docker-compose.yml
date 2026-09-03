@@ -47,6 +47,12 @@ services:
       # employé avec mot de passe, changer le mot de passe de quelqu'un d'autre). Uniquement
       # ici, jamais dans le bundle front. Voir server/src/supabaseAdmin.js.
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      # Notification par email à chaque nouvelle boutique créée (voir server/src/mailer.js,
+      # routes/boutiques.js) — optionnelles : sans elles, la création de boutique fonctionne
+      # normalement, juste sans notification.
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      MAIL_FROM: ${MAIL_FROM}
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL}
 
 volumes:
   pg_data:

@@ -22,9 +22,20 @@ export interface SupabaseAuthResult {
 const errorMessage = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
-// URL de redirection pour les emails de réinitialisation — ramène l'utilisateur sur
-// l'app avec un jeton de récupération dans l'URL (voir onAuthRecoveryEvent ci-dessous).
-const getRedirectUrl = () => `${window.location.origin}${window.location.pathname}`;
+// URL de redirection pour les emails de réinitialisation — ramène l'utilisateur sur l'app avec
+// un jeton de récupération dans l'URL (voir onAuthRecoveryEvent ci-dessous). Dans l'app
+// desktop installée (Electron), window.location.origin vaut "file://..." — inutilisable pour
+// un lien cliqué depuis un client mail (ouvrirait un fichier local dans le navigateur, jamais
+// l'app installée). On utilise à la place un schéma d'URL personnalisé ("ivente://") que
+// Windows/macOS/Linux savent renvoyer vers l'app installée (voir electron/main.cjs et
+// src/services/electronDeepLink.ts) — à ajouter aux "Redirect URLs" autorisées du Dashboard
+// Supabase pour que Supabase accepte d'y rediriger.
+const getRedirectUrl = () => {
+  if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+    return 'ivente://reset-password';
+  }
+  return `${window.location.origin}${window.location.pathname}`;
+};
 
 export async function signUpWithPassword(email: string, password: string): Promise<SupabaseAuthResult> {
   if (!isSupabaseConfigured()) {
