@@ -39,3 +39,14 @@ create table if not exists domaines_personnalises (
   status text not null default 'pending' check (status in ('pending','active')),
   created_at timestamptz not null default now()
 );
+
+-- Réglages globaux de la plateforme, éditables dynamiquement depuis la page propriétaire
+-- (server/src/routes/plateforme.js) plutôt qu'en dur dans le code du site — ex: le numéro
+-- WhatsApp de contact affiché sur toutes les boutiques. Une seule ligne (id='defaut').
+create table if not exists platform_config (
+  id text primary key default 'defaut',
+  whatsapp_number text,
+  contact_phone text,
+  updated_at timestamptz not null default now()
+);
+insert into platform_config (id) values ('defaut') on conflict (id) do nothing;

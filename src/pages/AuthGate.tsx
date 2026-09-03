@@ -26,7 +26,7 @@ import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supab
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
 import { apiPostPublic } from '../services/api';
 import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
-import { WHATSAPP_CONTACT_URL } from '../constants/contact';
+import { getPlatformConfig, buildWhatsappUrl, DEFAULT_CONTACT_MESSAGE } from '../services/platformConfig';
 import { Button } from '../components/ui/Button';
 import { TermsModal } from '../components/TermsModal';
 import { HelpGuideModal } from '../components/HelpGuideModal';
@@ -112,6 +112,15 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Pied de page public (contact, CGU, guide) — visible sur tous les écrans de cette page.
   const [showTerms, setShowTerms] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // Numéro WhatsApp de contact — configuré dynamiquement par le propriétaire (voir
+  // services/platformConfig.ts), pas en dur : null tant qu'il n'a pas encore été renseigné, le
+  // lien "Contact" du pied de page reste alors masqué plutôt que de pointer nulle part.
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
+  useEffect(() => {
+    getPlatformConfig().then((config) => {
+      if (config.whatsapp_number) setWhatsappUrl(buildWhatsappUrl(config.whatsapp_number, DEFAULT_CONTACT_MESSAGE));
+    });
+  }, []);
 
   // Form Fields
   const [nom, setNom] = useState('');
@@ -923,15 +932,17 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             page (accueil de la plateforme, connexion, activation...), pas seulement à la
             création de boutique. */}
         <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-4 text-[11px] font-semibold text-slate-400">
-          <a
-            href={WHATSAPP_CONTACT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-emerald-500 transition-colors"
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            Contact
-          </a>
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-emerald-500 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Contact
+            </a>
+          )}
           <button
             type="button"
             onClick={() => setShowHelp(true)}

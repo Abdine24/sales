@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, KeyRound, Check } from 'lucide-react';
+import { Bell, KeyRound, Check, Megaphone } from 'lucide-react';
 import { apiGet, apiPut } from '../services/api';
 
 interface NotificationItem {
@@ -15,6 +15,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 const iconFor = (type: string) => {
   if (type === 'password_reset_request') return KeyRound;
+  if (type === 'plateforme') return Megaphone;
   return Bell;
 };
 

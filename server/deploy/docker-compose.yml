@@ -53,6 +53,11 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       MAIL_FROM: ${MAIL_FROM}
       PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL}
+      # Espace propriétaire (voir server/src/routes/plateforme.js) — mot de passe dédié,
+      # totalement séparé de Supabase. PLATFORM_OWNER_SECRET signe les sessions ; s'il change,
+      # toutes les sessions ouvertes sont invalidées (sans risque : juste une reconnexion).
+      PLATFORM_OWNER_PASSWORD: ${PLATFORM_OWNER_PASSWORD}
+      PLATFORM_OWNER_SECRET: ${PLATFORM_OWNER_SECRET}
 
 volumes:
   pg_data:

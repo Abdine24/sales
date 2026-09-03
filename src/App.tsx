@@ -7,6 +7,8 @@ import { LicenceGate } from './components/LicenceGate';
 import { OnlineRequiredGate } from './components/OnlineRequiredGate';
 import { Loader2, Lock } from 'lucide-react';
 
+const OwnerConsole = lazy(() => import('./pages/OwnerConsole').then((m) => ({ default: m.OwnerConsole })));
+
 // Chargement à la demande : le bundle initial n'embarque plus recharts,
 // les grosses pages, etc. — elles arrivent quand l'utilisateur les ouvre.
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -102,6 +104,18 @@ function AuthenticatedApp() {
 }
 
 export function App() {
+  // Espace propriétaire — chemin caché, complètement en dehors du flux tenant/Supabase habituel
+  // (pas de résolution de boutique, pas de session Supabase requise : authentification par mot
+  // de passe dédié, voir services/ownerApi.ts et server/src/routes/plateforme.js). Vérifié en
+  // tout premier, avant même OnlineRequiredGate, pour ne dépendre d'aucun autre état de l'app.
+  if (window.location.pathname === '/proprietaire') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <OwnerConsole />
+      </Suspense>
+    );
+  }
+
   return (
     <OnlineRequiredGate>
       <AuthProvider>

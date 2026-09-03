@@ -57,6 +57,18 @@ export async function apiPostPublic<T>(path: string, body: unknown): Promise<T> 
   return handleResponse<T>(response);
 }
 
+// GET public (pas de jeton requis) — utilisé pour les réglages globaux de la plateforme
+// (voir services/platformConfig.ts), lus avant même qu'un tenant soit identifié.
+export async function apiGetPublic<T>(path: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { headers: tenantHeaders() });
+  } catch {
+    throw new ApiError("Impossible de joindre le serveur. Vérifie ta connexion internet.");
+  }
+  return handleResponse<T>(response);
+}
+
 // Jeton Supabase de la session courante — chaque appel authentifié en a besoin (voir
 // server/src/auth.js, qui le vérifie via le JWKS public de Supabase).
 async function getAccessToken(): Promise<string> {
