@@ -126,10 +126,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         setForgotSent(true);
         setInfoMessage(result.message || '');
       } else {
-        // Email inconnu ou membre de l'équipe : même message générique dans les deux cas —
-        // on ne révèle jamais si l'adresse correspond à un compte existant.
+        // Email inconnu ou membre de l'équipe : même message dans les deux cas — on ne
+        // révèle jamais si l'adresse correspond à un compte existant, mais on donne une
+        // instruction claire et actionnable plutôt qu'un message vague.
         setForgotSent(true);
-        setInfoMessage("Si ce compte existe, l'administrateur de la boutique a été prévenu et réinitialisera le mot de passe si besoin.");
+        setInfoMessage("Ce compte n'a pas de réinitialisation par email. Contacte l'administrateur principal de ta boutique pour obtenir un nouveau mot de passe.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi de la demande de réinitialisation.");
