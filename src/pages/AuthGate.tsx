@@ -13,6 +13,8 @@ import {
   Sparkles,
   Send,
   ShieldAlert,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { authenticate, createPrincipal, completePasswordReset } from '../services/localAuth';
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
@@ -23,6 +25,41 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 
 type AuthMode = 'login' | 'activation' | 'forgot-password' | 'reset-password';
+
+// Champ mot de passe avec bouton afficher/masquer — évite les erreurs de saisie silencieuses
+// (fautes de frappe, mauvaise touche, clavier différent) qui ont causé plusieurs blocages de
+// compte pendant les tests de ce site.
+const PasswordField: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}> = ({ value, onChange, placeholder, autoFocus }) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+      <input
+        required
+        autoFocus={autoFocus}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full glass-input pl-10 pr-10 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((prev) => !prev)}
+        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+        title={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+      >
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+};
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { personnel, setPersonnel } = useAuth();
@@ -352,17 +389,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                 Mot de passe
               </label>
-              <div className="relative">
-                <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mot de passe"
-                  className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-                />
-              </div>
+              <PasswordField value={password} onChange={setPassword} placeholder="Mot de passe" />
               <div className="text-right">
                 <button
                   type="button"
@@ -470,34 +497,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                 Nouveau mot de passe
               </label>
-              <div className="relative">
-                <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
-                <input
-                  required
-                  autoFocus
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Au moins 6 caractères"
-                  className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-                />
-              </div>
+              <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Au moins 6 caractères" autoFocus />
             </div>
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                 Confirmer le mot de passe
               </label>
-              <div className="relative">
-                <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
-                <input
-                  required
-                  type="password"
-                  value={newPasswordConfirm}
-                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                  placeholder="Ressaisir le mot de passe"
-                  className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-                />
-              </div>
+              <PasswordField value={newPasswordConfirm} onChange={setNewPasswordConfirm} placeholder="Ressaisir le mot de passe" />
             </div>
 
             {error && (
@@ -574,17 +580,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                 Mot de passe
               </label>
-              <div className="relative">
-                <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Au moins 6 caractères"
-                  className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-                />
-              </div>
+              <PasswordField value={password} onChange={setPassword} placeholder="Au moins 6 caractères" />
             </div>
 
             <div className="space-y-1.5">
