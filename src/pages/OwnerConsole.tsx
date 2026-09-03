@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin,
-  Power, Search, Users, Package, Wallet, KeyRound, History,
+  Power, Search, Users, Package, Wallet, KeyRound, History, Sun, Moon, ChevronDown, Calendar,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -59,7 +59,7 @@ const statusBadge: Record<Boutique['status'], { variant: 'green' | 'amber' | 're
 // Une clé de 7 jours ne peut venir que du preset d'essai gratuit — même heuristique déjà
 // utilisée côté serveur (voir server/src/routes/licenceStatus.js) pour reconnaître un essai.
 const licenceBadge = (licence: BoutiqueLicence | null) => {
-  if (!licence) return { variant: 'gray' as const, label: 'Aucune' };
+  if (!licence) return { variant: 'gray' as const, label: 'Aucune licence' };
   const status = evaluateLicenceStatus(licence);
   if (status.state === 'expiree') return { variant: 'red' as const, label: 'Expirée' };
   const isTrial = licence.duree_jours === 7;
@@ -68,12 +68,39 @@ const licenceBadge = (licence: BoutiqueLicence | null) => {
   return { variant: 'green' as const, label: `${isTrial ? 'Essai' : 'Payante'} · ${suffix}` };
 };
 
+type ThemeMode = 'light' | 'dark';
+const THEME_KEY = 'owner-console-theme';
+
+// Petite puce compacte icône+valeur — utilisée partout dans la carte boutique pour garder
+// chaque info courte et lisible, quelle que soit la largeur disponible (elles s'enroulent
+// naturellement grâce à flex-wrap, contrairement à des colonnes de tableau).
+const StatChip: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
+  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-500/5 border border-slate-200/50 dark:border-white/10 text-slate-600 dark:text-slate-300">
+    {icon}
+    {children}
+  </span>
+);
+
 // Page cachée réservée au propriétaire de la plateforme — vue d'ensemble de toutes les
 // boutiques, réglages globaux (WhatsApp, téléphone), et diffusion de messages dans la cloche de
 // notifications des admins. Accessible via /proprietaire (voir App.tsx), authentification par
 // mot de passe dédié totalement séparée de Supabase (voir server/src/routes/plateforme.js).
 export const OwnerConsole: React.FC = () => {
   const { toast, alert, confirm } = useDialog();
+
+  // Thème clair/sombre — page rendue en dehors de l'app principale (voir App.tsx), donc pas de
+  // classe "dark" posée par ailleurs sur <html> : on la gère nous-mêmes ici, avec sa propre clé
+  // localStorage (indépendante du thème de l'app boutique) et la préférence système par défaut.
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem(THEME_KEY) as ThemeMode | null;
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  useEffect(() => {
+    localStorage.setItem(THEME_KEY, themeMode);
+    document.documentElement.classList.toggle('dark', themeMode === 'dark');
+  }, [themeMode]);
+
   const [authed, setAuthed] = useState(() => !!getOwnerToken());
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -97,6 +124,19 @@ export const OwnerConsole: React.FC = () => {
       return true;
     });
   }, [boutiques, search, statusFilter]);
+
+  // Détails secondaires (téléphone, zones, employés, produits, dates) repliés par défaut — une
+  // carte n'affiche d'entrée que l'essentiel (nom, statut, licence, CA) pour ne pas noyer
+  // l'écran dès qu'il y a plusieurs boutiques.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -205,9 +245,21 @@ export const OwnerConsole: React.FC = () => {
     }
   };
 
+  const ThemeToggle = (
+    <button
+      type="button"
+      onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
+      className="p-2 rounded-xl glass-card border border-slate-200/60 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-blue-500 transition-colors"
+      title={themeMode === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+    >
+      {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </button>
+  );
+
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-950">
+        <div className="absolute top-4 right-4">{ThemeToggle}</div>
         <GlassCard className="w-full max-w-sm">
           <div className="flex flex-col items-center gap-2 mb-6 text-center">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
@@ -240,11 +292,12 @@ export const OwnerConsole: React.FC = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-8 bg-slate-100 dark:bg-slate-950 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-blue-500" /> Espace propriétaire
         </h1>
         <div className="flex items-center gap-2">
+          {ThemeToggle}
           <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={reload} disabled={loading}>
             Actualiser
           </Button>
@@ -255,25 +308,25 @@ export const OwnerConsole: React.FC = () => {
       </div>
 
       {/* Boutiques */}
-      <GlassCard>
+      <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
             <Store className="w-4 h-4 text-blue-500" /> Boutiques ({filteredBoutiques.length}/{boutiques.length})
           </h2>
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher (nom, adresse)..."
-                className="glass-input pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white w-48"
+                placeholder="Rechercher..."
+                className="glass-input pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white w-full sm:w-44"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as Boutique['status'] | 'all')}
-              className="glass-input px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white"
+              className="glass-input px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white shrink-0"
             >
               <option value="all">Tous statuts</option>
               <option value="active">Active</option>
@@ -283,109 +336,84 @@ export const OwnerConsole: React.FC = () => {
             </select>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-200/60 dark:border-white/10">
-                <th className="py-2 pr-4 font-semibold">Boutique</th>
-                <th className="py-2 pr-4 font-semibold">Adresse</th>
-                <th className="py-2 pr-4 font-semibold">Téléphone</th>
-                <th className="py-2 pr-4 font-semibold">Zones actives</th>
-                <th className="py-2 pr-4 font-semibold">Employés</th>
-                <th className="py-2 pr-4 font-semibold">Produits</th>
-                <th className="py-2 pr-4 font-semibold">Chiffre d'affaires</th>
-                <th className="py-2 pr-4 font-semibold">Licence</th>
-                <th className="py-2 pr-4 font-semibold">Statut</th>
-                <th className="py-2 pr-4 font-semibold">Créée le</th>
-                <th className="py-2 pr-4 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBoutiques.map((b) => {
-                const lb = licenceBadge(b.licence);
-                return (
-                  <tr key={b.id} className="border-b border-slate-200/40 dark:border-white/5">
-                    <td className="py-2 pr-4 font-semibold text-slate-800 dark:text-slate-100">{b.nom}</td>
-                    <td className="py-2 pr-4 font-mono text-slate-500">{b.slug}.azanga.tech</td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {b.telephone ? (
-                        <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {b.telephone}</span>
-                      ) : (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {b.zones_actives === null ? (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      ) : (
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {b.zones_actives}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {b.personnel_count === null ? (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      ) : (
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {b.personnel_count}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {b.produits_count === null ? (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      ) : (
-                        <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {b.produits_count}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {b.chiffre_affaires === null ? (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      ) : (
-                        <span className="flex items-center gap-1"><Wallet className="w-3 h-3" /> {formatCfaCompact(b.chiffre_affaires)}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <Badge variant={lb.variant} size="sm" title={b.licence?.cle}>
-                        <KeyRound className="w-3 h-3" /> {lb.label}
-                      </Badge>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <Badge variant={statusBadge[b.status].variant} size="sm">
-                        {statusBadge[b.status].label}
-                      </Badge>
-                    </td>
-                    <td className="py-2 pr-4 text-slate-400">
-                      {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {(b.status === 'active' || b.status === 'suspended') && (
-                        <button
-                          type="button"
-                          onClick={() => toggleStatus(b)}
-                          disabled={togglingId === b.id}
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
-                            b.status === 'active'
-                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                          }`}
-                        >
-                          <Power className="w-3 h-3" />
-                          {togglingId === b.id ? '...' : b.status === 'active' ? 'Désactiver' : 'Réactiver'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredBoutiques.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={11} className="py-6 text-center text-slate-400">
-                    {boutiques.length === 0 ? 'Aucune boutique.' : 'Aucun résultat pour ce filtre.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+        {filteredBoutiques.length === 0 && !loading && (
+          <GlassCard>
+            <p className="text-xs text-slate-400 text-center py-4">
+              {boutiques.length === 0 ? 'Aucune boutique.' : 'Aucun résultat pour ce filtre.'}
+            </p>
+          </GlassCard>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredBoutiques.map((b) => {
+            const lb = licenceBadge(b.licence);
+            const expanded = expandedIds.has(b.id);
+            return (
+              <GlassCard key={b.id} className="flex flex-col gap-3">
+                {/* Essentiel — toujours visible */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white truncate">{b.nom}</h3>
+                    <p className="text-[11px] font-mono text-slate-400 truncate">{b.slug}.azanga.tech</p>
+                  </div>
+                  <Badge variant={statusBadge[b.status].variant} size="sm">
+                    {statusBadge[b.status].label}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant={lb.variant} size="sm" title={b.licence?.cle}>
+                    <KeyRound className="w-3 h-3" /> {lb.label}
+                  </Badge>
+                  {b.chiffre_affaires !== null && (
+                    <StatChip icon={<Wallet className="w-3 h-3" />}>{formatCfaCompact(b.chiffre_affaires)}</StatChip>
+                  )}
+                </div>
+
+                {/* Détails secondaires — repliés par défaut */}
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(b.id)}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-500 transition-colors self-start"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                  {expanded ? 'Masquer les détails' : 'Voir les détails'}
+                </button>
+
+                {expanded && (
+                  <div className="flex flex-wrap gap-1.5 text-[11px] pt-1 border-t border-slate-200/50 dark:border-white/10">
+                    {b.telephone && <StatChip icon={<Phone className="w-3 h-3" />}>{b.telephone}</StatChip>}
+                    {b.zones_actives !== null && <StatChip icon={<MapPin className="w-3 h-3" />}>{b.zones_actives} zone(s)</StatChip>}
+                    {b.personnel_count !== null && <StatChip icon={<Users className="w-3 h-3" />}>{b.personnel_count} employé(s)</StatChip>}
+                    {b.produits_count !== null && <StatChip icon={<Package className="w-3 h-3" />}>{b.produits_count} produit(s)</StatChip>}
+                    <StatChip icon={<Calendar className="w-3 h-3" />}>
+                      créée le {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </StatChip>
+                  </div>
+                )}
+
+                {/* Action */}
+                {(b.status === 'active' || b.status === 'suspended') && (
+                  <button
+                    type="button"
+                    onClick={() => toggleStatus(b)}
+                    disabled={togglingId === b.id}
+                    className={`mt-auto text-[11px] font-bold px-2.5 py-1.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 ${
+                      b.status === 'active'
+                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    <Power className="w-3 h-3" />
+                    {togglingId === b.id ? '...' : b.status === 'active' ? 'Désactiver' : 'Réactiver'}
+                  </button>
+                )}
+              </GlassCard>
+            );
+          })}
         </div>
-      </GlassCard>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Réglages globaux */}
