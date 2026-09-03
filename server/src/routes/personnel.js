@@ -86,7 +86,19 @@ personnelRouter.post('/', async (req, res) => {
         password: body.password,
         email_confirm: true,
       });
-      if (error) return res.status(409).json({ error: error.message || 'Impossible de créer le compte pour cet email.' });
+      if (error) {
+        // Le projet Supabase est partagé par toutes les boutiques de la plateforme (voir
+        // plan multi-tenant) — l'unicité d'un email s'applique donc sur toute la plateforme,
+        // pas juste cette boutique. Le message brut de Supabase ("A user with this email
+        // address has already been registered") est en anglais et ne dit pas pourquoi —
+        // on le remplace par un message clair, sans révéler à quelle boutique cet email
+        // appartient (ce n'est pas notre information à divulguer).
+        const alreadyRegistered = /already.*regist/i.test(error.message || '');
+        const message = alreadyRegistered
+          ? 'Cet email est déjà utilisé pour un compte de connexion (dans cette boutique ou une autre) — choisis-en un autre pour ce membre.'
+          : error.message || 'Impossible de créer le compte pour cet email.';
+        return res.status(409).json({ error: message });
+      }
       supabaseUserId = data.user.id;
       createdSupabaseUser = true;
     } catch (err) {
