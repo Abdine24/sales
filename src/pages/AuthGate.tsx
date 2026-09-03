@@ -693,19 +693,22 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             <div className="space-y-2">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block text-center">
-                Saisissez le Code OTP (6 chiffres)
+                Saisissez le Code OTP reçu par email
               </label>
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={6}
+                // Pas de longueur fixe : Supabase ne garantit pas toujours 6 chiffres pile
+                // selon la config du template email (voir {{ .Token }}) — mieux vaut accepter
+                // une plage large que de tronquer silencieusement un vrai code plus long.
+                maxLength={12}
                 required
                 autoFocus
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="• • • • • •"
-                className="w-full text-center tracking-[0.6em] text-2xl font-black font-mono glass-input py-3.5 rounded-2xl text-slate-900 dark:text-white"
+                className="w-full text-center tracking-[0.4em] text-2xl font-black font-mono glass-input py-3.5 rounded-2xl text-slate-900 dark:text-white"
               />
             </div>
 
