@@ -43,7 +43,7 @@ jobs:
           VITE_ROOT_DOMAIN: azanga.tech
         run: npm run build
 
-      - name: SPA fallback for deep links (ex: /proprietaire)
+      - name: "SPA fallback for deep links (ex: /proprietaire)"
         # GitHub Pages ne sert que des fichiers statiques — une navigation directe (pas un clic
         # depuis l'app déjà chargée) vers /proprietaire n'a pas de fichier correspondant. Pages
         # sert 404.html pour toute route non trouvée : en le rendant identique à index.html (même
