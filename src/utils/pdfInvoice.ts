@@ -266,6 +266,36 @@ export function generateInvoiceA4Pdf({
   return doc;
 }
 
+// Point d'entrée unique pour générer une facture/reçu de vente — bascule vers le moteur de
+// templates HTML (voir receiptTemplateEngine.ts, src/templates/receipts/) si la boutique a
+// choisi un modèle dans Réglages > Templates de reçus (settings.receipt_template_id), sinon
+// garde le design intégré ci-dessus tel quel. Async (le rendu HTML->PDF l'est intrinsèquement,
+// via jsPDF.html()) — remplace generateInvoiceA4Pdf dans tous les appels réels de l'app ;
+// generateInvoiceA4Pdf reste exporté et utilisable directement (ex: pour un aperçu forcé du
+// design "Classique" depuis la galerie de templates).
+export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Promise<jsPDF> {
+  const templateId = params.settings?.receipt_template_id;
+  if (templateId) {
+    const { getReceiptTemplate } = await import('../templates/receipts');
+    const template = getReceiptTemplate(templateId);
+    if (template) {
+      const { renderReceiptPdf } = await import('./receiptTemplateEngine');
+      return renderReceiptPdf(
+        template.html,
+        {
+          vente: params.vente,
+          lignes: params.lignes,
+          clientNom: params.clientNom,
+          clientTelephone: params.clientTelephone,
+          settings: params.settings,
+        },
+        params.autoDownload !== false
+      );
+    }
+  }
+  return generateInvoiceA4Pdf(params);
+}
+
 export interface GenerateDebtReceiptPdfParams {
   reglement: {
     id?: number;

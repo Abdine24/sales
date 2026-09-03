@@ -207,7 +207,8 @@ create table if not exists settings (
   sound_enabled boolean default true,
   whatsapp_enabled boolean default false,
   whatsapp_custom_message text,
-  whatsapp_auto_open boolean default false
+  whatsapp_auto_open boolean default false,
+  receipt_template_id text
 );
 
 create table if not exists licence (
@@ -224,6 +225,7 @@ create table if not exists licence (
 -- Migration pour les installations existantes (CREATE TABLE IF NOT EXISTS ne touche pas aux
 -- tables déjà créées) : rejoué à chaque démarrage, sans effet une fois la colonne en place.
 alter table licence add column if not exists trial_used boolean not null default false;
+alter table settings add column if not exists receipt_template_id text;
 
 -- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
 -- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin

@@ -26,7 +26,7 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
-import { generateInvoiceA4Pdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf } from '../utils/pdfInvoice';
 
 interface VentesProps {
   activeZoneId: number | null;
@@ -368,7 +368,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                       size="sm"
                       icon={<Download className="w-3.5 h-3.5 text-blue-500" />}
                       onClick={() => {
-                        generateInvoiceA4Pdf({
+                        generateReceiptPdf({
                           vente: selectedReceiptSale,
                           lignes: lignesParVente(selectedReceiptSale.id).map((l) => ({
                             nom: l.produit_nom,
@@ -380,7 +380,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                           clientTelephone: phone,
                           settings,
                           autoDownload: true,
-                        });
+                        }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
                       }}
                     >
                       Télécharger PDF

@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
 
+// Contenu brut d'un fichier de template de reçu (voir src/templates/receipts/) — Vite renvoie
+// le fichier tel quel comme chaîne de caractères avec le suffixe `?raw`.
+declare module '*.html?raw' {
+  const content: string;
+  export default content;
+}
+
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;

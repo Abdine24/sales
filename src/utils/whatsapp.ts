@@ -1,6 +1,6 @@
 import { AppSettings, Vente, Reglement } from '../db/db';
 import { formatCfa } from './currency';
-import { generateInvoiceA4Pdf, generateDebtReceiptA4Pdf, InvoiceItem } from './pdfInvoice';
+import { generateDebtReceiptA4Pdf, generateReceiptPdf, InvoiceItem } from './pdfInvoice';
 
 /**
  * Nettoie et formate un numéro de téléphone pour WhatsApp
@@ -150,28 +150,27 @@ export function openWhatsAppReceipt(params: WhatsAppReceiptParams): boolean {
   const phone = cleanPhoneNumber(params.clientTelephone || '');
   if (!phone) return false;
 
-  // 1. Génère et télécharge automatiquement la facture A4 en PDF si demandé
-  if (params.downloadPdf !== false) {
-    try {
-      generateInvoiceA4Pdf({
-        vente: params.vente,
-        lignes: params.lignes,
-        clientNom: params.clientNom,
-        clientTelephone: params.clientTelephone,
-        settings: params.settings,
-        autoDownload: true,
-      });
-    } catch (e) {
-      console.warn('Erreur lors de la génération du PDF facture A4:', e);
-    }
-  }
-
-  // 2. Ouvre WhatsApp avec le texte complet contenant le nom du client et les détails des produits
+  // 1. Ouvre WhatsApp EN PREMIER, de façon synchrone — un modèle HTML se génère de façon
+  //    asynchrone (rendu dans un iframe, voir receiptTemplateEngine.ts) ; si on l'attendait
+  //    avant window.open, l'appel ne serait plus directement dans la pile du clic utilisateur
+  //    et la plupart des navigateurs bloqueraient la popup comme non sollicitée.
   const text = generateWhatsAppReceiptText(params);
   const encodedText = encodeURIComponent(text);
-  const whatsappUrl = `https://wa.me/${phone}?text=${encodedText}`;
+  window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
 
-  window.open(whatsappUrl, '_blank');
+  // 2. Génère et télécharge la facture A4 en PDF en arrière-plan (modèle choisi par la
+  //    boutique, ou design intégré par défaut — voir generateReceiptPdf).
+  if (params.downloadPdf !== false) {
+    generateReceiptPdf({
+      vente: params.vente,
+      lignes: params.lignes,
+      clientNom: params.clientNom,
+      clientTelephone: params.clientTelephone,
+      settings: params.settings,
+      autoDownload: true,
+    }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
+  }
+
   return true;
 }
 

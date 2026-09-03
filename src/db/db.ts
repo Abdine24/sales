@@ -78,6 +78,10 @@ export interface AppSettings {
   whatsapp_enabled?: boolean;
   whatsapp_custom_message?: string;
   whatsapp_auto_open?: boolean;
+
+  // Modèle de facture/reçu PDF choisi — voir src/templates/receipts/. null/absent = design
+  // intégré historique (generateInvoiceA4Pdf), inchangé pour toute boutique qui n'y touche pas.
+  receipt_template_id?: string | null;
 }
 
 export type PersonnelRole = 'admin' | 'gerant' | 'caissier';

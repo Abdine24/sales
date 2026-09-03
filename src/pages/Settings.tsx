@@ -16,8 +16,10 @@ import {
   MessageSquare,
   Sparkles,
   Smartphone,
+  LayoutTemplate,
+  Eye,
 } from 'lucide-react';
-import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord } from '../db/db';
+import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord, Vente } from '../db/db';
 import { apiGet, apiPut, apiPost, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -25,6 +27,28 @@ import { Modal } from '../components/ui/Modal';
 import { useDialog } from '../components/ui/DialogProvider';
 import { LicenceSection } from '../components/LicenceSection';
 import { playScanBeep } from '../utils/barcode';
+import { generateInvoiceA4Pdf, type InvoiceItem } from '../utils/pdfInvoice';
+import { RECEIPT_TEMPLATES, getReceiptTemplate } from '../templates/receipts';
+
+// Vente/lignes fictives — uniquement pour l'aperçu PDF d'un template depuis cette page, jamais
+// enregistrées ni envoyées nulle part.
+const PREVIEW_VENTE: Vente = {
+  id: 'apercu00',
+  date: new Date().toISOString(),
+  client_nom: 'Client Exemple',
+  total: 12500,
+  remise: 500,
+  montant_paye: 12500,
+  reste_a_payer: 0,
+  statut: 'paye',
+  methode_paiement: 'especes',
+  vendeur_nom: 'Awa Koné',
+  vendeur_identifiant: 'EMP-042',
+};
+const PREVIEW_LIGNES: InvoiceItem[] = [
+  { nom: 'Produit Exemple', variante: 'Bleu / 256 Go', quantite: 2, prix_unitaire: 5000 },
+  { nom: 'Autre produit', variante: 'Rouge', quantite: 1, prix_unitaire: 3000 },
+];
 
 const DEFAULT_SETTINGS: AppSettings = { id: 'principale', nom_site: 'iVente Pro' };
 
@@ -87,6 +111,11 @@ export const Settings: React.FC = () => {
     'Bonjour {client}, toute notre équipe vous remercie chaleureusement pour votre fidélité et votre confiance ! ✨'
   );
 
+  // Modèle de facture/reçu PDF — null = design intégré ("Classique"), sinon l'id d'un template
+  // de src/templates/receipts/ (voir la section "Templates de reçus" plus bas).
+  const [receiptTemplateId, setReceiptTemplateId] = useState<string | null>(null);
+  const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null | undefined>(undefined);
+
   // Audio / Beep State
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -115,6 +144,7 @@ export const Settings: React.FC = () => {
         settings.whatsapp_custom_message ||
         'Bonjour {client}, toute notre équipe vous remercie chaleureusement pour votre fidélité et votre confiance ! ✨'
       );
+      setReceiptTemplateId(settings.receipt_template_id || null);
 
       const isSound = settings.sound_enabled !== false;
       setSoundEnabled(isSound);
@@ -147,6 +177,8 @@ export const Settings: React.FC = () => {
       whatsapp_auto_open: whatsappAutoOpen,
       whatsapp_custom_message: whatsappCustomMessage.trim(),
 
+      receipt_template_id: receiptTemplateId,
+
       sound_enabled: soundEnabled,
     };
 
@@ -159,6 +191,37 @@ export const Settings: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       await alert(err instanceof ApiError ? err.message : "Échec de l'enregistrement des paramètres.");
+    }
+  };
+
+  // Génère un vrai PDF avec des données d'exemple pour voir le rendu d'un modèle avant de le
+  // choisir — utilise directement les réglages actuels (nom, logo, IFU...) pour un aperçu fidèle.
+  const previewReceiptTemplate = async (templateId: string | null) => {
+    setPreviewingTemplateId(templateId);
+    try {
+      if (templateId) {
+        const template = getReceiptTemplate(templateId);
+        if (!template) return;
+        const { renderReceiptPdf } = await import('../utils/receiptTemplateEngine');
+        await renderReceiptPdf(
+          template.html,
+          { vente: PREVIEW_VENTE, lignes: PREVIEW_LIGNES, clientNom: PREVIEW_VENTE.client_nom, clientTelephone: '22670000000', settings },
+          true
+        );
+      } else {
+        generateInvoiceA4Pdf({
+          vente: PREVIEW_VENTE,
+          lignes: PREVIEW_LIGNES,
+          clientNom: PREVIEW_VENTE.client_nom,
+          clientTelephone: '22670000000',
+          settings,
+          autoDownload: true,
+        });
+      }
+    } catch (err) {
+      await alert("Échec de la génération de l'aperçu PDF.");
+    } finally {
+      setPreviewingTemplateId(undefined);
     }
   };
 
@@ -666,6 +729,77 @@ export const Settings: React.FC = () => {
               </>
             )}
           </div>
+        </GlassCard>
+
+        {/* 3bis. TEMPLATES DE REÇUS */}
+        <GlassCard>
+          <div className="flex items-center gap-2 mb-1 pb-3 border-b border-slate-200/50 dark:border-white/10">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <LayoutTemplate className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">Templates de reçus</h3>
+              <p className="text-xs text-slate-400">
+                Choisissez la mise en page de votre facture A4 (PDF) — utilisée partout : téléchargement, envoi WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 mt-4">
+            {/* "Classique" = le design intégré historique, toujours disponible (id null) */}
+            {[{ id: null as string | null, nom: 'Classique', description: 'Le design par défaut d\'iVente Pro.' }, ...RECEIPT_TEMPLATES].map(
+              (tpl) => {
+                const selected = receiptTemplateId === tpl.id;
+                const previewing = previewingTemplateId === tpl.id;
+                return (
+                  <div
+                    key={tpl.id ?? 'classique'}
+                    className={`flex items-center justify-between gap-4 p-4 rounded-2xl border transition-colors ${
+                      selected
+                        ? 'bg-blue-500/5 border-blue-500/40'
+                        : 'bg-slate-50/80 dark:bg-slate-900/40 border-slate-200/70 dark:border-white/10'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        {tpl.nom}
+                        {selected && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            Sélectionné
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{tpl.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        icon={<Eye className="w-3.5 h-3.5" />}
+                        disabled={previewing}
+                        onClick={() => previewReceiptTemplate(tpl.id)}
+                      >
+                        {previewing ? '...' : 'Aperçu PDF'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={selected ? 'primary' : 'glass'}
+                        size="sm"
+                        disabled={selected}
+                        onClick={() => setReceiptTemplateId(tpl.id)}
+                      >
+                        {selected ? 'Actif' : 'Choisir'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+            )}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3">
+            Le choix n'est appliqué qu'après avoir cliqué sur « Enregistrer les modifications » en bas de page.
+          </p>
         </GlassCard>
 
         {/* 4. PRÉFÉRENCES SONORES & CAISSE */}

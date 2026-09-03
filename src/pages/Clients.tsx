@@ -29,7 +29,7 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt, openWhatsAppDebtReceipt } from '../utils/whatsapp';
-import { generateInvoiceA4Pdf, generateDebtReceiptA4Pdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf, generateDebtReceiptA4Pdf } from '../utils/pdfInvoice';
 
 interface ClientsProps {
   activeZoneId?: number | null;
@@ -1255,7 +1255,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                       size="sm"
                       icon={<Download className="w-3.5 h-3.5 text-blue-500" />}
                       onClick={() => {
-                        generateInvoiceA4Pdf({
+                        generateReceiptPdf({
                           vente: selectedReceiptSale,
                           lignes: lignesVente
                             .filter((ligne) => ligne.vente_id === selectedReceiptSale.id)
@@ -1269,7 +1269,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                           clientTelephone: phone,
                           settings,
                           autoDownload: true,
-                        });
+                        }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
                       }}
                     >
                       Télécharger PDF

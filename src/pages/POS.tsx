@@ -39,7 +39,7 @@ import { ProductCard, AddToCartPayload } from '../components/ProductCard';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
-import { generateInvoiceA4Pdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf } from '../utils/pdfInvoice';
 
 type CartItem = PanierLigne;
 
@@ -1337,7 +1337,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                   size="sm"
                   icon={<Download className="w-3.5 h-3.5 text-blue-500" />}
                   onClick={() => {
-                    generateInvoiceA4Pdf({
+                    generateReceiptPdf({
                       vente: completedSale.vente,
                       lignes: completedSale.items.map((item) => ({
                         nom: item.produit.nom,
@@ -1349,7 +1349,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                       clientTelephone: completedPhoneInput || completedSale.clientTelephone,
                       settings,
                       autoDownload: true,
-                    });
+                    }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
                   }}
                 >
                   Télécharger PDF
