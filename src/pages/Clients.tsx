@@ -274,7 +274,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             Clients & Règlements
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Suivi des dossiers clients, gestion des créances et traçabilité complète des règlements (quand, combien, chez qui).
+            Suivi des dossiers clients, gestion des créances et traçabilité complète des règlements .
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -285,7 +285,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 icon={<Download className="w-4 h-4" />}
                 onClick={exportClientsCSV}
               >
-                Exporter CSV
+                CSV
               </Button>
               <Button
                 variant="primary"
@@ -311,22 +311,20 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       <div className="flex border-b border-slate-200/60 dark:border-white/10 gap-2">
         <button
           onClick={() => setActiveMainTab('clients')}
-          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${
-            activeMainTab === 'clients'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
+          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'clients'
+            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+            : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
         >
           <Users className="w-4 h-4" />
           Répertoire Clients ({clients.length})
         </button>
         <button
           onClick={() => setActiveMainTab('reglements')}
-          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${
-            activeMainTab === 'reglements'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
+          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'reglements'
+            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+            : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
         >
           <History className="w-4 h-4" />
           Journal de tous les Règlements ({reglements.length})
@@ -552,11 +550,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         </td>
                         <td className="p-4">
                           <div
-                            className={`text-base font-black ${
-                              isRetour
-                                ? 'text-rose-600 dark:text-rose-400'
-                                : 'text-emerald-600 dark:text-emerald-400'
-                            }`}
+                            className={`text-base font-black ${isRetour
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                              }`}
                           >
                             {isRetour ? '-' : '+'}
                             {formatCfa(reg.montant)}
@@ -577,8 +574,8 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                           {reg.mode_paiement === 'mobile_money'
                             ? 'Mobile money'
                             : reg.mode_paiement === 'virement'
-                            ? 'Virement'
-                            : 'Espèces'}
+                              ? 'Virement'
+                              : 'Espèces'}
                         </td>
                         <td className="p-4 text-xs">
                           {reg.dette_apres !== undefined ? (
@@ -742,11 +739,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                     key={m.id}
                     type="button"
                     onClick={() => setPaymentMode(m.id as any)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
-                      paymentMode === m.id
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                        : 'glass-input text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
-                    }`}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${paymentMode === m.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'glass-input text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                      }`}
                   >
                     {m.label}
                   </button>
@@ -835,22 +831,20 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             <div className="flex border-b border-slate-200/60 dark:border-white/10 gap-2">
               <button
                 onClick={() => setHistoryTab('ventes')}
-                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${
-                  historyTab === 'ventes'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
+                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'ventes'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 Achats & Factures ({historySales.length})
               </button>
               <button
                 onClick={() => setHistoryTab('reglements')}
-                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${
-                  historyTab === 'reglements'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
+                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'reglements'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 <History className="w-3.5 h-3.5" />
                 Règlements & Remboursements ({historyReglements.length})
@@ -962,11 +956,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
 
                         <div className="flex items-center gap-3">
                           <div
-                            className={`text-lg font-black ${
-                              isRetour
-                                ? 'text-rose-600 dark:text-rose-400'
-                                : 'text-emerald-600 dark:text-emerald-400'
-                            }`}
+                            className={`text-lg font-black ${isRetour
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                              }`}
                           >
                             {isRetour ? '-' : '+'}
                             {formatCfa(reg.montant)}
