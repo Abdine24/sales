@@ -45,18 +45,27 @@ export async function htmlToPdf(html) {
   try {
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.evaluateHandle('document.fonts.ready');
-    return await page.pdf({
+    const pdfBytes = await page.pdf({
       format: 'A4',
       printBackground: true,
       displayHeaderFooter: true,
       // Le contenu réel de la page ne va jamais dans ces templates — seulement la pagination,
-      // dans une marge dédiée en bas de chaque page.
+      // dans une marge dédiée en bas de chaque page. Pas de police externe ici non plus (voir
+      // templates/receipts/premium.html) — juste sans-serif générique, résolu par une police du
+      // conteneur.
       headerTemplate: '<span></span>',
       footerTemplate:
-        '<div style="width:100%;font-size:9px;text-align:center;color:#86868b;font-family:Inter,-apple-system,sans-serif;">' +
+        '<div style="width:100%;font-size:9px;text-align:center;color:#86868b;font-family:sans-serif;">' +
         'Page <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
       margin: { top: '0mm', right: '0mm', bottom: '12mm', left: '0mm' },
     });
+    // page.pdf() renvoie un Uint8Array, pas un vrai Buffer Node — Express (res.send) ne
+    // reconnaît QUE Buffer.isBuffer() comme binaire ; un Uint8Array brut tombe dans sa branche
+    // "objet" et se retrouve sérialisé en JSON ({"0":37,"1":80,...}) au lieu d'être envoyé tel
+    // quel, corrompant le PDF côté client (et le gonflant au passage, un objet JSON étant bien
+    // plus verbeux que les octets qu'il décrit). Invisible en local avec fs.writeFileSync, qui
+    // accepte un Uint8Array sans broncher — seule la route HTTP réelle est concernée.
+    return Buffer.from(pdfBytes);
   } finally {
     await page.close();
   }
