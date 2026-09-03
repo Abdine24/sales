@@ -2327,6 +2327,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* 02 : Champs Produit Simple */}
           {!isVariable ? (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
               <div>
                 <label className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 block">
@@ -2399,6 +2400,18 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 )}
               </div>
             </div>
+            {/* Avertissement non-bloquant : on n'empêche pas la vente à perte (rare mais parfois
+                voulue, ex: se débarrasser d'un stock dormant), on la signale juste clairement. */}
+            {coutAchat && prix && parseFloat(prix) < parseFloat(coutAchat) && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  Prix de vente ({formatCfa(parseFloat(prix))}) inférieur au prix d'achat ({formatCfa(parseFloat(coutAchat))}) —
+                  ce produit sera vendu à perte.
+                </span>
+              </div>
+            )}
+            </>
           ) : (
             /* 03 : Configuration Produit Variable (Attributs & Variantes) */
             <div className="space-y-4 p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20">
@@ -2727,6 +2740,15 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     </Button>
                   </div>
                 </div>
+                {newVariantCoutAchat && newVariantPrix && parseFloat(newVariantPrix) < parseFloat(newVariantCoutAchat) && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      Prix de vente ({formatCfa(parseFloat(newVariantPrix))}) inférieur au coût d'achat ({formatCfa(parseFloat(newVariantCoutAchat))}) —
+                      cette variante sera vendue à perte.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* 4. TABLEAU DES VARIANTES AVEC GESTION DIRECTE DES ATTRIBUTS & PRIX */}
@@ -2881,6 +2903,14 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                   }}
                                   className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400"
                                 />
+                                {!!v.cout_achat_unitaire && v.prix < v.cout_achat_unitaire && (
+                                  <span
+                                    className="text-[10px] font-bold text-rose-500 flex items-center gap-0.5 mt-1"
+                                    title="Prix de vente inférieur au coût d'achat — cette variante sera vendue à perte."
+                                  >
+                                    <AlertTriangle className="w-2.5 h-2.5" /> Vente à perte
+                                  </span>
+                                )}
                               </td>
                               <td className="p-2.5">
                                 {editingProduit ? (
