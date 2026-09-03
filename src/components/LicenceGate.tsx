@@ -46,8 +46,11 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
   if (status.state === 'valide') {
     // Même seuil que la carte détaillée de Réglages (voir LicenceSection.tsx) — averti
     // uniquement l'admin (seul rôle habilité à renouveler, voir Personnel.tsx) pour ne pas
-    // alarmer un caissier qui ne peut rien y faire.
-    const showBanner = personnel?.role === 'admin' && status.daysRemaining <= 15 && !bannerDismissed;
+    // alarmer un caissier qui ne peut rien y faire. Un essai gratuit dure 7 jours pile, donc
+    // il serait TOUJOURS dans la fenêtre des 15 jours — la bannière n'a de sens que pour un
+    // abonnement payant, l'admin sait déjà que son essai est limité.
+    const isTrial = licence?.duree_jours === 7;
+    const showBanner = personnel?.role === 'admin' && !isTrial && status.daysRemaining <= 15 && !bannerDismissed;
     return (
       <>
         {showBanner && (
