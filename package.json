@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.48.1",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^12.4.7",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -59,6 +60,13 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://api.azanga.tech/app-updates/",
+        "channel": "latest"
+      }
+    ]
   }
 }

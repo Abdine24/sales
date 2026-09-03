@@ -2,8 +2,9 @@
 // Nécessite une connexion Internet (voir src/components/OnlineRequiredGate.tsx côté renderer) :
 // l'UI est chargée localement (dist/), mais bloque son propre usage tant qu'il n'y a pas de réseau,
 // en préparation de la bascule des données vers Supabase (mode "online-only").
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('node:path');
+const { autoUpdater } = require('electron-updater');
 
 // Schéma d'URL personnalisé pour ramener l'utilisateur dans CETTE fenêtre installée après un
 // clic sur le lien de réinitialisation de mot de passe reçu par email, au lieu d'ouvrir un
@@ -66,6 +67,26 @@ if (!gotLock) {
     }
   });
 
+  // Mise à jour automatique — vérifie et télécharge en arrière-plan une nouvelle version
+  // publiée sur notre propre VPS (voir package.json > build.publish, procédure de publication
+  // dans server/deploy/README-app-updates.md). On NE l'installe PAS automatiquement dès le
+  // téléchargement terminé : le renderer affiche un bouton (à côté de la Licence, voir
+  // src/components/LicenceSection.tsx) pour laisser l'utilisateur choisir le moment du
+  // redémarrage — une caisse ne doit pas se relancer toute seule en plein encaissement.
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-downloaded', (info) => {
+    if (mainWindow) mainWindow.webContents.send('update-ready', { version: info?.version || null });
+  });
+  autoUpdater.on('error', (err) => {
+    console.error('[auto-update]', err && err.stack ? err.stack : err);
+  });
+
+  ipcMain.handle('install-update', () => {
+    autoUpdater.quitAndInstall();
+  });
+
   const createWindow = () => {
     mainWindow = new BrowserWindow({
       width: 1440,
@@ -108,6 +129,16 @@ if (!gotLock) {
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+
+    // app.isPackaged est faux en dev (npm run electron / electron:dev) : pas de latest.yml
+    // local dans ce cas, checkForUpdates planterait pour rien.
+    if (app.isPackaged) {
+      const checkForUpdates = () => {
+        autoUpdater.checkForUpdates().catch((err) => console.error('[auto-update] check failed', err));
+      };
+      setTimeout(checkForUpdates, 10_000); // laisse l'app finir de démarrer avant de solliciter le réseau
+      setInterval(checkForUpdates, 4 * 60 * 60 * 1000); // re-vérifie toutes les 4h (app souvent laissée ouverte toute la journée à la caisse)
+    }
   });
 
   app.on('window-all-closed', () => {

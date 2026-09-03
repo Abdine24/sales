@@ -24,6 +24,11 @@ interface ElectronAPI {
   // pour le retour automatique dans l'app après un clic sur le lien de réinitialisation de
   // mot de passe reçu par email (voir src/services/electronDeepLink.ts).
   onDeepLink?: (callback: (url: string) => void) => void;
+  // Mise à jour automatique (voir electron/main.cjs + src/components/LicenceSection.tsx) :
+  // prévient le renderer qu'une nouvelle version a été téléchargée en arrière-plan et est
+  // prête à installer ; installUpdate() redémarre l'app pour l'appliquer.
+  onUpdateReady?: (callback: (info: { version: string | null }) => void) => void;
+  installUpdate?: () => Promise<void>;
 }
 
 interface Window {

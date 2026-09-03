@@ -1,4 +1,5 @@
 import { apiPostPublic, ApiError } from '../services/api';
+import pkg from '../../package.json';
 
 // Système de licences par clé à durée variable.
 //
@@ -13,7 +14,11 @@ import { apiPostPublic, ApiError } from '../services/api';
 // contrôles de format côté client (feedback instantané), la vraie vérification de signature
 // se fait exclusivement côté serveur via l'API.
 
-export const APP_VERSION = '1.0.0';
+// Lu depuis package.json (source unique) — c'est aussi ce numéro que electron-builder embarque
+// dans l'exécutable et que electron-updater compare à la dernière version publiée (voir
+// electron/main.cjs et src/components/LicenceSection.tsx). Le faire dériver d'un seul endroit
+// évite qu'un oubli de mise à jour ici affiche un numéro de version faux à l'écran.
+export const APP_VERSION = pkg.version;
 export const APP_RELEASE_NAME = 'iVente Pro Desktop';
 
 // Presets d'abonnements : MAXIMUM 1 AN (365 jours) - Aucune licence illimitée

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, ShieldCheck, TimerReset, Sparkles, Clock, AlertTriangle, Info, Laptop } from 'lucide-react';
+import { CheckCircle2, KeyRound, ShieldCheck, TimerReset, Sparkles, Clock, AlertTriangle, Info, Laptop, DownloadCloud, RefreshCw } from 'lucide-react';
 import type { Licence } from '../db/db';
 import { apiGet, ApiError } from '../services/api';
 import { evaluateLicenceStatus, APP_VERSION, APP_RELEASE_NAME } from '../utils/license';
@@ -15,6 +15,24 @@ export const LicenceSection: React.FC = () => {
   const [cle, setCle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // Mise à jour automatique (app installée uniquement) : le processus principal Electron
+  // télécharge la nouvelle version en arrière-plan puis prévient le renderer via cet évènement
+  // (voir electron/main.cjs, electron/preload.cjs) — on n'installe qu'au clic de l'utilisateur.
+  const [updateReadyVersion, setUpdateReadyVersion] = useState<string | null>(null);
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    window.electronAPI?.onUpdateReady?.((info) => setUpdateReadyVersion(info.version));
+  }, []);
+
+  const installUpdate = async () => {
+    setInstalling(true);
+    try {
+      await window.electronAPI?.installUpdate?.();
+    } catch {
+      setInstalling(false);
+    }
+  };
 
   const reloadLicence = useCallback(async () => {
     try {
@@ -59,11 +77,23 @@ export const LicenceSection: React.FC = () => {
             <p className="text-xs text-slate-400">Gestion de la clé de licence annuelle et statut de validité.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1.5">
             <Laptop className="w-3.5 h-3.5 text-blue-500" />
             {APP_RELEASE_NAME} <strong className="text-slate-900 dark:text-white">v{APP_VERSION}</strong>
           </span>
+          {updateReadyVersion && (
+            <button
+              type="button"
+              onClick={installUpdate}
+              disabled={installing}
+              className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
+              title={`Nouvelle version v${updateReadyVersion} téléchargée — cliquez pour redémarrer et l'installer`}
+            >
+              {installing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <DownloadCloud className="w-3.5 h-3.5" />}
+              {installing ? 'Redémarrage...' : `Mise à jour prête (v${updateReadyVersion}) — Redémarrer`}
+            </button>
+          )}
         </div>
       </div>
 

@@ -12,4 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDeepLink: (callback) => {
     ipcRenderer.on('deep-link', (_event, url) => callback(url));
   },
+  // Mise à jour automatique (voir electron/main.cjs) : le processus principal télécharge la
+  // nouvelle version en arrière-plan puis prévient le renderer qu'elle est prête à installer.
+  onUpdateReady: (callback) => {
+    ipcRenderer.on('update-ready', (_event, info) => callback(info));
+  },
+  installUpdate: () => ipcRenderer.invoke('install-update'),
 });
