@@ -117,6 +117,53 @@ export function renderReceiptHtml(templateHtml: string, data: ReceiptTemplateDat
   return html;
 }
 
+// html2canvas (utilisé par jsPDF.html(), voir renderReceiptPdf) ne résout pas de façon fiable
+// les variables CSS (`var(--nom)`) — limitation connue du projet, pas de notre moteur. Un
+// template peut légitimement utiliser des variables CSS pour rester lisible et facile à
+// modifier (voir premium.html, entièrement construit autour de `:root { --primary-dark: ...}`) ;
+// pour que ça capture correctement, on les résout nous-mêmes en valeurs littérales AVANT de
+// transmettre le HTML à html2canvas — le fichier source du template, lui, n'est jamais modifié.
+function resolveCssVariablesForCapture(html: string): string {
+  const declRe = /--([\w-]+)\s*:\s*([^;{}]+);/g;
+  const vars: Record<string, string> = {};
+  let decl: RegExpExecArray | null;
+  while ((decl = declRe.exec(html))) {
+    vars[decl[1]] = decl[2].trim();
+  }
+  if (Object.keys(vars).length === 0) return html;
+
+  // Jusqu'à 3 passes : une valeur de variable peut elle-même référencer une autre variable.
+  let result = html;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    result = result.replace(/var\(\s*--([\w-]+)\s*(?:,\s*([^)]+))?\)/g, (full, name, fallback) => {
+      if (vars[name] !== undefined) {
+        changed = true;
+        return vars[name];
+      }
+      return fallback !== undefined ? fallback.trim() : full;
+    });
+    if (!changed) break;
+  }
+  return result;
+}
+
+// Neutralise, UNIQUEMENT pour la capture PDF, les styles pensés pour un aperçu écran flottant
+// (ombre, coins arrondis, marge, fond gris derrière la page) — sans jamais toucher au fichier
+// source du template, qui garde son rendu d'origine si on l'ouvre normalement dans un
+// navigateur. Ajouté en dernier dans <head> pour gagner la cascade sur les règles du template.
+const CAPTURE_OVERRIDE_STYLE = `<style>
+  body { background: #ffffff !important; }
+  .a4-page { margin: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+</style>`;
+
+function prepareHtmlForCapture(html: string): string {
+  const withResolvedVars = resolveCssVariablesForCapture(html);
+  return /<\/head>/i.test(withResolvedVars)
+    ? withResolvedVars.replace(/<\/head>/i, `${CAPTURE_OVERRIDE_STYLE}</head>`)
+    : CAPTURE_OVERRIDE_STYLE + withResolvedVars;
+}
+
 // Rend un document HTML complet (DOCTYPE/head/body) dans un <iframe> détaché plutôt que dans le
 // document principal — le <style> d'un template peut contenir des sélecteurs génériques
 // (body, table, th, td...) qui pollueraient toute l'app s'ils étaient injectés directement dans
@@ -153,7 +200,7 @@ export async function renderReceiptPdf(
   data: ReceiptTemplateData,
   autoDownload = true
 ): Promise<jsPDF> {
-  const html = renderReceiptHtml(templateHtml, data);
+  const html = prepareHtmlForCapture(renderReceiptHtml(templateHtml, data));
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   await withRenderFrame(html, async (frameDoc) => {
