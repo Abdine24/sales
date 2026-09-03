@@ -258,7 +258,7 @@ create table if not exists facture_sequences (
 -- routes/factures.js) sans jamais stocker le PDF lui-même (régénéré à la demande).
 create table if not exists factures (
   id bigserial primary key,
-  vente_id text not null unique references ventes(id) on delete cascade,
+  vente_id uuid not null unique references ventes(id) on delete cascade,
   numero text not null unique,
   annee integer not null,
   sequence integer not null,
