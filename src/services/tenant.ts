@@ -9,14 +9,25 @@ const ROOT_DOMAIN = import.meta.env.VITE_ROOT_DOMAIN || 'azanga.tech';
 // Étiquettes jamais attribuables à une boutique — le domaine applicatif servi par GitHub Pages.
 const RESERVED_LABELS = new Set(['api', 'app', 'www']);
 
+function isLocalhost(): boolean {
+  return typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+}
+
 // Permet de tester la détection de tenant en local (localhost:5173) avant que le DNS
 // wildcard n'existe : ?tenant=xxx dans l'URL simule le sous-domaine "xxx.azanga.tech".
 function localDevOverride(): string | null {
-  if (typeof window === 'undefined') return null;
-  const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  if (!isLocal) return null;
+  if (!isLocalhost()) return null;
   const params = new URLSearchParams(window.location.search);
   return params.get('tenant');
+}
+
+// Simule le domaine vitrine de la plateforme en local : ?platform=1 dans l'URL affiche
+// l'écran "créer ma boutique" (voir isPlatformLandingHost ci-dessous) sans attendre que
+// app.azanga.tech ne soit vraiment branché.
+function isLocalPlatformOverride(): boolean {
+  if (!isLocalhost()) return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('platform') === '1';
 }
 
 function extractSlugFromHost(host: string): string | null {
@@ -50,14 +61,20 @@ export function getTenantHost(): string | null {
 // résolution de tenant laissée au serveur.
 export function isPlatformLandingHost(): boolean {
   if (typeof window === 'undefined') return false;
+  if (isLocalPlatformOverride()) return true;
   if (localDevOverride()) return false;
   const host = window.location.hostname;
   return host === ROOT_DOMAIN || Array.from(RESERVED_LABELS).some((label) => host === `${label}.${ROOT_DOMAIN}`);
 }
 
-// Construit l'URL absolue de la boutique nouvellement créée, pour la redirection après
-// POST /boutiques (voir AuthGate.tsx) — toujours le vrai domaine de prod, jamais un
-// override local, puisque c'est une navigation dure vers le sous-domaine réel.
+// Construit l'URL vers laquelle rediriger après la création d'une boutique (voir
+// AuthGate.tsx). En local, reste sur le serveur de dev avec ?tenant=<slug> (le vrai
+// sous-domaine n'existe pas encore tant que le DNS wildcard n'est pas branché) pour pouvoir
+// tester tout le parcours d'un seul tenant sans interruption ; en production, le vrai
+// sous-domaine.
 export function buildBoutiqueUrl(slug: string): string {
+  if (isLocalhost()) {
+    return `${window.location.origin}/?tenant=${slug}`;
+  }
   return `https://${slug}.${ROOT_DOMAIN}/`;
 }
