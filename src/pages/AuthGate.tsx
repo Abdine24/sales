@@ -27,7 +27,16 @@ type AuthMode = 'login' | 'activation' | 'forgot-password' | 'reset-password';
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { personnel, setPersonnel } = useAuth();
 
-  const [mode, setMode] = useState<AuthMode>('login');
+  // Détecte un lien "réinitialiser mon mot de passe" dès le tout premier rendu, en lisant
+  // directement l'URL (hash ou query selon le flux) plutôt que d'attendre l'événement
+  // PASSWORD_RECOVERY de Supabase : ce dernier peut être émis avant que ce composant ait eu
+  // le temps de s'abonner (AuthProvider vérifie déjà la session plus haut dans l'arbre), auquel
+  // cas il est perdu et on retombe silencieusement sur l'écran de connexion normal.
+  const isPasswordRecoveryLink = () =>
+    typeof window !== 'undefined' &&
+    (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'));
+
+  const [mode, setMode] = useState<AuthMode>(() => (isPasswordRecoveryLink() ? 'reset-password' : 'login'));
   const [activationStep, setActivationStep] = useState<'form' | 'otp'>('form');
 
   // Form Fields

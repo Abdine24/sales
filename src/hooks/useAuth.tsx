@@ -18,11 +18,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const loadSession = async () => {
+      // Un lien "réinitialiser mon mot de passe" ouvre lui aussi une session Supabase (de
+      // récupération) — on ne doit surtout pas la traiter comme une connexion normale ici,
+      // sinon l'utilisateur atterrit directement dans l'app au lieu de choisir un nouveau mot
+      // de passe. AuthGate détecte ce cas via l'URL et affiche le bon écran.
+      const isPasswordRecoveryLink =
+        window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+
       // La session vient désormais de Supabase (persistée par son propre SDK) — plus d'un
       // identifiant local dans sessionStorage. Une session Supabase active ne veut pas
       // forcément dire qu'un profil personnel existe déjà pour ce compte (ex: lien coupé
       // entre-temps par un admin) : /personnel/me tranche.
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && !isPasswordRecoveryLink) {
         try {
           const supabase = await getSupabase();
           const { data } = await supabase.auth.getSession();
