@@ -110,12 +110,15 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     try {
       // L'admin gère les mots de passe de son équipe (voir Personnel.tsx) : un membre qui a
       // oublié le sien ne reçoit pas d'email de réinitialisation, ça notifie l'admin à la
-      // place. Seul un compte admin passe encore par l'email Supabase classique.
-      const routing = await apiPostPublic<{ isAdmin: boolean }>('/mot-de-passe-oublie', {
-        email: forgotEmail,
-      });
+      // place. Un email inconnu de notre base ne déclenche rien du tout — jamais d'appel à
+      // Supabase pour une adresse qu'on ne reconnaît pas. Seul un compte admin connu passe
+      // par l'email Supabase classique.
+      const routing = await apiPostPublic<{ isAdmin: boolean; sendEmail: boolean }>(
+        '/mot-de-passe-oublie',
+        { email: forgotEmail }
+      );
 
-      if (routing.isAdmin) {
+      if (routing.sendEmail) {
         const result = await sendPasswordResetEmail(forgotEmail);
         if (!result.success) {
           throw new Error(result.message || "Échec de l'envoi de l'email.");
@@ -123,8 +126,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         setForgotSent(true);
         setInfoMessage(result.message || '');
       } else {
+        // Email inconnu ou membre de l'équipe : même message générique dans les deux cas —
+        // on ne révèle jamais si l'adresse correspond à un compte existant.
         setForgotSent(true);
-        setInfoMessage("L'administrateur de la boutique a été prévenu et va réinitialiser ton mot de passe.");
+        setInfoMessage("Si ce compte existe, l'administrateur de la boutique a été prévenu et réinitialisera le mot de passe si besoin.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi de la demande de réinitialisation.");

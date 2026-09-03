@@ -17,12 +17,18 @@ motDePasseOublieRouter.post('/', limiter, async (req, res) => {
   const { rows } = await pool.query('select id, nom, role, actif from personnel where email=$1', [email]);
   const person = rows[0];
 
-  // Email inconnu ou compte admin : on laisse le flux Supabase habituel s'en charger (il ne
-  // révèle pas non plus si le compte existe, donc pas de fuite d'information ici).
-  if (!person || person.role === 'admin') {
-    return res.json({ isAdmin: true });
+  // Email inconnu de notre base : on n'envoie rien du tout, jamais (pas d'appel à Supabase).
+  if (!person) {
+    return res.json({ isAdmin: false, sendEmail: false });
   }
 
+  // Compte admin connu : seul cas où le flux Supabase classique (email de réinitialisation)
+  // est déclenché.
+  if (person.role === 'admin') {
+    return res.json({ isAdmin: true, sendEmail: true });
+  }
+
+  // Membre de l'équipe connu : on prévient l'admin, pas d'email envoyé à personne.
   if (person.actif) {
     await pool.query(
       `insert into notifications (type, message, target_role, related_personnel_id)
@@ -31,5 +37,5 @@ motDePasseOublieRouter.post('/', limiter, async (req, res) => {
     );
   }
 
-  res.json({ isAdmin: false });
+  res.json({ isAdmin: false, sendEmail: false });
 });
