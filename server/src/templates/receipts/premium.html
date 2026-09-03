@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facture Premium - iVente</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Volontairement AUCUNE police chargée depuis un CDN externe (Google Fonts etc.) : le
+         rendu PDF se fait côté serveur (Puppeteer/Chromium, voir pdfRenderer.js), où une
+         dépendance réseau externe est fragile (lenteur, indisponibilité) et s'est avérée
+         produire des PDF de plusieurs Mo en pratique sur le VPS (repli sur une police système
+         non subsettée). On s'appuie uniquement sur les polices installées dans le conteneur
+         (voir server/Dockerfile : ttf-freefont, font-noto). -->
 
     <style>
         /* Forcer l'impression des couleurs d'arrière-plan pour le PDF */
@@ -29,7 +32,10 @@
 
         body {
             background-color: #ffffff;
-            font-family: 'Inter', -apple-system, sans-serif;
+            /* Noms correspondant réellement aux paquets Alpine installés (voir Dockerfile :
+               font-noto -> "Noto Sans", ttf-freefont -> "FreeSans") — pas des noms de police
+               macOS/Windows qui n'existent pas dans ce conteneur. */
+            font-family: "Noto Sans", "FreeSans", sans-serif;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
