@@ -145,6 +145,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
   const [nom, setNom] = useState('');
   const [isVariable, setIsVariable] = useState(false);
   const [prix, setPrix] = useState('');
+  const [coutAchat, setCoutAchat] = useState('');
   const [stock, setStock] = useState('');
   const [codeBarres, setCodeBarres] = useState('');
   const [categorie, setCategorie] = useState('Smartphones');
@@ -183,6 +184,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
   // Single Variant Add Form inside modal
   const [newVariantAttrs, setNewVariantAttrs] = useState<Record<string, string>>({});
   const [newVariantPrix, setNewVariantPrix] = useState<string>('');
+  const [newVariantCoutAchat, setNewVariantCoutAchat] = useState<string>('');
   const [newVariantStock, setNewVariantStock] = useState<string>('5');
   const [newVariantCodeBarres, setNewVariantCodeBarres] = useState<string>('');
   const [bulkPriceValue, setBulkPriceValue] = useState<string>('');
@@ -224,6 +226,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
     setNom('');
     setIsVariable(false);
     setPrix('');
+    setCoutAchat('');
     setStock('0');
     setCodeBarres('');
     setCategorie(categories[0] || 'Smartphones');
@@ -253,6 +256,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
     setNom(p.nom);
     setIsVariable(Boolean(p.is_variable));
     setPrix(p.prix.toString());
+    setCoutAchat(p.cout_achat_unitaire != null ? p.cout_achat_unitaire.toString() : '');
     setStock(p.stock.toString());
     setCodeBarres(p.code_barres);
     setCategorie(p.categorie);
@@ -511,6 +515,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
     }
 
     const customPrice = parseFloat(newVariantPrix) || parseFloat(prix) || 0;
+    const customCost = parseFloat(newVariantCoutAchat) || undefined;
     const initialStock = parseInt(newVariantStock, 10) || 0;
 
     const slug = Object.values(record).map((s) => s.toLowerCase().replace(/[^a-z0-9]/gi, '')).join('_');
@@ -522,6 +527,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       prix: customPrice,
       stock: initialStock,
       code_barres: newVariantCodeBarres.trim() || generateRandomBarcode(),
+      cout_achat_unitaire: customCost,
     };
 
     // Update attributs list to include new values if they weren't in the list
@@ -537,6 +543,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
     setVariantesDetaillees((prev) => [...prev, newVar]);
     setNewVariantAttrs({});
     setNewVariantPrix('');
+    setNewVariantCoutAchat('');
     setNewVariantCodeBarres('');
   };
 
@@ -651,6 +658,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       nom,
       is_variable: isVariable,
       prix: finalPrix,
+      // Sans coût d'achat, une vente est comptée à 100% de bénéfice — c'est ce qui a été
+      // signalé comme un bug : le champ était tout simplement absent du formulaire. Pour un
+      // produit variable, le coût vit par variante (voir variantes_detaillees ci-dessous).
+      cout_achat_unitaire: isVariable ? undefined : parseFloat(coutAchat) || undefined,
       stock: finalStock,
       code_barres: codeBarres,
       categorie,
@@ -2316,7 +2327,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* 02 : Champs Produit Simple */}
           {!isVariable ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
               <div>
                 <label className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 block">
                   Prix de Vente Client (F) *
@@ -2330,6 +2341,26 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   placeholder="ex: 150000"
                   className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-black text-blue-600 dark:text-blue-400"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1 block">
+                  Prix d'Achat / Coût (F)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={coutAchat}
+                  onChange={(e) => setCoutAchat(e.target.value)}
+                  placeholder="ex: 100000"
+                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-emerald-600 dark:text-emerald-400"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  {coutAchat
+                    ? 'Sert à calculer le bénéfice réel des ventes.'
+                    : 'Vide = bénéfice affiché à 100% du prix de vente sur ce produit.'}
+                </span>
               </div>
 
               <div>
@@ -2617,6 +2648,20 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   </div>
 
                   <div>
+                    <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mb-0.5 block">
+                      Coût d'Achat (F)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Ex: 250000"
+                      value={newVariantCoutAchat}
+                      onChange={(e) => setNewVariantCoutAchat(e.target.value)}
+                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                    />
+                  </div>
+
+                  <div>
                     <div className="flex items-center justify-between mb-0.5">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
                         Code-Barres
@@ -2704,12 +2749,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   </div>
                 ) : (
                   <div className="max-h-64 overflow-y-auto overflow-x-auto rounded-xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xs">
-                    <table className="w-full text-left text-xs min-w-[580px]">
+                    <table className="w-full text-left text-xs min-w-[700px]">
                       <thead className="bg-slate-100/90 dark:bg-slate-800 text-slate-500 uppercase sticky top-0 border-b border-slate-200/60 dark:border-white/10">
                         <tr>
                           <th className="p-2.5 font-bold">Attributs / Spécificités</th>
                           <th className="p-2.5 w-44 font-bold">Code-Barres</th>
                           <th className="p-2.5 w-32 font-bold">Prix Client (F)</th>
+                          <th className="p-2.5 w-32 font-bold">Coût d'Achat (F)</th>
                           <th className="p-2.5 w-24 font-bold">
                             {editingProduit ? (
                               <span className="flex items-center gap-1">
@@ -2820,6 +2866,20 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                     setVariantesDetaillees(updated);
                                   }}
                                   className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-black text-blue-600 dark:text-blue-400"
+                                />
+                              </td>
+                              <td className="p-2.5">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="—"
+                                  value={v.cout_achat_unitaire ?? ''}
+                                  onChange={(e) => {
+                                    const updated = [...variantesDetaillees];
+                                    updated[i].cout_achat_unitaire = e.target.value ? parseFloat(e.target.value) || 0 : undefined;
+                                    setVariantesDetaillees(updated);
+                                  }}
+                                  className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400"
                                 />
                               </td>
                               <td className="p-2.5">
