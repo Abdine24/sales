@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, KeyRound, ShieldAlert, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, KeyRound, ShieldAlert, X } from 'lucide-react';
 import type { Licence } from '../db/db';
 import { apiGet, ApiError } from '../services/api';
-import { evaluateLicenceStatus, requestTrialLicenseKey } from '../utils/license';
+import { evaluateLicenceStatus } from '../utils/license';
 import { renewLicence } from '../services/localAuth';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/Button';
@@ -115,32 +115,13 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
           continuer à utiliser la caisse et le stock.
         </p>
 
+        {/* Pas d'essai gratuit ici : il ne se propose qu'une fois, à l'activation initiale
+            d'une boutique (voir AuthGate.tsx) — un compte qui arrive jusqu'à cet écran en a
+            forcément déjà eu un (ou n'y a jamais eu droit), donc seule une clé payante a du
+            sens pour renouveler. */}
         <form onSubmit={submitRenewal} className="space-y-4">
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Nouvelle clé de licence</label>
-              {licence?.trial_used ? (
-                <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                  Essai gratuit déjà utilisé
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const trialKey = await requestTrialLicenseKey();
-                      setCle(trialKey);
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
-                    }
-                  }}
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  Essai gratuit (7 jours)
-                </button>
-              )}
-            </div>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Nouvelle clé de licence</label>
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
               <input
@@ -149,26 +130,8 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
                 value={cle}
                 onChange={(e) => setCle(e.target.value)}
                 placeholder="IVTE-0030-XXXXXXXX-XXXXXXXX"
-                className={`w-full glass-input pl-10 py-3 rounded-xl text-sm text-slate-900 dark:text-white font-mono uppercase ${licence?.trial_used ? 'pr-4' : 'pr-28'}`}
+                className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white font-mono uppercase"
               />
-              {!licence?.trial_used && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const trialKey = await requestTrialLicenseKey();
-                      setCle(trialKey);
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
-                    }
-                  }}
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-                  title="Remplir avec une clé d'essai 7 jours"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Essai 7j</span>
-                </button>
-              )}
             </div>
           </div>
 
