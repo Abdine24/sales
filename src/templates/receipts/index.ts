@@ -25,5 +25,17 @@ export const RECEIPT_TEMPLATES: ReceiptTemplateMeta[] = [
   },
 ];
 
-export const getReceiptTemplate = (id: string | null | undefined): ReceiptTemplateMeta | null =>
-  RECEIPT_TEMPLATES.find((t) => t.id === id) || null;
+export const getReceiptTemplate = async (id: string | null | undefined): Promise<ReceiptTemplateMeta | null> => {
+  if (!id) return null;
+  const local = RECEIPT_TEMPLATES.find((t) => t.id === id);
+  if (local) return local;
+
+  try {
+    const { apiGetPublic } = await import('../../services/api');
+    const templates = await apiGetPublic<ReceiptTemplateMeta[]>('/plateforme/templates/public?includeHtml=true');
+    return templates.find((t) => t.id === id) || null;
+  } catch (err) {
+    console.error('Erreur fetch template dynamique:', err);
+    return null;
+  }
+};

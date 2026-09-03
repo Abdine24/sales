@@ -67,3 +67,4 @@ async function ownerRequest<T>(method: string, path: string, body?: unknown): Pr
 export const ownerGet = <T>(path: string) => ownerRequest<T>('GET', path);
 export const ownerPut = <T>(path: string, body?: unknown) => ownerRequest<T>('PUT', path, body);
 export const ownerPost = <T>(path: string, body?: unknown) => ownerRequest<T>('POST', path, body);
+export const ownerDelete = <T>(path: string) => ownerRequest<T>('DELETE', path);

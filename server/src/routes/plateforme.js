@@ -72,6 +72,18 @@ plateformeRouter.get('/config', async (_req, res) => {
   res.json(rows[0] || { whatsapp_number: null, contact_phone: null });
 });
 
+// Templates publics — lus par toutes les boutiques pour construire leur menu Paramètres.
+// Ne contient pas le html brut par défaut pour alléger la requête (sauf demande spécifique).
+plateformeRouter.get('/templates/public', async (req, res) => {
+  const { includeHtml } = req.query;
+  const { rows } = await controlPlanePool.query(
+    includeHtml === 'true'
+      ? `select id, nom, description, html from receipt_templates order by created_at desc`
+      : `select id, nom, description from receipt_templates order by created_at desc`
+  );
+  res.json(rows);
+});
+
 plateformeRouter.use(requireOwner);
 
 plateformeRouter.put('/config', async (req, res) => {
@@ -214,3 +226,43 @@ plateformeRouter.get('/annonces', async (_req, res) => {
   );
   res.json(rows);
 });
+
+// -- Templates HTML dynamiques --
+plateformeRouter.get('/templates', async (_req, res) => {
+  const { rows } = await controlPlanePool.query(
+    `select id, nom, description, html, created_at from receipt_templates order by created_at desc`
+  );
+  res.json(rows);
+});
+
+plateformeRouter.post('/templates', async (req, res) => {
+  const body = req.body || {};
+  const nom = (body.nom || '').trim();
+  const description = (body.description || '').trim();
+  const html = (body.html || '').trim();
+
+  if (!nom || !html) {
+    return res.status(400).json({ error: 'Le nom et le code HTML sont requis.' });
+  }
+
+  const { rows } = await controlPlanePool.query(
+    `insert into receipt_templates (nom, description, html)
+     values ($1, $2, $3)
+     returning id, nom, description, html, created_at`,
+    [nom, description, html]
+  );
+  res.json(rows[0]);
+});
+
+plateformeRouter.delete('/templates/:id', async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await controlPlanePool.query(
+    `delete from receipt_templates where id=$1 returning id`,
+    [id]
+  );
+  if (rows.length === 0) {
+    return res.status(404).json({ error: 'Modèle introuvable.' });
+  }
+  res.json({ success: true });
+});
+

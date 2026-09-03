@@ -277,7 +277,7 @@ export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Prom
   const templateId = params.settings?.receipt_template_id;
   if (templateId) {
     const { getReceiptTemplate } = await import('../templates/receipts');
-    const template = getReceiptTemplate(templateId);
+    const template = await getReceiptTemplate(templateId);
     if (template) {
       const { renderReceiptPdf } = await import('./receiptTemplateEngine');
       return renderReceiptPdf(

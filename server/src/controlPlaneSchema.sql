@@ -63,3 +63,13 @@ create table if not exists annonces (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_annonces_created on annonces(created_at desc);
+
+-- Templates de reçus A4 dynamiques, gérés par le propriétaire et partagés
+-- sur l'ensemble de la plateforme. Les boutiques peuvent les sélectionner.
+create table if not exists receipt_templates (
+  id uuid primary key default gen_random_uuid(),
+  nom text not null,
+  description text,
+  html text not null,
+  created_at timestamptz not null default now()
+);

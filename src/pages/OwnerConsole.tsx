@@ -7,7 +7,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDialog } from '../components/ui/DialogProvider';
-import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost } from '../services/ownerApi';
+import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost, ownerDelete } from '../services/ownerApi';
 import { ApiError } from '../services/api';
 import { evaluateLicenceStatus } from '../utils/license';
 import { formatCfaCompact } from '../utils/currency';
@@ -41,6 +41,14 @@ interface Annonce {
   target_label: string;
   sent_count: number;
   failed_count: number;
+  created_at: string;
+}
+
+interface ReceiptTemplate {
+  id: string;
+  nom: string;
+  description: string;
+  html: string;
   created_at: string;
 }
 
@@ -111,6 +119,7 @@ export const OwnerConsole: React.FC = () => {
   const [config, setConfig] = useState<PlatformConfigForm>({ whatsapp_number: '', contact_phone: '' });
   const [savingConfig, setSavingConfig] = useState(false);
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
+  const [templates, setTemplates] = useState<ReceiptTemplate[]>([]);
 
   // Recherche/filtre — purement côté client : le nombre de boutiques reste modeste, pas besoin
   // d'un aller-retour serveur pour ça.
@@ -170,14 +179,16 @@ export const OwnerConsole: React.FC = () => {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [b, c, a] = await Promise.all([
+      const [b, c, a, t] = await Promise.all([
         ownerGet<Boutique[]>('/plateforme/boutiques'),
         ownerGet<{ whatsapp_number: string | null; contact_phone: string | null }>('/plateforme/config'),
         ownerGet<Annonce[]>('/plateforme/annonces'),
+        ownerGet<ReceiptTemplate[]>('/plateforme/templates'),
       ]);
       setBoutiques(b);
       setConfig({ whatsapp_number: c.whatsapp_number || '', contact_phone: c.contact_phone || '' });
       setAnnonces(a);
+      setTemplates(t);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuthed(false);
@@ -242,6 +253,49 @@ export const OwnerConsole: React.FC = () => {
       await alert(err instanceof ApiError ? err.message : "Échec de l'envoi.");
     } finally {
       setSendingAnnonce(false);
+    }
+  };
+
+  const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const htmlContent = await file.text();
+      // Simple parse to extract title if any, or use filename
+      const nom = file.name.replace('.html', '');
+      
+      const newTemplate = await ownerPost<ReceiptTemplate>('/plateforme/templates', {
+        nom,
+        description: 'Ajouté par le propriétaire',
+        html: htmlContent
+      });
+      
+      setTemplates(prev => [newTemplate, ...prev]);
+      toast(`Modèle "${nom}" ajouté avec succès.`);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de l'upload.");
+    } finally {
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string, nom: string) => {
+    const ok = await confirm({
+      title: 'Supprimer ce modèle ?',
+      message: `Voulez-vous vraiment supprimer le modèle "${nom}" ? Il ne sera plus disponible pour les boutiques.`,
+      confirmLabel: 'Supprimer',
+      danger: true
+    });
+    if (!ok) return;
+
+    try {
+      await ownerDelete(`/plateforme/templates/${templateId}`);
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast('Modèle supprimé.');
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
 
@@ -512,6 +566,62 @@ export const OwnerConsole: React.FC = () => {
           </div>
         )}
       </GlassCard>
+
+      {/* Templates de reçus A4 (Gestion globale) */}
+      <GlassCard>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-blue-500" /> Modèles de Reçus A4 
+            </h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Fichiers HTML mis à disposition de toutes les boutiques dans leurs paramètres.
+            </p>
+          </div>
+          <div>
+            <input 
+              type="file" 
+              accept=".html"
+              id="upload-template" 
+              className="hidden" 
+              onChange={handleTemplateUpload} 
+            />
+            <label 
+              htmlFor="upload-template"
+              className="cursor-pointer px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+            >
+              + Importer un fichier .html
+            </label>
+          </div>
+        </div>
+
+        {templates.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl">
+            Aucun modèle dynamique ajouté. Les boutiques n'ont accès qu'aux modèles codés en dur.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {templates.map(t => (
+              <div key={t.id} className="p-3 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col">
+                <div className="font-bold text-sm text-slate-900 dark:text-white mb-1 truncate">{t.nom}</div>
+                <div className="text-[11px] text-slate-500 mb-3 truncate">{t.description}</div>
+                <div className="mt-auto flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-white/5">
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Taille: {(t.html.length / 1024).toFixed(1)} KB
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteTemplate(t.id, t.nom)}
+                    className="text-[10px] font-bold text-rose-500 hover:underline"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
     </div>
   );
 };
+

@@ -28,7 +28,8 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { LicenceSection } from '../components/LicenceSection';
 import { playScanBeep } from '../utils/barcode';
 import { generateInvoiceA4Pdf, type InvoiceItem } from '../utils/pdfInvoice';
-import { RECEIPT_TEMPLATES, getReceiptTemplate } from '../templates/receipts';
+import { RECEIPT_TEMPLATES, getReceiptTemplate, type ReceiptTemplateMeta } from '../templates/receipts';
+import { apiGetPublic } from '../services/api';
 
 // Vente/lignes fictives — uniquement pour l'aperçu PDF d'un template depuis cette page, jamais
 // enregistrées ni envoyées nulle part.
@@ -61,19 +62,22 @@ export const Settings: React.FC = () => {
   const [zones, setZones] = useState<Zone[]>([]);
   const [produits, setProduits] = useState<Produit[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelRecord[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<ReceiptTemplateMeta[]>([]);
 
   const reload = useCallback(async () => {
     try {
-      const [s, z, p, pers] = await Promise.all([
+      const [s, z, p, pers, tpls] = await Promise.all([
         apiGet<AppSettings>('/settings'),
         apiGet<Zone[]>('/zones'),
         apiGet<Produit[]>('/produits'),
         apiGet<PersonnelRecord[]>('/personnel'),
+        apiGetPublic<ReceiptTemplateMeta[]>('/plateforme/templates/public')
       ]);
       setSettingsState(s || DEFAULT_SETTINGS);
       setZones(z);
       setProduits(p);
       setPersonnel(pers);
+      setCustomTemplates(tpls || []);
     } catch (err) {
       await alert(err instanceof ApiError ? err.message : 'Impossible de charger les réglages.');
     } finally {
@@ -200,7 +204,7 @@ export const Settings: React.FC = () => {
     setPreviewingTemplateId(templateId);
     try {
       if (templateId) {
-        const template = getReceiptTemplate(templateId);
+        const template = await getReceiptTemplate(templateId);
         if (!template) return;
         const { renderReceiptPdf } = await import('../utils/receiptTemplateEngine');
         await renderReceiptPdf(
@@ -747,7 +751,7 @@ export const Settings: React.FC = () => {
 
           <div className="space-y-2.5 mt-4">
             {/* "Classique" = le design intégré historique, toujours disponible (id null) */}
-            {[{ id: null as string | null, nom: 'Classique', description: 'Le design par défaut d\'iVente Pro.' }, ...RECEIPT_TEMPLATES].map(
+            {[{ id: null as string | null, nom: 'Classique', description: 'Le design par défaut d\'iVente Pro.' }, ...RECEIPT_TEMPLATES, ...customTemplates].map(
               (tpl) => {
                 const selected = receiptTemplateId === tpl.id;
                 const previewing = previewingTemplateId === tpl.id;
