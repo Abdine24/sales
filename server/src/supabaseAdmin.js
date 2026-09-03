@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 // Client Supabase avec la clé service_role — pouvoirs d'administration complets sur les
 // comptes (créer un utilisateur avec mot de passe, changer le mot de passe de n'importe qui,
@@ -18,6 +19,10 @@ export function getSupabaseAdmin() {
     }
     client = createClient(url, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      // Node 20 n'a pas de WebSocket natif (arrivé en Node 22) — le SDK Supabase instancie
+      // toujours un client Realtime en interne même si on ne l'utilise jamais ici, et se
+      // plaint sans ce polyfill.
+      realtime: { transport: ws },
     });
   }
   return client;
