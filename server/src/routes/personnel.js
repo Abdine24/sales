@@ -114,10 +114,15 @@ personnelRouter.post('/', async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    // Évite de laisser un compte Supabase orphelin (créé ici mais jamais rattaché) si
-    // l'écriture du profil échoue juste après (ex: nom d'utilisateur déjà pris).
+    // Ne JAMAIS supprimer automatiquement le compte Supabase ici, même s'il vient d'être créé
+    // dans cette même requête : un compte "orphelin" (sans ligne personnel) est un problème
+    // mineur et récupérable, alors qu'une suppression a un rayon d'action qu'on ne maîtrise
+    // pas totalement (ex: si supabaseUserId a été mal résolu, ça peut viser un tout autre
+    // compte). Un compte orphelin se nettoie à la main via SQL si besoin.
     if (createdSupabaseUser) {
-      await getSupabaseAdmin().auth.admin.deleteUser(supabaseUserId).catch(() => {});
+      console.error(
+        `Compte Supabase ${supabaseUserId} créé mais profil personnel non enregistré (${err.message}). Nettoyage manuel à prévoir si besoin.`
+      );
     }
     if (err.code === '23505') {
       return res.status(409).json({ error: "Ce nom d'utilisateur ou cet identifiant existe déjà." });
