@@ -1,19 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { KeyRound, ShieldAlert, Sparkles } from 'lucide-react';
+import { AlertTriangle, KeyRound, ShieldAlert, Sparkles, X } from 'lucide-react';
 import type { Licence } from '../db/db';
 import { apiGet, ApiError } from '../services/api';
 import { evaluateLicenceStatus, requestTrialLicenseKey } from '../utils/license';
 import { renewLicence } from '../services/localAuth';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/Button';
 
 // Bloque l'accès à l'app si la licence de la boutique est absente ou expirée. Rendu à
 // l'intérieur d'AuthGate : arriver jusqu'ici suppose déjà une session valide, donc pas besoin
 // de re-vérifier si le compte admin existe (AuthGate s'en est déjà chargé).
 export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { personnel } = useAuth();
   const [licence, setLicence] = useState<Licence | null | undefined>(undefined);
   const [cle, setCle] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Bannière d'expiration imminente masquée pour le reste de la session une fois fermée —
+  // pas besoin de la re-proposer à chaque clic dans l'app, juste à chaque nouvelle ouverture.
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const reloadLicence = useCallback(async () => {
     try {
@@ -37,6 +42,39 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const status = evaluateLicenceStatus(licence);
+
+  if (status.state === 'valide') {
+    // Même seuil que la carte détaillée de Réglages (voir LicenceSection.tsx) — averti
+    // uniquement l'admin (seul rôle habilité à renouveler, voir Personnel.tsx) pour ne pas
+    // alarmer un caissier qui ne peut rien y faire.
+    const showBanner = personnel?.role === 'admin' && status.daysRemaining <= 15 && !bannerDismissed;
+    return (
+      <>
+        {showBanner && (
+          <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-3 text-xs sm:text-sm font-semibold relative">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>
+              {status.daysRemaining === 1
+                ? 'Ta licence expire demain !'
+                : `Ta licence expire dans ${status.daysRemaining} jours`}
+              {status.expireLe && ` (le ${new Date(status.expireLe).toLocaleDateString('fr-FR')})`} — pense à la
+              renouveler dans Réglages pour éviter une coupure.
+            </span>
+            <button
+              type="button"
+              onClick={() => setBannerDismissed(true)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors"
+              title="Masquer pour cette session"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {children}
+      </>
+    );
+  }
+
   if (status.state !== 'expiree') return <>{children}</>;
 
   const submitRenewal = async (event: React.FormEvent) => {
