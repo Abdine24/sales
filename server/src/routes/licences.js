@@ -7,8 +7,10 @@ export const licencesRouter = Router();
 // Public (appelé avant toute authentification, pendant l'activation d'une boutique) mais
 // limité en débit pour rendre le brute-force de clés impraticable.
 const validateLimiter = simpleRateLimit({ windowMs: 60_000, max: 20 }); // 20/min/IP
-// Plus strict : évite qu'un visiteur ne génère un nombre illimité d'essais gratuits.
-const trialLimiter = simpleRateLimit({ windowMs: 60 * 60_000, max: 5 }); // 5/heure/IP
+// Plus strict : évite qu'un visiteur ne génère un nombre illimité d'essais gratuits — mais
+// pas trop serré non plus, pour ne pas gêner un admin qui teste plusieurs fois de suite
+// pendant la mise en place initiale de sa boutique.
+const trialLimiter = simpleRateLimit({ windowMs: 60 * 60_000, max: 20 }); // 20/heure/IP
 
 licencesRouter.post('/valider', validateLimiter, (req, res) => {
   const result = validateLicenseKey(req.body?.cle);
