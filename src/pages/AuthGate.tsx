@@ -16,6 +16,9 @@ import {
   Eye,
   EyeOff,
   Store,
+  MessageCircle,
+  FileText,
+  HelpCircle,
 } from 'lucide-react';
 import { authenticate, createPrincipal, completePasswordReset } from '../services/localAuth';
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
@@ -23,7 +26,10 @@ import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supab
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
 import { apiPostPublic } from '../services/api';
 import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
+import { WHATSAPP_CONTACT_URL } from '../constants/contact';
 import { Button } from '../components/ui/Button';
+import { TermsModal } from '../components/TermsModal';
+import { HelpGuideModal } from '../components/HelpGuideModal';
 import { useAuth } from '../hooks/useAuth';
 
 type AuthMode = 'create-boutique' | 'login' | 'activation' | 'forgot-password' | 'reset-password';
@@ -102,6 +108,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [boutiqueNom, setBoutiqueNom] = useState('');
   const [boutiqueSlug, setBoutiqueSlug] = useState('');
   const [slugEditedManually, setSlugEditedManually] = useState(false);
+
+  // Pied de page public (contact, CGU, guide) — visible sur tous les écrans de cette page.
+  const [showTerms, setShowTerms] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Form Fields
   const [nom, setNom] = useState('');
@@ -908,7 +918,41 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           )}
         </div>
         )}
+
+        {/* Pied de page public — contact, CGU, guide. Visible sur tous les écrans de cette
+            page (accueil de la plateforme, connexion, activation...), pas seulement à la
+            création de boutique. */}
+        <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-4 text-[11px] font-semibold text-slate-400">
+          <a
+            href={WHATSAPP_CONTACT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-emerald-500 transition-colors"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Contact
+          </a>
+          <button
+            type="button"
+            onClick={() => setShowHelp(true)}
+            className="flex items-center gap-1 hover:text-blue-500 transition-colors"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Guide d'utilisation
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTerms(true)}
+            className="flex items-center gap-1 hover:text-blue-500 transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Conditions d'utilisation
+          </button>
+        </div>
       </div>
+
+      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <HelpGuideModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 };
