@@ -50,3 +50,16 @@ create table if not exists platform_config (
   updated_at timestamptz not null default now()
 );
 insert into platform_config (id) values ('defaut') on conflict (id) do nothing;
+
+-- Historique des annonces envoyées depuis la page propriétaire (server/src/routes/plateforme.js,
+-- POST /annonce) — simple journal, jamais utilisé pour du routage ou de la logique métier.
+create table if not exists annonces (
+  id serial primary key,
+  message text not null,
+  target text not null,        -- 'all' ou l'id (uuid) d'une boutique précise
+  target_label text not null,  -- libellé lisible figé au moment de l'envoi (ex: nom de boutique)
+  sent_count integer not null default 0,
+  failed_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_annonces_created on annonces(created_at desc);

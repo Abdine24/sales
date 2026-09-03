@@ -103,17 +103,36 @@ plateformeRouter.get('/boutiques', async (_req, res) => {
       const { db_name, ...rest } = b;
       try {
         const pool = getTenantPool(db_name);
-        const [settingsResult, zonesResult] = await Promise.all([
-          pool.query(`select telephone from settings where id='principale'`),
-          pool.query(`select count(*)::int as n from zones where actif=true`),
-        ]);
+        const [settingsResult, zonesResult, personnelResult, produitsResult, ventesResult, licenceResult] =
+          await Promise.all([
+            pool.query(`select telephone from settings where id='principale'`),
+            pool.query(`select count(*)::int as n from zones where actif=true`),
+            pool.query(`select count(*)::int as n from personnel`),
+            pool.query(`select count(*)::int as n from produits`),
+            // Le parseur numeric->float (voir db.js, OID 1700) s'applique à tous les pools —
+            // pas de risque de "NaN" ici même si aucune vente n'existe encore (coalesce à 0).
+            pool.query(`select coalesce(sum(total),0)::numeric as total from ventes`),
+            pool.query(`select cle, activee_le, expire_le, duree_jours, trial_used from licence where id='principale'`),
+          ]);
         return {
           ...rest,
           telephone: settingsResult.rows[0]?.telephone || null,
           zones_actives: zonesResult.rows[0]?.n ?? 0,
+          personnel_count: personnelResult.rows[0]?.n ?? 0,
+          produits_count: produitsResult.rows[0]?.n ?? 0,
+          chiffre_affaires: ventesResult.rows[0]?.total ?? 0,
+          licence: licenceResult.rows[0] || null,
         };
       } catch {
-        return { ...rest, telephone: null, zones_actives: null };
+        return {
+          ...rest,
+          telephone: null,
+          zones_actives: null,
+          personnel_count: null,
+          produits_count: null,
+          chiffre_affaires: null,
+          licence: null,
+        };
       }
     })
   );
@@ -175,5 +194,23 @@ plateformeRouter.post('/annonce', async (req, res) => {
   if (failed > 0) {
     console.error(`Annonce plateforme : échec sur ${failed}/${boutiques.length} boutique(s).`);
   }
-  res.json({ sent: boutiques.length - failed, failed });
+  const sent = boutiques.length - failed;
+
+  const targetLabel = target === 'all' ? 'Toutes les boutiques actives' : boutiques[0]?.nom || target;
+  await controlPlanePool.query(
+    `insert into annonces (message, target, target_label, sent_count, failed_count)
+     values ($1, $2, $3, $4, $5)`,
+    [message, target, targetLabel, sent, failed]
+  );
+
+  res.json({ sent, failed });
+});
+
+// Journal des annonces déjà envoyées — simple historique, le plus récent d'abord.
+plateformeRouter.get('/annonces', async (_req, res) => {
+  const { rows } = await controlPlanePool.query(
+    `select id, message, target_label, sent_count, failed_count, created_at
+     from annonces order by created_at desc limit 100`
+  );
+  res.json(rows);
 });
