@@ -20,252 +20,6 @@ export interface GenerateInvoicePdfParams {
   autoDownload?: boolean;
 }
 
-/**
- * Génère une Facture A4 PDF ultra-professionnelle et la télécharge
- */
-export function generateInvoiceA4Pdf({
-  vente,
-  lignes,
-  clientNom,
-  clientTelephone,
-  clientAdresse,
-  settings,
-  autoDownload = true,
-}: GenerateInvoicePdfParams): jsPDF {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
-
-  const storeName = settings?.nom_site || 'iVente Store';
-  const ref = (vente.id || '').substring(0, 8).toUpperCase();
-  const dateStr = new Date(vente.date).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  // Top Header Banner (Bleu / Slate Moderne)
-  doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(0, 0, 210, 28, 'F');
-
-  // Titre Société
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(storeName.toUpperCase(), 14, 13);
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(203, 213, 225); // slate-300
-  if (settings?.slogan) {
-    doc.text(settings.slogan, 14, 19);
-  }
-
-  // Titre Facture Droite
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('FACTURE DE VENTE', 196, 13, { align: 'right' });
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(147, 197, 253); // blue-300
-  doc.text(`N° ${ref}`, 196, 19, { align: 'right' });
-
-  // 2 Blocs : Émetteur (Gauche) & Destinataire Client (Droite)
-  let yStart = 38;
-
-  // Émetteur
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ÉMIS PAR :', 14, yStart);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  let emetteurY = yStart + 5;
-  if (settings?.localite) {
-    doc.text(`Adresse : ${settings.localite}`, 14, emetteurY);
-    emetteurY += 4.5;
-  }
-  if (settings?.telephone) {
-    doc.text(`Tél : ${settings.telephone}`, 14, emetteurY);
-    emetteurY += 4.5;
-  }
-  if (settings?.email) {
-    doc.text(`Email : ${settings.email}`, 14, emetteurY);
-    emetteurY += 4.5;
-  }
-  if (settings?.ifu || settings?.rrcm) {
-    const fiscal = [settings.ifu ? `IFU : ${settings.ifu}` : '', settings.rrcm ? `RCCM : ${settings.rrcm}` : '']
-      .filter(Boolean)
-      .join(' | ');
-    doc.text(fiscal, 14, emetteurY);
-    emetteurY += 4.5;
-  }
-
-  // Client (Encadré à droite)
-  doc.setFillColor(248, 250, 252); // slate-50
-  doc.setDrawColor(226, 232, 240); // slate-200
-  doc.roundedRect(120, yStart - 4, 76, 26, 2, 2, 'FD');
-
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FACTURÉ À :', 124, yStart + 1);
-
-  doc.setFontSize(9);
-  doc.setTextColor(30, 41, 59);
-  const nomAffiche = clientNom || vente.client_nom || 'Client Passant';
-  doc.text(nomAffiche, 124, yStart + 6);
-
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  let clientY = yStart + 11;
-  if (clientTelephone) {
-    doc.text(`Tél : ${clientTelephone}`, 124, clientY);
-    clientY += 4.5;
-  }
-  doc.text(`Date : ${dateStr}`, 124, clientY);
-
-  // Tableau des Articles
-  const tableData = lignes.map((l, idx) => {
-    const designation = l.variante ? `${l.nom}\n${l.variante}` : l.nom;
-    const pu = l.prix_unitaire;
-    const totalLigne = l.prix_unitaire * l.quantite;
-    return [(idx + 1).toString(), designation, l.quantite.toString(), formatCfa(pu), formatCfa(totalLigne)];
-  });
-
-  const tableStartY = Math.max(emetteurY, clientY) + 8;
-
-  autoTable(doc, {
-    startY: tableStartY,
-    head: [['#', 'Désignation des Articles', 'Qté', 'Prix Unitaire', 'Total']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 8.5,
-      halign: 'left',
-    },
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
-      textColor: [51, 65, 85],
-    },
-    columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 95 },
-      2: { cellWidth: 15, halign: 'center' },
-      3: { cellWidth: 35, halign: 'right' },
-      4: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
-    },
-  });
-
-  // Calcul du bloc des Totaux
-  // @ts-ignore
-  const finalY = (doc as any).lastAutoTable?.finalY || tableStartY + 40;
-
-  const sousTotal = lignes.reduce((acc, l) => acc + l.prix_unitaire * l.quantite, 0);
-  const remise = vente.remise || 0;
-  const total = vente.total;
-  const paye = vente.montant_paye;
-  const reste = vente.reste_a_payer || 0;
-
-  const totalBoxX = 115;
-  let curY = finalY + 6;
-
-  // Lignes de totaux
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-
-  if (remise > 0) {
-    doc.text('Sous-total brut :', totalBoxX, curY);
-    doc.text(formatCfa(sousTotal), 196, curY, { align: 'right' });
-    curY += 5;
-
-    doc.setTextColor(225, 29, 72); // rose-600
-    doc.text('Remise commerciale :', totalBoxX, curY);
-    doc.text(`-${formatCfa(remise)}`, 196, curY, { align: 'right' });
-    curY += 5;
-  }
-
-  // Rectangle TOTAL NET
-  doc.setFillColor(241, 245, 249); // slate-100
-  doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(totalBoxX - 2, curY - 1, 83, 10, 1.5, 1.5, 'FD');
-
-  doc.setFontSize(10.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('TOTAL NET À PAYER :', totalBoxX + 2, curY + 6);
-  doc.setTextColor(37, 99, 235); // blue-600
-  doc.text(formatCfa(total), 194, curY + 6, { align: 'right' });
-  curY += 14;
-
-  // Mode de règlement et statut
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  const modePay =
-    (vente.methode_paiement as string) === 'mobile_money'
-      ? 'Mobile Money (MTN / Moov / Wave)'
-      : (vente.methode_paiement as string) === 'carte'
-      ? 'Carte Bancaire'
-      : (vente.methode_paiement as string) === 'virement'
-      ? 'Virement Bancaire'
-      : 'Espèces (Cash)';
-  doc.text(`Mode de règlement : ${modePay}`, totalBoxX, curY);
-  curY += 4.5;
-
-  doc.text(`Montant réglé : ${formatCfa(paye)}`, totalBoxX, curY);
-  curY += 4.5;
-
-  if (reste > 0) {
-    doc.setTextColor(225, 29, 72);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Reste dû (Crédit) : ${formatCfa(reste)}`, totalBoxX, curY);
-  } else if (paye > total) {
-    doc.setTextColor(16, 185, 129);
-    doc.text(`Monnaie rendue : ${formatCfa(paye - total)}`, totalBoxX, curY);
-  }
-
-  // Pied de page / Message de bas de facture
-  const pageHeight = doc.internal.pageSize.height;
-  doc.setDrawColor(226, 232, 240);
-  doc.line(14, pageHeight - 20, 196, pageHeight - 20);
-
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(148, 163, 184); // slate-400
-  const footerText =
-    settings?.ticket_footer_message ||
-    'Merci de votre confiance ! Les articles vendus ne sont ni repris ni échangés au-delà de 48 heures.';
-  doc.text(footerText, 105, pageHeight - 14, { align: 'center' });
-  doc.text(
-    `Document généré par ${storeName} le ${new Date().toLocaleDateString('fr-FR')} - Facture originale`,
-    105,
-    pageHeight - 9,
-    { align: 'center' }
-  );
-
-  const filename = `Facture_${ref}_${(clientNom || 'Client').replace(/\s+/g, '_')}.pdf`;
-
-  if (autoDownload) {
-    doc.save(filename);
-  }
-
-  return doc;
-}
-
 // Déclenche le téléchargement d'un Blob PDF — équivalent de jsPDF's doc.save(), pour le chemin
 // qui ne passe plus par jsPDF (le PDF vient déjà tout fait du serveur, voir plus bas).
 function downloadBlob(blob: Blob, filename: string) {
@@ -278,28 +32,36 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Point d'entrée unique pour générer une facture/reçu de vente — si la boutique a choisi un
-// modèle dans Réglages > Templates de reçus (settings.receipt_template_id), le PDF est
-// généré CÔTÉ SERVEUR par Puppeteer/Chromium (voir server/src/routes/factures.js) : texte
-// vectoriel réel, pagination native, numérotation légale de facture — plus aucune limite propre
-// au rendu HTML dans le navigateur. Sans modèle choisi ("Classique"), reste le design jsPDF
-// vectoriel ci-dessus, généré ici même — sert aussi de secours si l'API est injoignable.
-export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Promise<jsPDF | void> {
+// Message unique pour le cas "aucun modèle" — affiché tel quel à l'utilisateur par les pages
+// Caisse / Ventes / Clients. Il n'existe plus de design de facture intégré à l'application :
+// une facture A4 vient TOUJOURS d'un modèle ajouté depuis la Console Propriétaire.
+export const AUCUN_MODELE_MESSAGE =
+  "Aucun modèle de facture n'est configuré pour cette boutique. " +
+  'Choisissez-en un dans Réglages → Templates de reçus.';
+
+// Récupère le PDF de la facture, rendu CÔTÉ SERVEUR par Puppeteer/Chromium à partir du modèle
+// choisi (voir server/src/routes/factures.js) : texte vectoriel réel, pagination native,
+// numérotation légale. Lève une erreur explicite si aucun modèle n'est choisi — il n'y a plus
+// de repli sur un design intégré, par choix : seuls les modèles ajoutés par le propriétaire
+// peuvent produire une facture.
+async function fetchFacturePdf(params: GenerateInvoicePdfParams): Promise<Blob> {
   const templateId = params.settings?.receipt_template_id;
-  if (templateId && params.vente.id) {
-    try {
-      const { apiGetBlob } = await import('../services/api');
-      const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
-      const blob = await apiGetBlob(`/factures/${params.vente.id}.pdf${query}`);
-      if (params.autoDownload !== false) {
-        downloadBlob(blob, `Facture-${params.vente.id.substring(0, 8)}.pdf`);
-      }
-      return;
-    } catch (err) {
-      console.error('Échec de la génération PDF côté serveur, repli sur le design Classique :', err);
-    }
+  if (!templateId || !params.vente.id) {
+    throw new Error(AUCUN_MODELE_MESSAGE);
   }
-  return generateInvoiceA4Pdf(params);
+  const { apiGetBlob } = await import('../services/api');
+  const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
+  return apiGetBlob(`/factures/${params.vente.id}.pdf${query}`);
+}
+
+// Point d'entrée unique pour télécharger une facture/reçu de vente. Lève en cas d'échec (aucun
+// modèle, modèle supprimé, API injoignable) : l'appelant doit afficher le message, pas produire
+// silencieusement un document différent de celui attendu.
+export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Promise<void> {
+  const blob = await fetchFacturePdf(params);
+  if (params.autoDownload !== false) {
+    downloadBlob(blob, `Facture-${params.vente.id.substring(0, 8)}.pdf`);
+  }
 }
 
 // Envoie un Blob PDF directement à la boîte de dialogue d'impression, sans téléchargement ni
@@ -364,40 +126,14 @@ function printBlob(blob: Blob): Promise<boolean> {
  * C'est tout l'enjeu de cette fonction : imprimer via `window.print()` ferait ré-imprimer au
  * navigateur le HTML du composant ReceiptPrint (le ticket rouleau 80/58mm, juste étiré en A4 par
  * le CSS), avec ses propres marges, sa propre pagination et un pied de page qui ne tombe pas en
- * bas de la feuille. D'où deux documents différents pour le même bouton "A4". Ici on imprime
- * toujours un vrai PDF, le même que celui téléchargé :
- *   - modèle choisi  -> le PDF rendu par Chromium côté serveur (routes/factures.js)
- *   - "Classique"    -> le même jsPDF que generateInvoiceA4Pdf, imprimé au lieu d'être enregistré
+ * bas de la feuille. D'où deux documents différents pour le même bouton "A4".
  *
- * Renvoie `false` seulement si aucune des deux voies n'aboutit ; l'appelant retombe alors sur
- * `window.print()`. En caisse, imprimer quelque chose vaut mieux que ne rien imprimer du tout.
+ * Lève la même erreur que le téléchargement quand aucun modèle n'est configuré : les deux
+ * boutons réussissent ou échouent ensemble, pour le même document.
  */
 export async function printReceiptA4(params: GenerateInvoicePdfParams): Promise<boolean> {
-  const templateId = params.settings?.receipt_template_id;
-
-  // 1. Un modèle est choisi : le PDF serveur fait foi (identique au téléchargement).
-  if (templateId && params.vente.id) {
-    try {
-      const { apiGetBlob } = await import('../services/api');
-      const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
-      const blob = await apiGetBlob(`/factures/${params.vente.id}.pdf${query}`);
-      return await printBlob(blob);
-    } catch (err) {
-      // Modèle supprimé (409), API injoignable... On ne renonce pas : on bascule sur le design
-      // Classique ci-dessous, qui est exactement ce que le téléchargement produirait lui aussi
-      // dans la même situation (voir generateReceiptPdf).
-      console.warn('PDF serveur indisponible, repli sur le design Classique :', err);
-    }
-  }
-
-  // 2. Pas de modèle (ou serveur indisponible) : le design jsPDF intégré, imprimé tel quel.
-  try {
-    const doc = generateInvoiceA4Pdf({ ...params, autoDownload: false });
-    return await printBlob(doc.output('blob'));
-  } catch (err) {
-    console.warn("Échec de l'impression du PDF A4, repli sur l'impression HTML :", err);
-    return false;
-  }
+  const blob = await fetchFacturePdf(params);
+  return printBlob(blob);
 }
 
 export interface GenerateDebtReceiptPdfParams {

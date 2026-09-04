@@ -89,8 +89,12 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
   // en A4 par le CSS. Ne concerne que les reçus de VENTE : un reçu de règlement de créance
   // (selectedReceiptReglement) n'a pas de facture, il garde l'impression HTML.
   const handlePrintReceipt = async () => {
-    if (receiptFormat === 'a4' && selectedReceiptSale) {
-      const printed = await printReceiptA4({
+    if (receiptFormat !== 'a4' || !selectedReceiptSale) {
+      window.print();
+      return;
+    }
+    try {
+      await printReceiptA4({
         vente: selectedReceiptSale,
         lignes: lignesVente
           .filter((ligne) => ligne.vente_id === selectedReceiptSale.id)
@@ -103,9 +107,9 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         clientNom: selectedReceiptSale.client_nom || historyClient?.nom,
         settings,
       });
-      if (printed) return;
+    } catch (e) {
+      await alert({ title: 'Impression A4 impossible', message: (e as Error).message });
     }
-    window.print();
   };
 
   // Add / Edit Client Modal
@@ -1292,7 +1296,9 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                           clientTelephone: phone,
                           settings,
                           autoDownload: true,
-                        }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
+                        }).catch((e) =>
+                          alert({ title: 'Téléchargement impossible', message: (e as Error).message })
+                        );
                       }}
                     >
                       Télécharger PDF

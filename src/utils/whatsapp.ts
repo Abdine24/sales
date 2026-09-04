@@ -158,8 +158,11 @@ export function openWhatsAppReceipt(params: WhatsAppReceiptParams): boolean {
   const encodedText = encodeURIComponent(text);
   window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
 
-  // 2. Génère et télécharge la facture A4 en PDF en arrière-plan (modèle choisi par la
-  //    boutique, ou design intégré par défaut — voir generateReceiptPdf).
+  // 2. Génère et télécharge la facture A4 en PDF en arrière-plan, à partir du modèle choisi par
+  //    la boutique. Sans modèle configuré, il n'y a plus de design de repli : le PDF est
+  //    simplement absent, et le message WhatsApp (déjà ouvert ci-dessus) part quand même — c'est
+  //    l'essentiel du geste. L'erreur reste en console, sans popup, pour ne pas interrompre un
+  //    envoi qui a par ailleurs réussi.
   if (params.downloadPdf !== false) {
     generateReceiptPdf({
       vente: params.vente,

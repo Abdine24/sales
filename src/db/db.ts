@@ -80,8 +80,9 @@ export interface AppSettings {
   whatsapp_auto_open?: boolean;
 
   // Modèle de facture/reçu PDF choisi — id d'une ligne de control_plane.receipt_templates,
-  // ajoutée par le propriétaire depuis la Console Propriétaire. null/absent = design intégré
-  // historique (generateInvoiceA4Pdf), inchangé pour toute boutique qui n'y touche pas.
+  // ajoutée par le propriétaire depuis la Console Propriétaire. null/absent = aucun modèle
+  // configuré : la facture A4 (téléchargement, impression, WhatsApp) n'est alors pas disponible,
+  // il n'existe plus aucun design de facture intégré à l'application.
   receipt_template_id?: string | null;
 }
 

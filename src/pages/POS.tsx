@@ -119,11 +119,16 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   const [completedPhoneInput, setCompletedPhoneInput] = useState<string>('');
 
   // En A4, on imprime le MÊME PDF que celui du bouton "Télécharger PDF" — jamais le rendu HTML
-  // du ticket rouleau étiré en A4 par le CSS. Repli sur window.print() seulement si la
-  // génération du PDF échoue : une caisse doit toujours pouvoir imprimer quelque chose.
+  // du ticket rouleau étiré en A4 par le CSS. En cas d'échec (aucun modèle configuré, API
+  // injoignable), on affiche l'erreur au lieu d'imprimer silencieusement un autre document.
+  // Le format rouleau, lui, reste imprimé par le navigateur depuis le composant ReceiptPrint.
   const handlePrintReceipt = async () => {
-    if (printFormat === 'a4' && completedSale) {
-      const printed = await printReceiptA4({
+    if (printFormat !== 'a4' || !completedSale) {
+      window.print();
+      return;
+    }
+    try {
+      await printReceiptA4({
         vente: completedSale.vente,
         lignes: completedSale.items.map((item) => ({
           nom: item.produit.nom,
@@ -135,9 +140,9 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         clientTelephone: completedPhoneInput || completedSale.clientTelephone,
         settings,
       });
-      if (printed) return;
+    } catch (e) {
+      await alert({ title: 'Impression A4 impossible', message: (e as Error).message });
     }
-    window.print();
   };
 
   const handleOpenVariableModal = (produit: Produit) => {
@@ -1371,7 +1376,9 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                       clientTelephone: completedPhoneInput || completedSale.clientTelephone,
                       settings,
                       autoDownload: true,
-                    }).catch((e) => console.warn('Erreur lors de la génération du PDF facture A4:', e));
+                    }).catch((e) =>
+                      alert({ title: 'Téléchargement impossible', message: (e as Error).message })
+                    );
                   }}
                 >
                   Télécharger PDF
