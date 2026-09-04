@@ -1,5 +1,18 @@
 import puppeteer from 'puppeteer';
 
+// Marge basse réservée à la pagination "Page X / Y" imprimée par Chromium (voir footerTemplate).
+export const PDF_BOTTOM_MARGIN_MM = 12;
+
+// Hauteur réellement disponible pour le contenu sur une feuille A4 : 297mm moins la marge basse
+// ci-dessus, moins 1mm de sécurité contre les arrondis mm -> px de Chromium.
+//
+// C'est LA valeur qu'un template doit utiliser pour coller son pied de page en bas de page
+// (min-height + flex + margin-top:auto). Un template qui écrit `min-height: 297mm` — le réflexe
+// naturel — ne peut par construction JAMAIS tenir sur une page, puisque 297mm dépasse déjà la
+// zone imprimable : Chromium bascule alors tout le pied de page sur une 2e page vide.
+// receiptTemplate.js réécrit donc 297mm vers cette valeur (voir sanitizeTemplateHtml).
+export const PDF_CONTENT_HEIGHT_MM = 297 - PDF_BOTTOM_MARGIN_MM - 1;
+
 // Une seule instance Chromium pour tout le process — un launch() par facture coûterait environ
 // 1,5s et finirait par saturer la mémoire du VPS. `browserPromise` (pas juste `browser`) évite
 // une course : deux requêtes arrivant avant la fin du tout premier launch() partagent la même
@@ -57,7 +70,7 @@ export async function htmlToPdf(html) {
       footerTemplate:
         '<div style="width:100%;font-size:9px;text-align:center;color:#86868b;font-family:sans-serif;">' +
         'Page <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
-      margin: { top: '0mm', right: '0mm', bottom: '12mm', left: '0mm' },
+      margin: { top: '0mm', right: '0mm', bottom: `${PDF_BOTTOM_MARGIN_MM}mm`, left: '0mm' },
     });
     // page.pdf() renvoie un Uint8Array, pas un vrai Buffer Node — Express (res.send) ne
     // reconnaît QUE Buffer.isBuffer() comme binaire ; un Uint8Array brut tombe dans sa branche

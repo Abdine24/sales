@@ -812,7 +812,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 Annuler
               </Button>
               <Button variant="success" type="submit" icon={<CheckCircle2 className="w-4 h-4" />}>
-                Valider & Émettre Reçu
+                Valider et emettre reçu
               </Button>
             </div>
           </form>
@@ -874,7 +874,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   }`}
               >
                 <History className="w-3.5 h-3.5" />
-                Règlements & Remboursements ({historyReglements.length})
+                Règlements et Remboursements ({historyReglements.length})
               </button>
             </div>
 

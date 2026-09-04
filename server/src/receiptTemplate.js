@@ -8,6 +8,7 @@
 // withRenderFrame, renderReceiptPdf — voir server/src/pdfRenderer.js pour le rendu PDF lui-même.
 
 import { INTER_FONT_FACE_CSS } from './receiptFonts.js';
+import { PDF_CONTENT_HEIGHT_MM } from './pdfRenderer.js';
 
 const ITEMS_BLOCK_RE = /<!--\s*ITEMS\s*-->([\s\S]*?)<!--\s*\/ITEMS\s*-->/i;
 const IF_BLOCK_RE = /<!--\s*IF_([A-Z0-9_]+)\s*-->([\s\S]*?)<!--\s*\/IF_\1\s*-->/gi;
@@ -108,7 +109,17 @@ export function sanitizeTemplateHtml(templateHtml) {
   // 2. Correction des règles CSS qui cassent la pagination ou coupent le contenu
   html = html.replace(/overflow:\s*hidden/gi, 'overflow: visible');
   html = html.replace(/margin:\s*\d+px\s+auto/gi, 'margin: 0 auto');
-  html = html.replace(/min-height:\s*297mm/gi, 'min-height: auto');
+
+  // `min-height: 297mm` est le réflexe naturel pour "une page A4", mais la zone imprimable fait
+  // moins que ça (marge basse réservée à la pagination) : la page déborderait TOUJOURS sur une
+  // 2e feuille vide. On la ramène à la hauteur réellement disponible — ce qui préserve le
+  // pied de page collé en bas (min-height + flex + margin-top:auto) au lieu de le casser en
+  // passant à `auto`, tout en tenant sur une seule feuille.
+  html = html.replace(/min-height:\s*297mm/gi, `min-height: ${PDF_CONTENT_HEIGHT_MM}mm`);
+  // En revanche une hauteur FIXE (`height: 297mm`) est toujours supprimée : elle rognerait le
+  // contenu d'une facture longue au lieu de la laisser continuer page suivante. Cette règle
+  // passe après celle du dessus, qui a déjà consommé les `min-height: 297mm`.
+  html = html.replace(/height:\s*297mm/gi, 'height: auto');
 
   // 3. Overrides CSS d'impression A4 stricts + police Inter embarquée en base64.
   // Les @font-face viennent en TÊTE du <style> : une règle @font-face doit être connue du moteur
@@ -131,7 +142,9 @@ ${INTER_FONT_FACE_CSS}
     .a4-page {
       width: 210mm !important;
       margin: 0 auto !important;
-      min-height: auto !important;
+      /* Hauteur utile réelle, pas 297mm : garde le pied de page collé en bas (pour les modèles
+         en flex + margin-top:auto) sans jamais déborder sur une 2e feuille vide. */
+      min-height: ${PDF_CONTENT_HEIGHT_MM}mm !important;
       height: auto !important;
       box-shadow: none !important;
       border-radius: 0 !important;
