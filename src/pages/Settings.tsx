@@ -124,8 +124,10 @@ export const Settings: React.FC = () => {
     'Bonjour {client}, toute notre équipe vous remercie chaleureusement pour votre fidélité et votre confiance ! ✨'
   );
 
-  // Modèle de facture/reçu PDF — null = design intégré ("Classique"), sinon l'id d'un template
-  // de src/templates/receipts/ (voir la section "Templates de reçus" plus bas).
+  // Modèle de facture/reçu PDF — null = design intégré ("Classique", dessiné en jsPDF côté
+  // client), sinon l'id d'un modèle ajouté par le propriétaire depuis la Console Propriétaire
+  // (control_plane.receipt_templates). Le serveur n'embarque plus aucun modèle : la galerie
+  // ci-dessous peut donc ne contenir que "Classique" tant qu'aucun modèle n'a été uploadé.
   const [receiptTemplateId, setReceiptTemplateId] = useState<string | null>(null);
   const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null | undefined>(undefined);
 

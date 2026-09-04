@@ -26,7 +26,7 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
-import { generateReceiptPdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf, printReceiptA4FromTemplate } from '../utils/pdfInvoice';
 
 interface VentesProps {
   activeZoneId: number | null;
@@ -92,6 +92,21 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
       setReceiptFormat(settings.print_format_default);
     }
   }, [settings?.print_format_default]);
+
+  // En A4, imprime le VRAI PDF du modèle choisi (rendu côté serveur) au lieu du ticket rouleau
+  // étiré en A4 par le CSS. Le téléphone du client n'est pas passé : le serveur le retrouve seul
+  // depuis la vente (voir loadVenteData). Repli sur window.print() si aucun modèle n'est
+  // configuré ou si l'API est injoignable.
+  const handlePrintReceipt = async () => {
+    if (receiptFormat === 'a4' && selectedReceiptSale) {
+      const printed = await printReceiptA4FromTemplate({
+        venteId: selectedReceiptSale.id,
+        settings,
+      });
+      if (printed) return;
+    }
+    window.print();
+  };
 
   const lignesParVente = (venteId: string) => lignesVente.filter((l) => l.vente_id === venteId);
   const retoursParVente = (venteId: string) => retours.filter((r) => r.vente_id === venteId);
@@ -397,7 +412,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
               <Button
                 variant="primary"
                 icon={<Printer className="w-4 h-4" />}
-                onClick={() => window.print()}
+                onClick={handlePrintReceipt}
               >
                 Lancer l'impression
               </Button>

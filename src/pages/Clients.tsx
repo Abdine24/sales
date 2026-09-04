@@ -29,7 +29,7 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt, openWhatsAppDebtReceipt } from '../utils/whatsapp';
-import { generateReceiptPdf, generateDebtReceiptA4Pdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf, generateDebtReceiptA4Pdf, printReceiptA4FromTemplate } from '../utils/pdfInvoice';
 
 interface ClientsProps {
   activeZoneId?: number | null;
@@ -84,6 +84,20 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       setReceiptFormat(settings.print_format_default);
     }
   }, [settings?.print_format_default]);
+
+  // En A4, imprime le VRAI PDF du modèle choisi (rendu côté serveur) au lieu du ticket rouleau
+  // étiré en A4 par le CSS. Ne concerne que les reçus de VENTE : un reçu de règlement de créance
+  // (selectedReceiptReglement) n'a pas de facture côté serveur, il garde l'impression HTML.
+  const handlePrintReceipt = async () => {
+    if (receiptFormat === 'a4' && selectedReceiptSale) {
+      const printed = await printReceiptA4FromTemplate({
+        venteId: selectedReceiptSale.id,
+        settings,
+      });
+      if (printed) return;
+    }
+    window.print();
+  };
 
   // Add / Edit Client Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1294,7 +1308,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
               <Button
                 variant="primary"
                 icon={<Printer className="w-4 h-4" />}
-                onClick={() => window.print()}
+                onClick={handlePrintReceipt}
               >
                 Imprimer le reçu
               </Button>

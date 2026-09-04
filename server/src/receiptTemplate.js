@@ -7,6 +7,8 @@
 // Puppeteer gère tout ça correctement) : resolveCssVariablesForCapture, prepareHtmlForCapture,
 // withRenderFrame, renderReceiptPdf — voir server/src/pdfRenderer.js pour le rendu PDF lui-même.
 
+import { INTER_FONT_FACE_CSS } from './receiptFonts.js';
+
 const ITEMS_BLOCK_RE = /<!--\s*ITEMS\s*-->([\s\S]*?)<!--\s*\/ITEMS\s*-->/i;
 const IF_BLOCK_RE = /<!--\s*IF_([A-Z0-9_]+)\s*-->([\s\S]*?)<!--\s*\/IF_\1\s*-->/gi;
 
@@ -92,8 +94,69 @@ export function buildScalarTags(data) {
   };
 }
 
+// Assainit et prépare un HTML de template pour le rendu PDF A4 :
+// 1. Supprime les liens externes Google Fonts / CDN (qui causent des lenteurs, des PDF de plusieurs Mo et des échecs de rendu)
+// 2. Corrige les règles CSS incompatibles avec l'impression A4 (overflow: hidden, margin: 40px auto, min-height: 297mm)
+// 3. Injecte les règles CSS d'impression sécurisées et la police Inter embarquée
+export function sanitizeTemplateHtml(templateHtml) {
+  let html = templateHtml || '';
+
+  // 1. Suppression des polices distantes (Google Fonts / CDN)
+  html = html.replace(/<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>/gi, '');
+  html = html.replace(/@import\s+url\(['"]?https?:\/\/fonts\.(googleapis|gstatic)\.com[^'"]*['"]?\);?/gi, '');
+
+  // 2. Correction des règles CSS qui cassent la pagination ou coupent le contenu
+  html = html.replace(/overflow:\s*hidden/gi, 'overflow: visible');
+  html = html.replace(/margin:\s*\d+px\s+auto/gi, 'margin: 0 auto');
+  html = html.replace(/min-height:\s*297mm/gi, 'min-height: auto');
+
+  // 3. Overrides CSS d'impression A4 stricts + police Inter embarquée en base64.
+  // Les @font-face viennent en TÊTE du <style> : une règle @font-face doit être connue du moteur
+  // avant les règles qui l'utilisent. `font-family` n'est PAS forcé ici — un modèle uploadé garde
+  // la police qu'il déclare ; il suffit qu'il demande 'Inter' pour que celle-ci soit trouvée
+  // localement, sans le moindre appel réseau (voir receiptFonts.js).
+  const printOverrideCss = `
+<style>
+${INTER_FONT_FACE_CSS}
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  @media print {
+    html, body {
+      background-color: #ffffff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .a4-page {
+      width: 210mm !important;
+      margin: 0 auto !important;
+      min-height: auto !important;
+      height: auto !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      overflow: visible !important;
+    }
+  }
+</style>
+`;
+
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', `${printOverrideCss}\n</head>`);
+  } else {
+    html = printOverrideCss + html;
+  }
+
+  // Un modèle peut aussi placer <!--FONT_FACES--> lui-même pour choisir OÙ les @font-face
+  // atterrissent. Le marqueur est retiré dans tous les cas (les polices sont déjà injectées
+  // ci-dessus) — sinon il resterait visible en commentaire dans le HTML envoyé à Chromium.
+  html = html.replace(/<!--\s*FONT_FACES\s*-->/gi, '');
+
+  return html;
+}
+
 export function renderReceiptHtml(templateHtml, data) {
-  let html = templateHtml;
+  let html = sanitizeTemplateHtml(templateHtml);
 
   const itemsMatch = html.match(ITEMS_BLOCK_RE);
   if (itemsMatch) {
@@ -112,3 +175,4 @@ export function renderReceiptHtml(templateHtml, data) {
 
   return html;
 }
+

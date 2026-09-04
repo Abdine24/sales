@@ -2,13 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin,
   Power, Search, Users, Package, Wallet, KeyRound, History, Sun, Moon, ChevronDown, Calendar,
+  Eye, Download, HelpCircle, FileText, Check, AlertTriangle,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDialog } from '../components/ui/DialogProvider';
-import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost, ownerDelete } from '../services/ownerApi';
+import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost, ownerDelete, ownerGetBlob } from '../services/ownerApi';
 import { ApiError } from '../services/api';
+
 import { evaluateLicenceStatus } from '../utils/license';
 import { formatCfaCompact } from '../utils/currency';
 
@@ -299,6 +301,189 @@ export const OwnerConsole: React.FC = () => {
     }
   };
 
+  const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+
+  const handlePreviewTemplate = async (templateId: string, nom: string) => {
+    setPreviewingTemplateId(templateId);
+    try {
+      const blob = await ownerGetBlob(`/plateforme/templates/${templateId}/apercu.pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Apercu-${nom.replace(/\s+/g, '_')}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : "Échec de la génération de l'aperçu.");
+    } finally {
+      setPreviewingTemplateId(null);
+    }
+  };
+
+  const handleDownloadStarterTemplate = () => {
+    const starterHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Modèle de Facture - iVente</title>
+    <style>
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+        }
+        .a4-page {
+            width: 210mm;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+        .company-name { font-size: 22px; font-weight: 700; color: #0f172a; }
+        .company-slogan { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .title { font-size: 24px; font-weight: 800; color: #2563eb; text-align: right; }
+        .meta { font-size: 12px; color: #64748b; text-align: right; margin-top: 6px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .card { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .card-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+        .card-text { font-size: 13px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        th { background: #0f172a; color: #ffffff; font-size: 11px; text-transform: uppercase; padding: 10px 12px; text-align: left; }
+        td { padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .totals { display: flex; justify-content: flex-end; margin-bottom: 30px; }
+        .totals-box { width: 280px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .total-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #475569; }
+        .total-net { font-size: 16px; font-weight: 700; color: #0f172a; border-top: 2px solid #cbd5e1; padding-top: 8px; margin-top: 6px; }
+        .footer { text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="a4-page">
+        <div class="header">
+            <div>
+                <!--IF_LOGO--><img src="{logo}" alt="Logo" style="max-height: 50px; margin-bottom: 10px;"><br><!--/IF_LOGO-->
+                <div class="company-name">{boutique}</div>
+                <!--IF_SLOGAN--><div class="company-slogan">{slogan}</div><!--/IF_SLOGAN-->
+            </div>
+            <div>
+                <div class="title">FACTURE</div>
+                <div class="meta">
+                    <div><strong>N° :</strong> {ref}</div>
+                    <div><strong>Date :</strong> {date}</div>
+                    <!--IF_DUPLICATA--><div style="color: #ef4444; font-weight: 700; margin-top: 4px;">{duplicata}</div><!--/IF_DUPLICATA-->
+                </div>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="card">
+                <div class="card-title">ÉMETTEUR</div>
+                <div class="card-text">
+                    <strong>{boutique}</strong><br>
+                    <!--IF_ADRESSE-->Adresse : {adresse}<br><!--/IF_ADRESSE-->
+                    <!--IF_TELEPHONE_BOUTIQUE-->Tél : {telephone_boutique}<br><!--/IF_TELEPHONE_BOUTIQUE-->
+                    <!--IF_IFU-->IFU : {ifu}<!--/IF_IFU-->
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">FACTURÉ À</div>
+                <div class="card-text">
+                    <strong>{client}</strong><br>
+                    <!--IF_TELEPHONE_CLIENT-->Tél : {telephone_client}<br><!--/IF_TELEPHONE_CLIENT-->
+                    <!--IF_VENDEUR_NOM-->Vendeur : {vendeur_nom}<!--/IF_VENDEUR_NOM-->
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 8%;">#</th>
+                    <th style="width: 50%;">Désignation</th>
+                    <th class="text-center" style="width: 10%;">Qté</th>
+                    <th class="text-right" style="width: 16%;">P.U.</th>
+                    <th class="text-right" style="width: 16%;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--ITEMS-->
+                <tr>
+                    <td>{item_index}</td>
+                    <td>
+                        <strong>{item_nom}</strong>
+                        <div>{item_attributs}</div>
+                    </td>
+                    <td class="text-center">{item_qte}</td>
+                    <td class="text-right">{item_prix_unitaire}</td>
+                    <td class="text-right"><strong>{item_total}</strong></td>
+                </tr>
+                <!--/ITEMS-->
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="totals-box">
+                <!--IF_REMISE-->
+                <div class="total-row">
+                    <span>Sous-total :</span>
+                    <span>{sous_total}</span>
+                </div>
+                <div class="total-row" style="color: #ef4444;">
+                    <span>Remise :</span>
+                    <span>-{remise}</span>
+                </div>
+                <!--/IF_REMISE-->
+                <div class="total-row total-net">
+                    <span>NET À PAYER :</span>
+                    <span style="color: #2563eb;">{total}</span>
+                </div>
+                <div class="total-row" style="margin-top: 6px;">
+                    <span>Montant réglé :</span>
+                    <span>{paye}</span>
+                </div>
+                <!--IF_RESTE-->
+                <div class="total-row" style="color: #ef4444; font-weight: 700;">
+                    <span>Reste à payer :</span>
+                    <span>{reste}</span>
+                </div>
+                <!--/IF_RESTE-->
+            </div>
+        </div>
+
+        <div class="footer">
+            Merci de votre confiance ! Document généré le {date}.
+        </div>
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([starterHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Modele-Facture-iVente.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+
   const ThemeToggle = (
     <button
       type="button"
@@ -569,16 +754,31 @@ export const OwnerConsole: React.FC = () => {
 
       {/* Templates de reçus A4 (Gestion globale) */}
       <GlassCard>
-        <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-blue-500" /> Modèles de Reçus A4 
+              <FileText className="w-4 h-4 text-blue-500" /> Modèles de Reçus A4 
             </h2>
             <p className="text-[11px] text-slate-400 mt-0.5">
               Fichiers HTML mis à disposition de toutes les boutiques dans leurs paramètres.
             </p>
           </div>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadStarterTemplate}
+              className="px-3 py-1.5 rounded-lg glass-card border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+              title="Télécharger un modèle HTML exemple valide et prêt à être personnalisé"
+            >
+              <Download className="w-3.5 h-3.5" /> Modèle exemple (.html)
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowGuide((v) => !v)}
+              className="px-3 py-1.5 rounded-lg glass-card border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-blue-500" /> Guide balises
+            </button>
             <input 
               type="file" 
               accept=".html"
@@ -595,32 +795,79 @@ export const OwnerConsole: React.FC = () => {
           </div>
         </div>
 
+        {/* Guide des balises (accordéon) */}
+        {showGuide && (
+          <div className="p-4 mb-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs space-y-3">
+            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm">
+              <HelpCircle className="w-4 h-4 text-blue-500" /> Documentation du moteur de reçus HTML
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Pour créer un modèle compatible, utilisez un fichier <code>.html</code> encodé en UTF-8. 
+              Le serveur nettoie automatiquement les liens Google Fonts distants et force la mise en page A4.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;boutique&#125;</span> : Nom du magasin
+              </div>
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;client&#125;</span> : Nom du client
+              </div>
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;ref&#125;</span> : Réf / Numéro facture
+              </div>
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;date&#125;</span> : Date de vente
+              </div>
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;total&#125;</span> : Montant net à payer
+              </div>
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
+                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;paye&#125;</span> : Montant encaissé
+              </div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-300">
+              <strong>Bloc articles obligatoire :</strong> Entourez les lignes du tableau avec <code>&lt;!--ITEMS--&gt; ... &lt;!--/ITEMS--&gt;</code>. 
+              Balises d'articles disponibles : <code>&#123;item_index&#125;</code>, <code>&#123;item_nom&#125;</code>, <code>&#123;item_attributs&#125;</code>, <code>&#123;item_qte&#125;</code>, <code>&#123;item_prix_unitaire&#125;</code>, <code>&#123;item_total&#125;</code>.
+            </div>
+          </div>
+        )}
+
         {templates.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl">
-            Aucun modèle dynamique ajouté. Les boutiques n'ont accès qu'aux modèles codés en dur.
+            Aucun modèle dynamique ajouté. Les boutiques n'ont accès qu'aux modèles intégres.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {templates.map(t => (
-              <div key={t.id} className="p-3 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col">
-                <div className="font-bold text-sm text-slate-900 dark:text-white mb-1 truncate">{t.nom}</div>
-                <div className="text-[11px] text-slate-500 mb-3 truncate">{t.description}</div>
-                <div className="mt-auto flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-white/5">
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    Taille: {(t.html.length / 1024).toFixed(1)} KB
+            {templates.map(t => {
+              const isPreviewing = previewingTemplateId === t.id;
+              return (
+                <div key={t.id} className="p-3.5 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col">
+                  <div className="font-bold text-sm text-slate-900 dark:text-white mb-1 truncate">{t.nom}</div>
+                  <div className="text-[11px] text-slate-500 mb-3 truncate">{t.description}</div>
+                  <div className="mt-auto flex justify-between items-center pt-2.5 border-t border-slate-200/50 dark:border-white/5">
+                    <button
+                      type="button"
+                      disabled={isPreviewing}
+                      onClick={() => handlePreviewTemplate(t.id, t.nom)}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Eye className="w-3 h-3" />
+                      {isPreviewing ? 'Génération...' : 'Aperçu PDF'}
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTemplate(t.id, t.nom)}
+                      className="text-[11px] font-bold text-rose-500 hover:underline"
+                    >
+                      Supprimer
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => handleDeleteTemplate(t.id, t.nom)}
-                    className="text-[10px] font-bold text-rose-500 hover:underline"
-                  >
-                    Supprimer
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </GlassCard>
+
     </div>
   );
 };

@@ -68,3 +68,16 @@ export const ownerGet = <T>(path: string) => ownerRequest<T>('GET', path);
 export const ownerPut = <T>(path: string, body?: unknown) => ownerRequest<T>('PUT', path, body);
 export const ownerPost = <T>(path: string, body?: unknown) => ownerRequest<T>('POST', path, body);
 export const ownerDelete = <T>(path: string) => ownerRequest<T>('DELETE', path);
+
+export async function ownerGetBlob(path: string): Promise<Blob> {
+  const token = getOwnerToken();
+  if (!token) throw new ApiError('Non connecté.', 401);
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    await handle(response);
+  }
+  return response.blob();
+}
+

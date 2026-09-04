@@ -2,18 +2,16 @@ import { Router } from 'express';
 import { controlPlanePool } from '../controlPlaneDb.js';
 import { renderReceiptHtml } from '../receiptTemplate.js';
 import { htmlToPdf } from '../pdfRenderer.js';
-import { getStaticTemplate } from '../templates/receipts/index.js';
 
 export const facturesRouter = Router();
 
-// Cherche un template par id : d'abord parmi les modèles embarqués au serveur
-// (server/src/templates/receipts/), sinon parmi ceux ajoutés dynamiquement par le propriétaire
-// (control_plane.receipt_templates, voir routes/plateforme.js) — même ordre de recherche que
-// l'ancien getReceiptTemplate() côté client.
+// Cherche un template par id. Il n'existe PLUS de modèle embarqué dans le serveur : tous les
+// modèles sont ceux que le propriétaire a lui-même ajoutés depuis la Console Propriétaire
+// (control_plane.receipt_templates, voir routes/plateforme.js). Aucun repli implicite non plus —
+// une boutique sans modèle choisi n'imprime pas un modèle "par défaut" surprise, elle reçoit une
+// erreur explicite et le client retombe sur son propre rendu (voir src/utils/pdfInvoice.ts).
 async function findTemplate(id) {
   if (!id) return null;
-  const local = getStaticTemplate(id);
-  if (local) return local;
   const { rows } = await controlPlanePool.query(
     `select id, nom, html from receipt_templates where id::text = $1`,
     [id]
@@ -72,7 +70,7 @@ async function markPrinted(pool, venteId) {
 // jamais atteinte.
 facturesRouter.get('/apercu.pdf', async (req, res) => {
   const templateId = req.query.template_id ? String(req.query.template_id) : null;
-  const template = (await findTemplate(templateId)) || getStaticTemplate('premium');
+  const template = await findTemplate(templateId);
   if (!template) {
     return res.status(404).json({ error: 'Modèle introuvable.' });
   }
@@ -124,9 +122,12 @@ facturesRouter.get('/:venteId.pdf', async (req, res) => {
   const { rows: settingsRows } = await req.tenantPool.query(`select * from settings where id='principale'`);
   const settings = settingsRows[0] || null;
 
-  const template = (await findTemplate(settings?.receipt_template_id)) || getStaticTemplate('premium');
+  const template = await findTemplate(settings?.receipt_template_id);
   if (!template) {
-    return res.status(500).json({ error: 'Aucun modèle de facture disponible.' });
+    // 409 (et pas 500) : ce n'est pas une panne, c'est une configuration absente — aucun modèle
+    // choisi dans Réglages, ou le modèle choisi a été supprimé depuis la Console Propriétaire.
+    // Le client distingue ce cas et retombe sur son propre rendu au lieu d'afficher une erreur.
+    return res.status(409).json({ error: 'Aucun modèle de facture configuré pour cette boutique.' });
   }
 
   const { numero, duplicata } = await markPrinted(req.tenantPool, venteId);

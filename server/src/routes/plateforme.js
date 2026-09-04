@@ -4,7 +4,9 @@ import { SignJWT, jwtVerify } from 'jose';
 import { controlPlanePool } from '../controlPlaneDb.js';
 import { getTenantPool } from '../tenantDb.js';
 import { simpleRateLimit } from '../rateLimit.js';
-import { RECEIPT_TEMPLATES } from '../templates/receipts/index.js';
+import { renderReceiptHtml } from '../receiptTemplate.js';
+import { htmlToPdf } from '../pdfRenderer.js';
+
 
 // Espace propriétaire de la plateforme — vue d'ensemble de toutes les boutiques, réglages
 // globaux (numéro WhatsApp, téléphone de contact) et diffusion de messages dans la cloche de
@@ -77,13 +79,14 @@ plateformeRouter.get('/config', async (_req, res) => {
 // Templates de reçus. La génération du PDF (aperçu ou vraie facture) se fait entièrement côté
 // serveur (voir routes/factures.js) : le client n'a plus besoin du HTML brut, seulement de
 // quoi afficher la liste (id/nom/description) — d'où le "select" restreint ci-dessous, jamais
-// la colonne `html`, même pour les modèles dynamiques.
+// la colonne `html`.
+// La liste ne contient QUE les modèles ajoutés par le propriétaire : le serveur n'embarque plus
+// aucun modèle. Elle peut donc légitimement être vide tant qu'aucun n'a été uploadé.
 plateformeRouter.get('/templates/public', async (_req, res) => {
-  const staticList = RECEIPT_TEMPLATES.map(({ id, nom, description }) => ({ id, nom, description }));
-  const { rows: dynamicList } = await controlPlanePool.query(
+  const { rows } = await controlPlanePool.query(
     `select id, nom, description from receipt_templates order by created_at desc`
   );
-  res.json([...staticList, ...dynamicList]);
+  res.json(rows);
 });
 
 plateformeRouter.use(requireOwner);
@@ -267,4 +270,64 @@ plateformeRouter.delete('/templates/:id', async (req, res) => {
   }
   res.json({ success: true });
 });
+
+// Route d'aperçu PDF directement depuis la Console Propriétaire
+plateformeRouter.get('/templates/:id/apercu.pdf', async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await controlPlanePool.query(
+    `select id, nom, html from receipt_templates where id::text = $1`,
+    [id]
+  );
+  const template = rows[0] || null;
+  if (!template) {
+    return res.status(404).json({ error: 'Modèle introuvable.' });
+  }
+
+  const settings = {
+    nom_site: 'Boutique Démo',
+    slogan: 'Magasin High-Tech & Accessoires',
+    localite: 'Abidjan, Cocody Rue des Jardins',
+    telephone: '+225 07 00 00 00 00',
+    email: 'contact@boutiquedemo.ci',
+    ifu: '3202400000000',
+    rrcm: 'CI-ABJ-2026-B-12345',
+  };
+
+  const vente = {
+    id: 'apercu-proprio-001',
+    date: new Date().toISOString(),
+    client_nom: 'Moussa Diop',
+    total: 35000,
+    remise: 2000,
+    montant_paye: 35000,
+    reste_a_payer: 0,
+    vendeur_nom: 'Awa Koné',
+    vendeur_identifiant: 'EMP-042',
+  };
+
+  const lignes = [
+    { nom: 'Écouteurs Bluetooth Pro', variante: 'Noir Mat', quantite: 2, prix_unitaire: 15000 },
+    { nom: 'Câble USB-C Tressé 2m', variante: 'Gris Sidéral', quantite: 1, prix_unitaire: 7000 },
+  ];
+
+  const html = renderReceiptHtml(template.html, {
+    vente,
+    lignes,
+    clientTelephone: '+2250700000000',
+    settings,
+    numero: 'FAC-DEMO-2026',
+    duplicata: false,
+  });
+
+  try {
+    const pdfBuffer = await htmlToPdf(html);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Apercu-${template.nom.replace(/\s+/g, '_')}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Échec aperçu PDF propriétaire :', err);
+    res.status(500).json({ error: 'Échec de la génération de l’aperçu PDF.' });
+  }
+});
+
 

@@ -302,6 +302,89 @@ export async function generateReceiptPdf(params: GenerateInvoicePdfParams): Prom
   return generateInvoiceA4Pdf(params);
 }
 
+// Envoie un Blob PDF directement à la boîte de dialogue d'impression, sans téléchargement ni
+// nouvel onglet : le PDF est chargé dans une iframe cachée, dont on déclenche l'impression.
+// C'est le seul moyen d'imprimer un VRAI PDF (celui du modèle, rendu par Chromium côté serveur)
+// plutôt que de laisser le navigateur ré-imprimer du HTML avec ses propres marges et sa propre
+// pagination. L'iframe est retirée après coup, une fois la boîte de dialogue refermée.
+function printBlob(blob: Blob): Promise<boolean> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = url;
+
+    const cleanup = () => {
+      // Le retrait est différé : arracher l'iframe pendant que la boîte de dialogue est encore
+      // ouverte annule l'impression dans Chrome.
+      setTimeout(() => {
+        iframe.remove();
+        URL.revokeObjectURL(url);
+      }, 60_000);
+    };
+
+    iframe.onload = () => {
+      try {
+        const win = iframe.contentWindow;
+        if (!win) throw new Error('iframe sans contentWindow');
+        win.focus();
+        win.print();
+        cleanup();
+        resolve(true);
+      } catch (err) {
+        // Certains contextes (visionneuse PDF intégrée verrouillée, politique de sécurité)
+        // refusent print() sur l'iframe. Plutôt que d'échouer en silence, on ouvre le PDF dans
+        // un onglet : l'utilisateur garde le bon document, il lui reste juste Ctrl+P à faire.
+        console.warn("Impression directe de l'iframe refusée, ouverture dans un onglet :", err);
+        iframe.remove();
+        window.open(url, '_blank');
+        resolve(true);
+      }
+    };
+
+    iframe.onerror = () => {
+      iframe.remove();
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+
+    document.body.appendChild(iframe);
+  });
+}
+
+/**
+ * Imprime la facture A4 en utilisant le PDF du modèle choisi (généré côté serveur).
+ *
+ * Renvoie `false` si ce chemin n'est pas disponible — aucun modèle configuré pour la boutique,
+ * vente sans id, ou API injoignable. L'appelant doit alors retomber sur `window.print()`, qui
+ * imprime le rendu HTML du composant ReceiptPrint (le même que pour le rouleau 80/58mm, juste
+ * mis en page en A4 par le CSS). Ne jamais laisser une erreur ici bloquer une impression : en
+ * caisse, imprimer quelque chose de correct vaut mieux que ne rien imprimer du tout.
+ */
+export async function printReceiptA4FromTemplate(params: {
+  venteId?: string;
+  clientTelephone?: string;
+  settings?: AppSettings | null;
+}): Promise<boolean> {
+  const templateId = params.settings?.receipt_template_id;
+  if (!templateId || !params.venteId) return false;
+
+  try {
+    const { apiGetBlob } = await import('../services/api');
+    const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
+    const blob = await apiGetBlob(`/factures/${params.venteId}.pdf${query}`);
+    return await printBlob(blob);
+  } catch (err) {
+    console.warn("Impression A4 via le modèle indisponible, repli sur l'impression HTML :", err);
+    return false;
+  }
+}
+
 export interface GenerateDebtReceiptPdfParams {
   reglement: {
     id?: number;

@@ -1,0 +1,14 @@
+Polices embarquées dans les PDF de facture — voir server/src/receiptFonts.js pour les noms de
+fichiers attendus exactement :
+  Inter-Regular.woff2   (poids 400)  [présent]
+  Inter-Medium.woff2    (poids 500)  [présent]
+  Inter-SemiBold.woff2  (poids 600)  [absent, optionnel]
+  Inter-Bold.woff2      (poids 700)  [absent, optionnel]
+
+Chargées une fois au démarrage du serveur, encodées en base64 et injectées directement dans le
+HTML envoyé à Chromium (aucune requête réseau externe — voir receiptTemplate.js).
+Un fichier manquant est simplement ignoré : Chromium choisit alors le poids disponible le plus
+proche DANS LA MÊME famille (donc toujours de l'Inter), il ne retombe pas sur une autre police.
+
+Format attendu : .woff2. Pour convertir un .ttf : py -c "from fontTools.ttLib import TTFont;
+f=TTFont('Inter-Bold.ttf'); f.flavor='woff2'; f.save('Inter-Bold.woff2')"

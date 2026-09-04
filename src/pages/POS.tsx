@@ -39,7 +39,7 @@ import { ProductCard, AddToCartPayload } from '../components/ProductCard';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
-import { generateReceiptPdf } from '../utils/pdfInvoice';
+import { generateReceiptPdf, printReceiptA4FromTemplate } from '../utils/pdfInvoice';
 
 type CartItem = PanierLigne;
 
@@ -117,6 +117,22 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
     clientNom?: string;
   } | null>(null);
   const [completedPhoneInput, setCompletedPhoneInput] = useState<string>('');
+
+  // En A4, on imprime le VRAI PDF du modèle choisi (rendu par Chromium côté serveur) plutôt que
+  // le rendu HTML du ticket rouleau étiré en A4 par le CSS. Repli automatique sur window.print()
+  // si aucun modèle n'est configuré ou si l'API est injoignable — une caisse doit toujours
+  // pouvoir imprimer quelque chose.
+  const handlePrintReceipt = async () => {
+    if (printFormat === 'a4' && completedSale) {
+      const printed = await printReceiptA4FromTemplate({
+        venteId: completedSale.vente.id,
+        clientTelephone: completedPhoneInput || completedSale.clientTelephone,
+        settings,
+      });
+      if (printed) return;
+    }
+    window.print();
+  };
 
   const handleOpenVariableModal = (produit: Produit) => {
     setSelectedVariableProduct(produit);
@@ -1172,7 +1188,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                 <Button
                   variant="glass"
                   icon={<Printer className="w-4 h-4" />}
-                  onClick={() => window.print()}
+                  onClick={handlePrintReceipt}
                 >
                   Imprimer
                 </Button>
@@ -1395,7 +1411,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
               <Button
                 variant="primary"
                 icon={<Printer className="w-4 h-4" />}
-                onClick={() => window.print()}
+                onClick={handlePrintReceipt}
               >
                 Imprimer Ticket
               </Button>

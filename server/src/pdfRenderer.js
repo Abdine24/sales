@@ -51,7 +51,7 @@ export async function htmlToPdf(html) {
       displayHeaderFooter: true,
       // Le contenu réel de la page ne va jamais dans ces templates — seulement la pagination,
       // dans une marge dédiée en bas de chaque page. Pas de police externe ici non plus (voir
-      // templates/receipts/premium.html) — juste sans-serif générique, résolu par une police du
+      // receiptFonts.js) — juste sans-serif générique, résolu par une police du
       // conteneur.
       headerTemplate: '<span></span>',
       footerTemplate:
