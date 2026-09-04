@@ -62,6 +62,38 @@ import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { BarcodeRenderer } from '../components/BarcodeRenderer';
 import { generateRandomBarcode } from '../utils/barcode';
 
+// Libellés, couleurs et icônes des motifs d'ajustement. Défini au niveau module
+// et non dans la boucle de rendu : il est partagé par la vue mobile (cartes) et
+// la vue desktop (tableau), et n'a aucune raison d'être reconstruit à chaque
+// ligne affichée.
+const MOTIF_AJUSTEMENT_INFOS: Record<MotifAjustement, { label: string; color: string; icon: React.ReactNode }> = {
+  inventaire: {
+    label: 'Inventaire physique',
+    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    icon: <ClipboardCheck className="w-3.5 h-3.5" />,
+  },
+  casse: {
+    label: 'Casse / Avarié',
+    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    icon: <Flame className="w-3.5 h-3.5" />,
+  },
+  perte_vol: {
+    label: 'Perte / Vol',
+    color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    icon: <ShieldAlert className="w-3.5 h-3.5" />,
+  },
+  don_promo: {
+    label: 'Échantillon / Don',
+    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+    icon: <Gift className="w-3.5 h-3.5" />,
+  },
+  autre: {
+    label: 'Autre motif',
+    color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
+    icon: <FileText className="w-3.5 h-3.5" />,
+  },
+};
+
 interface StockProps {
   activeZoneId: number | null;
 }
@@ -1735,7 +1767,68 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* Achats Table */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* --- Réapprovisionnements en cartes : mobile uniquement. Le produit
+                et la quantité entrée passent en tête ; fournisseur, coût unitaire
+                et date deviennent secondaires. --- */}
+            <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+              {totalFilteredAchats === 0 ? (
+                <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
+                  <Truck className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                    Aucun réapprovisionnement ne correspond à vos critères
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Modifiez votre recherche ou réinitialisez les filtres.
+                  </p>
+                  {isFilteredAchats && (
+                    <Button variant="glass" size="sm" onClick={resetAllFiltersAchats} className="mt-2">
+                      Réinitialiser les filtres
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                paginatedAchats.map((a) => (
+                  <div key={a.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {a.produit_nom}
+                        </div>
+                        {a.variante && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[11px] font-semibold">
+                            {a.variante}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-extrabold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                          +{a.quantite}
+                        </div>
+                        <div className="text-[10px] text-slate-400">unités</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 truncate">
+                        {a.fournisseur_nom}
+                      </span>
+                      <span className="font-extrabold text-slate-900 dark:text-white whitespace-nowrap selectable">
+                        {formatCfa(a.cout_total)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                      <span>{new Date(a.date).toLocaleString('fr-FR')}</span>
+                      <span className="whitespace-nowrap">
+                        {formatCfa(a.cout_unitaire ?? a.cout_total / (a.quantite || 1))} / u.
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
@@ -2103,7 +2196,79 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* Ajustements Table */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* --- Ajustements en cartes : mobile uniquement. La variation (+/-)
+                et le motif sont ce qu'on vient vérifier ; l'ancien et le nouveau
+                stock restent lisibles mais en second plan. --- */}
+            <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+              {totalFilteredAjustements === 0 ? (
+                <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
+                  <Scale className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                    Aucun ajustement ne correspond à vos filtres
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Modifiez vos critères de recherche ou réinitialisez les filtres.
+                  </p>
+                  {isFilteredAjustements && (
+                    <Button variant="glass" size="sm" onClick={resetAllFiltersAjustements} className="mt-2">
+                      Réinitialiser les filtres
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                paginatedAjustements.map((aj) => {
+                  const isPositive = aj.delta > 0;
+                  const motifInfo = MOTIF_AJUSTEMENT_INFOS[aj.motif] || MOTIF_AJUSTEMENT_INFOS.autre;
+                  return (
+                    <div key={aj.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white truncate">
+                            {aj.produit_nom}
+                          </div>
+                          {aj.variante && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[11px] font-semibold">
+                              {aj.variante}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 px-2.5 py-1 rounded-lg text-sm font-black whitespace-nowrap ${
+                            isPositive
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                          }`}
+                        >
+                          {isPositive ? `+${aj.delta}` : aj.delta}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 ${motifInfo.color}`}
+                        >
+                          {motifInfo.icon}
+                          <span>{motifInfo.label}</span>
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
+                          {aj.ancien_stock} → {aj.nouveau_stock}
+                        </span>
+                      </div>
+
+                      {aj.commentaire && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">{aj.commentaire}</p>
+                      )}
+
+                      <div className="text-[11px] text-slate-400">
+                        {new Date(aj.date).toLocaleString('fr-FR')}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
@@ -2140,14 +2305,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   ) : (
                     paginatedAjustements.map((aj) => {
                       const isPositive = aj.delta > 0;
-                      const motifLabels: Record<MotifAjustement, { label: string; color: string; icon: React.ReactNode }> = {
-                        inventaire: { label: 'Inventaire physique', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', icon: <ClipboardCheck className="w-3.5 h-3.5" /> },
-                        casse: { label: 'Casse / Avarié', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: <Flame className="w-3.5 h-3.5" /> },
-                        perte_vol: { label: 'Perte / Vol', color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', icon: <ShieldAlert className="w-3.5 h-3.5" /> },
-                        don_promo: { label: 'Échantillon / Don', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', icon: <Gift className="w-3.5 h-3.5" /> },
-                        autre: { label: 'Autre motif', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400', icon: <FileText className="w-3.5 h-3.5" /> },
-                      };
-                      const motifInfo = motifLabels[aj.motif] || motifLabels.autre;
+                      const motifInfo = MOTIF_AJUSTEMENT_INFOS[aj.motif] || MOTIF_AJUSTEMENT_INFOS.autre;
 
                       return (
                         <tr key={aj.id} className="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition-colors">

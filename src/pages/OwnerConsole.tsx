@@ -529,20 +529,45 @@ export const OwnerConsole: React.FC = () => {
     );
   }
 
+  // Cette page vit HORS de AppLayout (route dédiée, sans barre d'onglets) : elle
+  // ne bénéficie donc pas des marges de sécurité posées sur le conteneur racine
+  // de l'app, et doit gérer elle-même encoche et barre d'accueil.
   return (
-    <div className="min-h-[100dvh] p-4 sm:p-8 bg-slate-100 dark:bg-slate-950 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-blue-500" /> Espace propriétaire
+    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 space-y-6 p-4 sm:p-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] sm:pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] sm:pr-[calc(2rem+env(safe-area-inset-right))]">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+          <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
+          <span className="truncate">Espace propriétaire</span>
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {ThemeToggle}
-          <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={reload} disabled={loading}>
-            Actualiser
-          </Button>
-          <Button variant="ghost" size="sm" icon={<LogOut className="w-3.5 h-3.5" />} onClick={logout}>
-            Déconnexion
-          </Button>
+          {/* Sous `sm`, les deux actions passent en icône seule : avec leurs
+              libellés, la rangée débordait de la largeur d'un téléphone. */}
+          <button
+            type="button"
+            onClick={reload}
+            disabled={loading}
+            aria-label="Actualiser"
+            className="sm:hidden touch-target flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale disabled:opacity-50"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            aria-label="Déconnexion"
+            className="sm:hidden touch-target flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+          <div className="hidden sm:flex items-center gap-2">
+            <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={reload} disabled={loading}>
+              Actualiser
+            </Button>
+            <Button variant="ghost" size="sm" icon={<LogOut className="w-3.5 h-3.5" />} onClick={logout}>
+              Déconnexion
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -614,7 +639,7 @@ export const OwnerConsole: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => toggleExpanded(b.id)}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-500 transition-colors self-start"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-500 transition-colors self-start min-h-[44px] sm:min-h-0 tap-scale"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                   {expanded ? 'Masquer les détails' : 'Voir les détails'}
@@ -638,7 +663,7 @@ export const OwnerConsole: React.FC = () => {
                     type="button"
                     onClick={() => toggleStatus(b)}
                     disabled={togglingId === b.id}
-                    className={`mt-auto text-[11px] font-bold px-2.5 py-1.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 ${
+                    className={`mt-auto text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg border flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 tap-scale ${
                       b.status === 'active'
                         ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
                         : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
@@ -833,8 +858,9 @@ export const OwnerConsole: React.FC = () => {
         )}
 
         {templates.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl">
-            Aucun modèle dynamique ajouté. Les boutiques n'ont accès qu'aux modèles intégres.
+          <p className="text-xs text-slate-400 text-center py-6 px-4 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl">
+            Aucun modèle ajouté. Le serveur n'en embarque plus aucun : tant qu'aucun modèle n'est
+            déposé ici, les boutiques ne peuvent produire aucune facture A4.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -849,14 +875,14 @@ export const OwnerConsole: React.FC = () => {
                       type="button"
                       disabled={isPreviewing}
                       onClick={() => handlePreviewTemplate(t.id, t.nom)}
-                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50 min-h-[44px] sm:min-h-0 pr-3 tap-scale"
                     >
                       <Eye className="w-3 h-3" />
                       {isPreviewing ? 'Génération...' : 'Aperçu PDF'}
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteTemplate(t.id, t.nom)}
-                      className="text-[11px] font-bold text-rose-500 hover:underline"
+                      className="text-[11px] font-bold text-rose-500 hover:underline min-h-[44px] sm:min-h-0 pl-3 tap-scale"
                     >
                       Supprimer
                     </button>
