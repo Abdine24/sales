@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facture Premium - iVente</title>
-    <!-- Volontairement AUCUNE police chargée depuis un CDN externe (Google Fonts etc.) : le
-         rendu PDF se fait côté serveur (Puppeteer/Chromium, voir pdfRenderer.js), où une
-         dépendance réseau externe est fragile (lenteur, indisponibilité) et s'est avérée
-         produire des PDF de plusieurs Mo en pratique sur le VPS (repli sur une police système
-         non subsettée). On s'appuie uniquement sur les polices installées dans le conteneur
-         (voir server/Dockerfile : ttf-freefont, font-noto). -->
+    <!-- Inter, si présente (voir server/src/templates/receipts/fonts/), est embarquée ici même
+         en base64 par templates/receipts/index.js — jamais chargée depuis un CDN externe
+         (Google Fonts etc.) : une dépendance réseau pendant un rendu Puppeteer/Chromium côté
+         serveur s'est avérée produire des PDF corrompus/gonflés en pratique sur le VPS. Tant
+         qu'aucun fichier n'est déposé, cette balise est remplacée par une chaîne vide et la
+         police retombe sur les alternatives système ci-dessous. -->
+    <!--FONT_FACES-->
 
     <style>
         /* Forcer l'impression des couleurs d'arrière-plan pour le PDF */
@@ -32,10 +33,11 @@
 
         body {
             background-color: #ffffff;
-            /* Noms correspondant réellement aux paquets Alpine installés (voir Dockerfile :
-               font-noto -> "Noto Sans", ttf-freefont -> "FreeSans") — pas des noms de police
-               macOS/Windows qui n'existent pas dans ce conteneur. */
-            font-family: "Noto Sans", "FreeSans", sans-serif;
+            /* Inter en premier si ses fichiers sont présents (voir <!--FONT_FACES--> ci-dessus) ;
+               sinon repli sur les polices réellement installées dans le conteneur Alpine (voir
+               Dockerfile : font-noto -> "Noto Sans", ttf-freefont -> "FreeSans") — jamais des
+               noms de police macOS/Windows qui n'existent pas ici. */
+            font-family: 'Inter', "Noto Sans", "FreeSans", sans-serif;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
@@ -55,7 +57,7 @@
         .header {
             background-color: var(--primary-dark);
             color: #ffffff;
-            padding: 40px;
+            padding: 28px;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -113,21 +115,25 @@
 
         /* --- CORPS DE LA FACTURE --- */
         .body-section {
-            padding: 40px;
+            /* Réduit par rapport à l'original (40px) — un peu de marge en moins pour laisser
+               plus de factures tenir sur une seule page ; une facture juste au-dessus d'une
+               page envoyait tout le pied de page (break-inside: avoid) sur une 2e page
+               quasiment vide plutôt que de le couper. */
+            padding: 28px;
             flex-grow: 1;
         }
 
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 40px;
+            gap: 16px;
+            margin-bottom: 24px;
             break-inside: avoid;
         }
 
         .info-card {
             background-color: var(--accent-color);
-            padding: 20px;
+            padding: 16px;
             border-radius: 12px;
             border: 1px solid var(--border-soft);
         }
@@ -255,7 +261,7 @@
         .footer-section {
             background-color: var(--footer-bg);
             border-top: 1px solid var(--border-soft);
-            padding: 30px 40px;
+            padding: 20px 28px;
             text-align: center;
             break-inside: avoid; /* jamais coupé entre deux pages */
         }
