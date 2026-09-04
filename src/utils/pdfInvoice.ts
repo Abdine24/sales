@@ -358,29 +358,44 @@ function printBlob(blob: Blob): Promise<boolean> {
 }
 
 /**
- * Imprime la facture A4 en utilisant le PDF du modèle choisi (généré côté serveur).
+ * Imprime la facture A4 — en envoyant à l'imprimante EXACTEMENT le document que produit
+ * "Télécharger la facture A4", jamais un rendu différent.
  *
- * Renvoie `false` si ce chemin n'est pas disponible — aucun modèle configuré pour la boutique,
- * vente sans id, ou API injoignable. L'appelant doit alors retomber sur `window.print()`, qui
- * imprime le rendu HTML du composant ReceiptPrint (le même que pour le rouleau 80/58mm, juste
- * mis en page en A4 par le CSS). Ne jamais laisser une erreur ici bloquer une impression : en
- * caisse, imprimer quelque chose de correct vaut mieux que ne rien imprimer du tout.
+ * C'est tout l'enjeu de cette fonction : imprimer via `window.print()` ferait ré-imprimer au
+ * navigateur le HTML du composant ReceiptPrint (le ticket rouleau 80/58mm, juste étiré en A4 par
+ * le CSS), avec ses propres marges, sa propre pagination et un pied de page qui ne tombe pas en
+ * bas de la feuille. D'où deux documents différents pour le même bouton "A4". Ici on imprime
+ * toujours un vrai PDF, le même que celui téléchargé :
+ *   - modèle choisi  -> le PDF rendu par Chromium côté serveur (routes/factures.js)
+ *   - "Classique"    -> le même jsPDF que generateInvoiceA4Pdf, imprimé au lieu d'être enregistré
+ *
+ * Renvoie `false` seulement si aucune des deux voies n'aboutit ; l'appelant retombe alors sur
+ * `window.print()`. En caisse, imprimer quelque chose vaut mieux que ne rien imprimer du tout.
  */
-export async function printReceiptA4FromTemplate(params: {
-  venteId?: string;
-  clientTelephone?: string;
-  settings?: AppSettings | null;
-}): Promise<boolean> {
+export async function printReceiptA4(params: GenerateInvoicePdfParams): Promise<boolean> {
   const templateId = params.settings?.receipt_template_id;
-  if (!templateId || !params.venteId) return false;
 
+  // 1. Un modèle est choisi : le PDF serveur fait foi (identique au téléchargement).
+  if (templateId && params.vente.id) {
+    try {
+      const { apiGetBlob } = await import('../services/api');
+      const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
+      const blob = await apiGetBlob(`/factures/${params.vente.id}.pdf${query}`);
+      return await printBlob(blob);
+    } catch (err) {
+      // Modèle supprimé (409), API injoignable... On ne renonce pas : on bascule sur le design
+      // Classique ci-dessous, qui est exactement ce que le téléchargement produirait lui aussi
+      // dans la même situation (voir generateReceiptPdf).
+      console.warn('PDF serveur indisponible, repli sur le design Classique :', err);
+    }
+  }
+
+  // 2. Pas de modèle (ou serveur indisponible) : le design jsPDF intégré, imprimé tel quel.
   try {
-    const { apiGetBlob } = await import('../services/api');
-    const query = params.clientTelephone ? `?telephone=${encodeURIComponent(params.clientTelephone)}` : '';
-    const blob = await apiGetBlob(`/factures/${params.venteId}.pdf${query}`);
-    return await printBlob(blob);
+    const doc = generateInvoiceA4Pdf({ ...params, autoDownload: false });
+    return await printBlob(doc.output('blob'));
   } catch (err) {
-    console.warn("Impression A4 via le modèle indisponible, repli sur l'impression HTML :", err);
+    console.warn("Échec de l'impression du PDF A4, repli sur l'impression HTML :", err);
     return false;
   }
 }

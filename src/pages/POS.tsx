@@ -39,7 +39,7 @@ import { ProductCard, AddToCartPayload } from '../components/ProductCard';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
-import { generateReceiptPdf, printReceiptA4FromTemplate } from '../utils/pdfInvoice';
+import { generateReceiptPdf, printReceiptA4 } from '../utils/pdfInvoice';
 
 type CartItem = PanierLigne;
 
@@ -118,14 +118,20 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   } | null>(null);
   const [completedPhoneInput, setCompletedPhoneInput] = useState<string>('');
 
-  // En A4, on imprime le VRAI PDF du modèle choisi (rendu par Chromium côté serveur) plutôt que
-  // le rendu HTML du ticket rouleau étiré en A4 par le CSS. Repli automatique sur window.print()
-  // si aucun modèle n'est configuré ou si l'API est injoignable — une caisse doit toujours
-  // pouvoir imprimer quelque chose.
+  // En A4, on imprime le MÊME PDF que celui du bouton "Télécharger PDF" — jamais le rendu HTML
+  // du ticket rouleau étiré en A4 par le CSS. Repli sur window.print() seulement si la
+  // génération du PDF échoue : une caisse doit toujours pouvoir imprimer quelque chose.
   const handlePrintReceipt = async () => {
     if (printFormat === 'a4' && completedSale) {
-      const printed = await printReceiptA4FromTemplate({
-        venteId: completedSale.vente.id,
+      const printed = await printReceiptA4({
+        vente: completedSale.vente,
+        lignes: completedSale.items.map((item) => ({
+          nom: item.produit.nom,
+          variante: item.variante,
+          quantite: item.quantite,
+          prix_unitaire: item.prix_unitaire ?? item.produit.prix,
+        })),
+        clientNom: completedSale.clientNom,
         clientTelephone: completedPhoneInput || completedSale.clientTelephone,
         settings,
       });
