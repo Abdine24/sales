@@ -98,6 +98,9 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   const [panierReference, setPanierReference] = useState('');
   const [showPanierList, setShowPanierList] = useState(false);
   const [printFormat, setPrintFormat] = useState<'a4' | 'thermique'>('thermique');
+  // Ouverture de la feuille panier — mobile uniquement ; sur grand écran le
+  // panneau est toujours visible en colonne de droite et cet état est ignoré.
+  const [cartOpen, setCartOpen] = useState(false);
 
   React.useEffect(() => {
     if (settings?.print_format_default) {
@@ -581,7 +584,11 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6">
+    // Pas de hauteur imposée sur mobile : la grille produits occupe toute la
+    // page et c'est <main> qui défile. Une hauteur figée calculée sur 100vh y
+    // serait fausse de toute façon — 100vh inclut la barre d'URL rétractable du
+    // navigateur, et la barre d'onglets du bas n'est pas déduite.
+    <div className="lg:h-[calc(100vh-4rem)] min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6">
       {/* LEFT COLUMN: Product Catalog */}
       <div className="flex-1 flex flex-col min-w-0 space-y-4">
         {/* Search & Category Filter Header */}
@@ -681,8 +688,39 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Interactive Ticket / Cart */}
-      <GlassCard className="w-full lg:w-96 flex flex-col h-full p-5 border-l border-white/20">
+      {/* --- Voile derrière la feuille panier (mobile uniquement) --- */}
+      {cartOpen && (
+        <div
+          onClick={() => setCartOpen(false)}
+          className="lg:hidden fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-sm"
+        />
+      )}
+
+      {/* RIGHT COLUMN: Interactive Ticket / Cart
+          Sur mobile, ce panneau devient une feuille qui monte du bas plutôt
+          qu'une colonne : à côté de la grille produits, chacun n'aurait qu'une
+          demi-hauteur d'écran et la caisse deviendrait inutilisable. Le
+          conteneur ci-dessous porte le positionnement fixe ; `lg:contents` le
+          fait disparaître de la mise en page sur grand écran, où GlassCard
+          redevient simplement la 2e colonne de la rangée flex.
+          Le translate est posé sur CE conteneur et non sur GlassCard, qui est
+          un motion.div : framer-motion y écrit un `transform` en style inline,
+          qui l'emporterait sur une classe Tailwind. */}
+      <div
+        className={`lg:contents fixed inset-x-0 bottom-0 z-40 transition-transform duration-300 ease-out ${
+          cartOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+      <GlassCard className="w-full lg:w-96 flex flex-col lg:h-full max-h-[85dvh] lg:max-h-none p-5 border-l border-white/20 rounded-t-3xl lg:rounded-2xl">
+        {/* Poignée + fermeture, mobile uniquement */}
+        <button
+          type="button"
+          onClick={() => setCartOpen(false)}
+          aria-label="Réduire le panier"
+          className="lg:hidden -mt-2 mb-2 py-2 shrink-0"
+        >
+          <span className="sheet-grabber block" />
+        </button>
         {/* Ticket Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/10">
           <div className="flex items-center gap-2">
@@ -824,6 +862,33 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
           </Button>
         </div>
       </GlassCard>
+      </div>
+
+      {/* --- Barre de résumé du panier (mobile, feuille fermée) ---
+          Posée juste au-dessus de la barre d'onglets. Elle garde en permanence
+          sous les yeux le nombre d'articles et le total — l'information qu'un
+          caissier vérifie sans arrêt — et sert de poignée pour ouvrir le
+          panier. Masquée quand le panier est vide : rien à résumer. */}
+      {!cartOpen && cart.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="lg:hidden fixed inset-x-0 z-30 bottom-[var(--bottom-nav-h)] px-3 pb-2 tap-scale"
+        >
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-blue-600 text-white px-4 py-3 shadow-lg shadow-blue-600/30">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative shrink-0">
+                <Receipt className="w-5 h-5" />
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-white text-blue-600 text-[10px] font-black flex items-center justify-center">
+                  {cart.reduce((s, i) => s + i.quantite, 0)}
+                </span>
+              </span>
+              <span className="text-sm font-bold truncate">Voir le panier</span>
+            </div>
+            <span className="font-black whitespace-nowrap">{formatCfa(totalCart)}</span>
+          </div>
+        </button>
+      )}
 
       {/* VARIABLE PRODUCT SELECTION MODAL */}
       <Modal

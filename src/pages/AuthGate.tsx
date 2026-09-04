@@ -385,7 +385,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-6 relative">
+    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-6 relative">
       <div className="w-full max-w-md glass-card p-8 rounded-3xl relative overflow-hidden shadow-2xl border border-slate-200/80 dark:border-white/10">
         {/* Header */}
         <div className="flex items-center gap-3.5 mb-6">

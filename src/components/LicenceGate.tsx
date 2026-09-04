@@ -35,7 +35,7 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
   // Chargement initial : affichage du loader au lieu d'un écran blanc
   if (licence === undefined) {
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -96,7 +96,7 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
       <div className="w-full max-w-md glass-card p-8 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-white/10">
         <div className="flex items-center gap-3.5 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">

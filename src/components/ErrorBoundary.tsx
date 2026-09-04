@@ -28,7 +28,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-6">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-6">
         <div className="glass-panel rounded-3xl p-8 max-w-md text-center space-y-4">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">
             Une erreur est survenue

@@ -297,7 +297,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Clients & Règlements
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -384,7 +384,100 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
 
           {/* Clients Directory Table */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* --- Fiches clients en cartes : mobile uniquement. Le tableau à 5
+                colonnes obligerait à défiler latéralement pour atteindre les
+                actions, qui sont pourtant le but principal de cette page. --- */}
+            <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+              {filteredClients.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-400">Aucun client trouvé.</div>
+              ) : (
+                filteredClients.map((client) => {
+                  const hasDebt = client.total_dette > 0;
+                  return (
+                    <div key={client.id} className="p-4 space-y-3">
+                      <button
+                        onClick={() => {
+                          setHistoryClient(client);
+                          setHistoryTab('ventes');
+                        }}
+                        className="w-full text-left tap-scale"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span className="truncate">{client.nom}</span>
+                              <History className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate selectable">{client.telephone}</span>
+                            </div>
+                            {client.email && (
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate selectable">{client.email}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="shrink-0">
+                            {hasDebt ? (
+                              <Badge variant="red" dot size="sm">
+                                {formatCfa(client.total_dette)}
+                              </Badge>
+                            ) : (
+                              <Badge variant="green" size="sm">
+                                À jour
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+
+                      {hasDebt && (
+                        <Button
+                          variant="success"
+                          size="sm"
+                          className="w-full justify-center"
+                          icon={<DollarSign className="w-3.5 h-3.5" />}
+                          onClick={() => handleOpenPaymentModal(client)}
+                        >
+                          Encaisser un règlement
+                        </Button>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setHistoryClient(client);
+                            setHistoryTab('reglements');
+                          }}
+                          aria-label="Historique des règlements"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale"
+                        >
+                          <History className="w-4 h-4 text-blue-500" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditModal(client)}
+                          aria-label="Modifier la fiche"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => client.id && handleDeleteClient(client.id)}
+                          aria-label="Supprimer le client"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-rose-500 tap-scale"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
@@ -525,7 +618,101 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
           </div>
 
           <GlassCard className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* --- Règlements en cartes : mobile uniquement. 8 colonnes, c'est le
+                tableau le plus large de l'app ; en carte, le montant et le sens
+                de l'opération (entrée/sortie) sautent aux yeux d'abord. --- */}
+            <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+              {filteredReglements.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-400">
+                  Aucun règlement enregistré pour le moment.
+                </div>
+              ) : (
+                filteredReglements.map((reg) => {
+                  const isRetour = reg.type === 'remboursement_retour';
+                  return (
+                    <div key={reg.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white truncate">
+                            {reg.client_nom}
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
+                            {new Date(reg.date).toLocaleDateString('fr-FR')} ·{' '}
+                            {new Date(reg.date).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                        <div
+                          className={`text-lg font-black shrink-0 whitespace-nowrap selectable ${
+                            isRetour
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          }`}
+                        >
+                          {isRetour ? '-' : '+'}
+                          {formatCfa(reg.montant)}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {isRetour ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                            <ArrowDownLeft className="w-3 h-3" />
+                            Remboursement
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <ArrowUpRight className="w-3 h-3" />
+                            Paiement dette
+                          </span>
+                        )}
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
+                          {reg.mode_paiement === 'mobile_money'
+                            ? 'Mobile money'
+                            : reg.mode_paiement === 'virement'
+                              ? 'Virement'
+                              : 'Espèces'}
+                        </span>
+                        {reg.dette_apres !== undefined && (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                              reg.dette_apres > 0
+                                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            }`}
+                          >
+                            Reste {formatCfa(reg.dette_apres)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <UserCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span className="truncate">
+                          {reg.vendeur_nom || 'Caissier non précisé'}
+                          {reg.vendeur_identifiant ? ` · ${reg.vendeur_identifiant}` : ''}
+                        </span>
+                      </div>
+
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        className="w-full justify-center"
+                        icon={<FileText className="w-3.5 h-3.5 text-blue-500" />}
+                        onClick={() => setSelectedReceiptReglement(reg)}
+                      >
+                        Reçu
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">

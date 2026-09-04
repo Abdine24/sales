@@ -159,7 +159,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ventes & Retours</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ventes & Retours</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Historique complet des ventes. Enregistre un retour quand un client rapporte un article.
           </p>
@@ -204,7 +204,88 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* --- Liste en cartes : mobile uniquement ---
+            Un tableau de 7 colonnes sur un écran de 375px ne peut que défiler
+            latéralement, ce qui oblige à balayer pour lire une seule ligne. En
+            carte, une vente tient d'un bloc et les deux actions sont des cibles
+            pleine largeur, atteignables au pouce. */}
+        <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+          {paginated.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-400 italic">
+              Aucune vente sur cette période.
+            </div>
+          ) : (
+            paginated.map((v) => {
+              const retourne = montantRetourne(v.id);
+              return (
+                <div key={v.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 dark:text-white truncate">
+                        {v.client_nom || 'Client Passant'}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(v.date).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5 selectable">
+                        #{v.id.slice(0, 8)}
+                        {v.vendeur_nom ? ` · ${v.vendeur_nom}` : ''}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-slate-900 dark:text-white whitespace-nowrap selectable">
+                        {formatCfa(v.total)}
+                      </div>
+                      {retourne > 0 && (
+                        <div className="text-[10px] font-semibold text-rose-500 mt-0.5 whitespace-nowrap">
+                          - {formatCfa(retourne)} retourné
+                        </div>
+                      )}
+                      <div className="mt-1.5 flex justify-end">
+                        <Badge
+                          variant={v.statut === 'paye' ? 'green' : v.statut === 'partiel' ? 'amber' : 'red'}
+                          size="sm"
+                        >
+                          {v.statut === 'paye' ? 'Payé' : v.statut === 'partiel' ? 'Partiel' : 'À crédit'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      className="justify-center"
+                      icon={<Printer className="w-3.5 h-3.5 text-blue-500" />}
+                      onClick={() => setSelectedReceiptSale(v)}
+                    >
+                      Reçu
+                    </Button>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      className="justify-center"
+                      icon={<Undo2 className="w-3.5 h-3.5 text-rose-500" />}
+                      onClick={() => setRetourVente(v)}
+                    >
+                      Retour
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* --- Tableau : desktop uniquement --- */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">

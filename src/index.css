@@ -18,6 +18,169 @@
   }
 }
 
+/* ==========================================================================
+   Fondations mobiles — ce qui fait qu'une page web « fait application »
+   ========================================================================== */
+
+/* Le flash gris au toucher est le signal le plus évident qu'on est dans un
+   navigateur et pas dans une app. On le supprime partout et on remplace le
+   retour visuel par une vraie réaction au toucher (voir .tap-scale). */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Empêche iOS/Android d'agrandir tout seul le texte en mode paysage. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  /* Coupe le « rubber band » global : seules les zones scrollables déclarées
+     rebondissent, comme dans une app native. Évite aussi le pull-to-refresh
+     accidentel en pleine saisie de vente. */
+  overscroll-behavior-y: none;
+}
+
+/* Supprime le délai de 300ms hérité du double-tap-to-zoom sur tout ce qui est
+   cliquable — c'est CE délai qui donne l'impression que « le site rame ». */
+button,
+a,
+[role='button'],
+input[type='submit'],
+label {
+  touch-action: manipulation;
+}
+
+/* Zones scrollables : inertie iOS + le scroll ne « fuit » pas vers le parent
+   quand on arrive en butée (sinon la page entière bouge sous les doigts). */
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Barre de scroll masquée mais scroll conservé — pour les rangées de filtres
+   et de catégories qui défilent horizontalement au doigt. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Le pouce doit toujours trouver sa cible : 44px est le minimum recommandé
+   par Apple comme par Google. À appliquer aux petites icônes-boutons. */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Réaction physique au toucher, en remplacement du highlight supprimé. */
+.tap-scale {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.tap-scale:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+/* --- Encoches et barres système (viewport-fit=cover est déjà posé dans
+   index.html, ces classes le rendent exploitable).
+
+   ATTENTION : ces deux classes ÉCRASENT le padding correspondant. Elles sont
+   déclarées après les utilitaires Tailwind, donc à spécificité égale c'est
+   elles qui gagnent — `pb-4 safe-bottom` donne un padding bas de 0, pas de
+   16px + l'encoche. Ne les poser que sur un élément qui n'a AUCUN padding
+   propre sur cet axe. Sinon, écrire la somme explicitement :
+   `pb-[calc(1rem+env(safe-area-inset-bottom))]`.
+
+   Il n'y a volontairement pas d'équivalent horizontal : les encoches latérales
+   (paysage sur iPhone) sont gérées une seule fois sur le conteneur racine de
+   l'app (voir AppLayout), ce qui évite d'avoir à réconcilier ce padding avec
+   celui de chaque écran. --- */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Hauteur de la barre d'onglets du bas, encoche comprise — sert à réserver
+   l'espace en bas du contenu pour que rien ne finisse caché dessous. */
+:root {
+  --bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+
+.pb-bottom-nav {
+  padding-bottom: calc(var(--bottom-nav-h) + 12px);
+}
+
+@media (min-width: 768px) {
+  .pb-bottom-nav {
+    padding-bottom: 0;
+  }
+}
+
+/* --- iOS zoome automatiquement sur tout champ dont la police fait moins de
+   16px, et ne dézoome jamais après. C'est LE défaut qui casse le plus la
+   sensation d'app sur un formulaire. On force donc 16px sur mobile
+   uniquement : le rendu compact des grands écrans est préservé. --- */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* --- Feuille modale (bottom sheet) : sur mobile, une modale monte du bas
+   comme dans une app native, au lieu d'apparaître au centre. --- */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Poignée de préhension en haut d'une feuille — signal visuel universel
+   « ça se tire vers le bas pour fermer ». */
+.sheet-grabber {
+  width: 36px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.5);
+  margin: 0 auto;
+}
+
+/* --- L'app tourne aussi en PWA/Electron plein écran : dans ce mode, la
+   sélection de texte accidentelle sur les éléments d'interface (titres,
+   onglets, libellés) trahit immédiatement le navigateur. Le contenu utile
+   (montants, références, noms) reste sélectionnable. --- */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable],
+  .selectable {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
 /* Apple-style Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

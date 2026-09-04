@@ -608,7 +608,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Tableau de Bord
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">

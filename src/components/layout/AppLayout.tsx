@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, NavPage } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { Topbar, ThemeMode } from './Topbar';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { canAccess, firstAllowedPage, roleLabel } from '../../services/localAuth';
@@ -71,17 +72,28 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
   }, [themeMode]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={(page) => {
-          if (canAccess(personnel, page)) setCurrentPage(page);
-        }}
-        role={personnel.role}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
-      />
+    // h-[100dvh] plutôt que h-screen : sur mobile, 100vh inclut la barre d'URL
+    // rétractable du navigateur, ce qui fait dépasser le bas de l'app sous
+    // l'écran tant que la barre est visible. dvh suit la hauteur réellement
+    // visible.
+    // Les encoches latérales (paysage sur iPhone) sont absorbées ici, une seule
+    // fois pour toute l'app : le conteneur racine n'a aucun padding propre, donc
+    // aucun risque d'écraser celui d'un écran. Vaut 0 partout ailleurs.
+    <div className="flex h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      {/* Navigation latérale — masquée sur mobile, où la barre d'onglets du bas
+          prend le relais (voir BottomNav) : 256px de menu sur un écran de 375px
+          ne laisserait pas de place au contenu. */}
+      <div className="hidden md:flex">
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={(page) => {
+            if (canAccess(personnel, page)) setCurrentPage(page);
+          }}
+          role={personnel.role}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
+        />
+      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
@@ -97,12 +109,21 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
           activeZoneId={activeZoneId}
           onZoneChange={(zoneId) => personnel.role === 'admin' && setActiveZoneId(zoneId)}
           canSelectAll={personnel.role === 'admin'}
+          settings={settings}
         />
 
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6">
+        <main className="scroll-area flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-4 sm:space-y-6 pb-bottom-nav">
           {children({ currentPage, setCurrentPage, searchQuery, activeZoneId })}
         </main>
       </div>
+
+      <BottomNav
+        currentPage={currentPage}
+        onNavigate={(page) => {
+          if (canAccess(personnel, page)) setCurrentPage(page);
+        }}
+        role={personnel.role}
+      />
     </div>
   );
 };

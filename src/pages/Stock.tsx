@@ -1009,7 +1009,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Gestion du Stock & Produits
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -1249,7 +1249,123 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* Products Table */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* --- Produits en cartes : mobile uniquement. Les 5 actions par
+                produit deviennent des cibles de 44px alignées, au lieu de
+                petites icônes atteignables seulement après un défilement
+                latéral. --- */}
+            <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
+              {totalFiltered === 0 ? (
+                <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
+                  <Package className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                    Aucun produit ne correspond à vos filtres
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Essayez de modifier votre recherche ou de réinitialiser les filtres appliqués.
+                  </p>
+                  {isFiltered && (
+                    <Button variant="glass" size="sm" onClick={resetAllFilters} className="mt-2">
+                      Réinitialiser les filtres
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                paginatedProduits.map((p) => {
+                  const isOutOfStock = p.stock <= 0;
+                  const isLowStock = p.stock <= p.min_stock;
+                  return (
+                    <div key={p.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white truncate">{p.nom}</div>
+                          <div className="text-[11px] font-mono text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            <Barcode className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate selectable">{p.code_barres}</span>
+                          </div>
+                        </div>
+                        <div className="font-extrabold text-blue-600 dark:text-blue-400 shrink-0 whitespace-nowrap selectable">
+                          {p.is_variable && p.variantes_detaillees && p.variantes_detaillees.length > 0
+                            ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}`
+                            : formatCfa(p.prix)}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="blue" size="sm">
+                          {p.categorie}
+                        </Badge>
+                        {p.is_variable ? (
+                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                            <Layers className="w-3 h-3" />
+                            {p.variantes_detaillees?.length || (p.variantes?.length ?? 0)} variante(s)
+                          </span>
+                        ) : (
+                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-medium">
+                            Simple
+                          </span>
+                        )}
+                        {isOutOfStock ? (
+                          <Badge variant="red" dot size="sm">
+                            Épuisé (0)
+                          </Badge>
+                        ) : isLowStock ? (
+                          <Badge variant="amber" dot size="sm">
+                            Stock bas ({p.stock})
+                          </Badge>
+                        ) : (
+                          <Badge variant="green" size="sm">
+                            En stock ({p.stock})
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            setBarcodePrintProduit(p);
+                            setIsBarcodePrintModalOpen(true);
+                          }}
+                          aria-label="Imprimer les étiquettes code-barres"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-blue-600 dark:text-blue-400 tap-scale"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenRestockModal(p)}
+                          aria-label="Réapprovisionner"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-emerald-600 dark:text-emerald-400 tap-scale"
+                        >
+                          <Truck className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenAjustementModal(p)}
+                          aria-label="Ajuster le stock"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-purple-600 dark:text-purple-400 tap-scale"
+                        >
+                          <Scale className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditModal(p)}
+                          aria-label="Modifier la fiche produit"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => p.id && handleDeleteProduit(p.id)}
+                          aria-label="Supprimer"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-rose-500 tap-scale"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">

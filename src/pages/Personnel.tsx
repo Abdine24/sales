@@ -197,7 +197,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Gestion du personnel</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Gestion du personnel</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ajoutez des comptes et limitez leurs actions selon leur rôle.</p>
         </div>
         <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={openCreate}>Ajouter une personne</Button>

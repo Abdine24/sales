@@ -287,7 +287,7 @@ export const Settings: React.FC = () => {
   return (
     <div className="space-y-6 max-w-6xl pb-10">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           Paramètres Généraux
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">

@@ -497,7 +497,7 @@ export const OwnerConsole: React.FC = () => {
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-950">
+      <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-950">
         <div className="absolute top-4 right-4">{ThemeToggle}</div>
         <GlassCard className="w-full max-w-sm">
           <div className="flex flex-col items-center gap-2 mb-6 text-center">
@@ -530,7 +530,7 @@ export const OwnerConsole: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-8 bg-slate-100 dark:bg-slate-950 space-y-6">
+    <div className="min-h-[100dvh] p-4 sm:p-8 bg-slate-100 dark:bg-slate-950 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-blue-500" /> Espace propriétaire
