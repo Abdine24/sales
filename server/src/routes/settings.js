@@ -1,6 +1,5 @@
 import { Router } from 'express';
 
-
 export const settingsRouter = Router();
 
 const COLUMNS = [
@@ -11,13 +10,26 @@ const COLUMNS = [
   'receipt_template_id', 'saisie_prix_a_la_vente',
 ];
 
+async function ensureColumns(pool) {
+  try {
+    await pool.query(`
+      alter table settings add column if not exists receipt_template_id text;
+      alter table settings add column if not exists saisie_prix_a_la_vente boolean default false;
+    `);
+  } catch (err) {
+    console.error('ensureColumns settings error:', err);
+  }
+}
+
 settingsRouter.get('/', async (req, res) => {
+  await ensureColumns(req.tenantPool);
   const { rows } = await req.tenantPool.query("select * from settings where id='principale'");
   res.json(rows[0] || { id: 'principale', nom_site: 'iVente Pro' });
 });
 
 // Upsert complet (l'écran Réglages envoie toujours l'objet entier).
 settingsRouter.put('/', async (req, res) => {
+  await ensureColumns(req.tenantPool);
   const body = req.body || {};
   const values = COLUMNS.map((c) => body[c] ?? null);
   const insertCols = ['id', ...COLUMNS];

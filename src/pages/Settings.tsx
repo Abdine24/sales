@@ -191,6 +191,7 @@ export const Settings: React.FC = () => {
     try {
       const saved = await apiPut<AppSettings>('/settings', updated);
       setSettingsState(saved);
+      setSaisiePrixALaVente(Boolean(saved.saisie_prix_a_la_vente));
       window.dispatchEvent(new Event('app-settings-updated'));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
