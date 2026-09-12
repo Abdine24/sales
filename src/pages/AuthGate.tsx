@@ -372,10 +372,6 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setLoading(true);
     try {
       const loggedIn = await authenticate(username, email, password);
-      if (!loggedIn) {
-        setError('Identifiants incorrects (vérifiez le nom d’utilisateur, l’email et le mot de passe).');
-        return;
-      }
       setPersonnel(loggedIn);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la connexion.');

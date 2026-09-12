@@ -9,26 +9,49 @@ export const AUTH_REQUIRED = true;
 
 // Résout le profil personnel (rôle, zone...) associé à l'utilisateur Supabase actuellement
 // authentifié — le serveur est l'unique source de vérité (voir server/src/routes/personnel.js,
-// route /me). Renvoie null si aucun profil n'existe encore pour ce compte (email pas encore
-// rattaché par un admin) ou s'il est désactivé.
-const resolveCurrentPersonnel = async (): Promise<Personnel | null> => {
+// route /me).
+const resolveCurrentPersonnel = async (): Promise<Personnel> => {
   try {
     const personnel = await apiGet<Personnel>('/personnel/me');
-    if (!personnel.actif) return null;
+    if (!personnel) {
+      throw new Error('Aucun profil personnel trouvé pour cette boutique.');
+    }
+    if (!personnel.actif) {
+      throw new Error('Ce compte utilisateur a été désactivé par l’administrateur.');
+    }
     return personnel;
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof ApiError) {
+      throw new Error(err.message);
+    }
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error('Impossible de charger le profil utilisateur pour cette boutique.');
   }
 };
 
-export const authenticate = async (_username: string, email: string, password: string) => {
+export const authenticate = async (username: string, email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase doit être configuré pour se connecter.');
   }
   const normalizedEmail = email.trim().toLowerCase();
   const result = await signInWithPassword(normalizedEmail, password);
-  if (!result.success) return null;
-  return resolveCurrentPersonnel();
+  if (!result.success) {
+    let msg = result.message || 'Identifiants Supabase incorrects.';
+    if (msg.toLowerCase().includes('invalid login credentials')) {
+      msg = 'Adresse email ou mot de passe incorrect.';
+    } else if (msg.toLowerCase().includes('email not confirmed')) {
+      msg = 'Veuillez confirmer votre adresse email avant de vous connecter.';
+    }
+    throw new Error(msg);
+  }
+  
+  const personnel = await resolveCurrentPersonnel();
+  if (username && username.trim() && personnel.username && personnel.username.toLowerCase() !== username.trim().toLowerCase()) {
+    throw new Error(`Le nom d'utilisateur "${username.trim()}" ne correspond pas à l'adresse email ${normalizedEmail} (@${personnel.username}).`);
+  }
+  return personnel;
 };
 
 // Termine le parcours "mot de passe oublié" : appelé une fois que l'utilisateur a défini
