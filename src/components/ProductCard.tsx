@@ -208,10 +208,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Footer: Price & Add / Choose Button */}
       <div className="mt-3 pt-2.5 border-t border-slate-200/50 dark:border-white/10 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm sm:text-base font-black text-blue-600 dark:text-blue-400 truncate">
-            {isVariable && priceRange?.isRange ? `Dès ${formatCfa(priceRange.min)}` : formatCfa(displayPrice)}
+          <div className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 truncate">
+            {isVariable && priceRange?.isRange && priceRange.min > 0
+              ? `Dès ${formatCfa(priceRange.min)}`
+              : displayPrice > 0
+              ? formatCfa(displayPrice)
+              : 'Saisie à la vente'}
           </div>
-          {isVariable && priceRange?.isRange && (
+          {isVariable && priceRange?.isRange && priceRange.max > 0 && (
             <div className="text-[10px] font-semibold text-slate-400 truncate">
               Jusqu'à {formatCfa(priceRange.max)}
             </div>

@@ -473,6 +473,18 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
     );
   };
 
+  // Update cart item selling price directly
+  const updatePrice = (produitId: number, newPrice: number, variantId?: string) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.produit.id === produitId && item.variant_id === variantId) {
+          return { ...item, prix_unitaire: Math.max(0, newPrice) };
+        }
+        return item;
+      })
+    );
+  };
+
   // Open Checkout Modal
   const handleOpenCheckout = () => {
     if (cart.length === 0) return;
@@ -802,14 +814,28 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                   exit={{ opacity: 0, x: -20 }}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5"
                 >
-                  <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex-1 min-w-0 pr-2 space-y-1">
                     <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                       {item.produit.nom}
                     </h5>
-                    <span className="text-[11px] text-slate-400">
-                      {item.variante ? `${item.variante} · ` : ''}
-                      {formatCfa(item.prix_unitaire ?? item.produit.prix)} × {item.quantite}
-                    </span>
+                    {item.variante && (
+                      <span className="text-[10px] text-purple-600 dark:text-purple-300 font-semibold block truncate">
+                        {item.variante}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Prix U. :</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={item.prix_unitaire ?? 0}
+                        onChange={(e) => item.produit.id && updatePrice(item.produit.id, parseFloat(e.target.value) || 0, item.variant_id)}
+                        className="w-24 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-xs font-black text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="Prix de vente"
+                      />
+                      <span className="text-[10px] font-bold text-slate-400">F</span>
+                    </div>
                   </div>
 
                   {/* Quantity Controls */}

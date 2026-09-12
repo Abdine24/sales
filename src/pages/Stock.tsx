@@ -1317,8 +1317,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         </div>
                         <div className="font-extrabold text-blue-600 dark:text-blue-400 shrink-0 whitespace-nowrap selectable">
                           {p.is_variable && p.variantes_detaillees && p.variantes_detaillees.length > 0
-                            ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}`
-                            : formatCfa(p.prix)}
+                            ? (Math.min(...p.variantes_detaillees.map((v) => v.prix)) > 0
+                                ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}`
+                                : 'Saisie à la vente')
+                            : (p.prix > 0 ? formatCfa(p.prix) : 'Saisie à la vente')}
                         </div>
                       </div>
 
@@ -1465,9 +1467,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                           </td>
                           <td className="p-4 font-extrabold text-blue-600 dark:text-blue-400">
                             {p.is_variable && p.variantes_detaillees && p.variantes_detaillees.length > 0 ? (
-                              <span>Dès {formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}</span>
+                              <span>{Math.min(...p.variantes_detaillees.map((v) => v.prix)) > 0 ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}` : 'Saisie à la vente'}</span>
                             ) : (
-                              <span>{formatCfa(p.prix)}</span>
+                              <span>{p.prix > 0 ? formatCfa(p.prix) : 'Saisie à la vente'}</span>
                             )}
                           </td>
                           <td className="p-4">
@@ -2605,17 +2607,20 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
               <div>
                 <label className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 block">
-                  Prix de Vente Client (F) *
+                  Prix de Vente Conseillé (F, Optionnel)
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  required={!isVariable}
+                  min="0"
                   value={prix}
                   onChange={(e) => setPrix(e.target.value)}
-                  placeholder="ex: 150000"
+                  placeholder="Optionnel (saisie à la vente)"
                   className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-black text-blue-600 dark:text-blue-400"
                 />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Optionnel — Le prix de vente peut être librement saisi lors de la vente en caisse.
+                </span>
               </div>
 
               <div>
