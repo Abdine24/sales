@@ -121,7 +121,7 @@ plateformeRouter.get('/boutiques', async (_req, res) => {
       const { db_name, ...rest } = b;
       try {
         const pool = getTenantPool(db_name);
-        const [settingsResult, zonesResult, personnelResult, produitsResult, ventesResult, licenceResult] =
+        const [settingsResult, zonesResult, personnelResult, produitsResult, ventesResult, licenceResult, adminResult] =
           await Promise.all([
             pool.query(`select telephone from settings where id='principale'`),
             pool.query(`select count(*)::int as n from zones where actif=true`),
@@ -131,6 +131,7 @@ plateformeRouter.get('/boutiques', async (_req, res) => {
             // pas de risque de "NaN" ici même si aucune vente n'existe encore (coalesce à 0).
             pool.query(`select coalesce(sum(total),0)::numeric as total from ventes`),
             pool.query(`select cle, activee_le, expire_le, duree_jours, trial_used from licence where id='principale'`),
+            pool.query(`select nom, username, email from personnel where principal=true or role='admin' order by principal desc, id asc limit 1`),
           ]);
         return {
           ...rest,
@@ -140,6 +141,7 @@ plateformeRouter.get('/boutiques', async (_req, res) => {
           produits_count: produitsResult.rows[0]?.n ?? 0,
           chiffre_affaires: ventesResult.rows[0]?.total ?? 0,
           licence: licenceResult.rows[0] || null,
+          admin_principal: adminResult.rows[0] || null,
         };
       } catch {
         return {
@@ -150,10 +152,12 @@ plateformeRouter.get('/boutiques', async (_req, res) => {
           produits_count: null,
           chiffre_affaires: null,
           licence: null,
+          admin_principal: null,
         };
       }
     })
   );
+
 
   res.json(enriched);
 });
@@ -342,11 +346,12 @@ const DURATION_PRESET_MAP = {
 
 plateformeRouter.get('/licences', async (_req, res) => {
   const { rows } = await controlPlanePool.query(
-    `select cle, duree_jours, preset_label, status, client_cible, boutique_id, boutique_nom, created_at, activated_at
+    `select cle, duree_jours, preset_label, status, client_cible, boutique_id, boutique_nom, boutique_slug, created_at, activated_at
      from licences_catalogue order by created_at desc`
   );
   res.json(rows);
 });
+
 
 plateformeRouter.post('/licences/generer', async (req, res) => {
   const body = req.body || {};

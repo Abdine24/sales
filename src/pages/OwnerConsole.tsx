@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin,
   Power, Search, Users, Package, Wallet, KeyRound, History, Sun, Moon, ChevronDown, Calendar,
-  Eye, Download, HelpCircle, FileText, Check, AlertTriangle, Copy, Plus, Trash2, Filter,
+  Eye, Download, HelpCircle, FileText, Check, AlertTriangle, Copy, Plus, Trash2, Filter, Mail,
+
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -22,6 +23,12 @@ interface BoutiqueLicence {
   trial_used: boolean;
 }
 
+interface AdminPrincipal {
+  nom: string;
+  username: string;
+  email: string | null;
+}
+
 interface CatalogueLicence {
   cle: string;
   duree_jours: number;
@@ -30,6 +37,7 @@ interface CatalogueLicence {
   client_cible: string | null;
   boutique_id: string | null;
   boutique_nom: string | null;
+  boutique_slug: string | null;
   created_at: string;
   activated_at: string | null;
 }
@@ -47,7 +55,9 @@ interface Boutique {
   produits_count: number | null;
   chiffre_affaires: number | null;
   licence: BoutiqueLicence | null;
+  admin_principal: AdminPrincipal | null;
 }
+
 
 
 interface Annonce {
@@ -204,6 +214,58 @@ export const OwnerConsole: React.FC = () => {
       await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
     }
   };
+
+  const exportAdminsCsv = () => {
+    if (boutiques.length === 0) {
+      toast('Aucune boutique à exporter.');
+      return;
+    }
+    const headers = [
+      'Nom Boutique',
+      'Sous-domaine',
+      'Statut Boutique',
+      'Nom Admin Principal',
+      'Username Admin',
+      'Email Admin',
+      'Téléphone',
+      'Clé Licence',
+      'Durée Licence',
+      'Statut Licence',
+      'Jours Restants',
+      'Date de Création'
+    ];
+
+    const rows = boutiques.map((b) => {
+      const status = evaluateLicenceStatus(b.licence);
+      return [
+        `"${(b.nom || '').replace(/"/g, '""')}"`,
+        `"${(b.slug || '').replace(/"/g, '""')}.azanga.tech"`,
+        `"${b.status}"`,
+        `"${(b.admin_principal?.nom || 'N/A').replace(/"/g, '""')}"`,
+        `"${(b.admin_principal?.username || 'N/A').replace(/"/g, '""')}"`,
+        `"${(b.admin_principal?.email || 'N/A').replace(/"/g, '""')}"`,
+        `"${(b.telephone || 'N/A').replace(/"/g, '""')}"`,
+        `"${(b.licence?.cle || 'Aucune').replace(/"/g, '""')}"`,
+        `"${b.licence?.duree_jours || 0}j"`,
+        `"${status.state}"`,
+        `"${status.daysRemaining}j"`,
+        `"${new Date(b.created_at).toLocaleDateString('fr-FR')}"`
+      ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Admins_Boutiques_iVente_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast('Export CSV des administrateurs téléchargé !');
+  };
+
 
   // Recherche/filtre — purement côté client : le nombre de boutiques reste modeste, pas besoin
   // d'un aller-retour serveur pour ça.
@@ -694,7 +756,17 @@ export const OwnerConsole: React.FC = () => {
           <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
             <Store className="w-4 h-4 text-blue-500" /> Boutiques ({filteredBoutiques.length}/{boutiques.length})
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Download className="w-3.5 h-3.5 text-emerald-500" />}
+              onClick={exportAdminsCsv}
+              title="Exporter la liste des administrateurs et boutiques au format CSV"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20"
+            >
+              Exporter Admins (CSV)
+            </Button>
             <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
@@ -743,6 +815,27 @@ export const OwnerConsole: React.FC = () => {
                   </Badge>
                 </div>
 
+                {/* Admin Principal Info */}
+                {b.admin_principal && (
+                  <div className="p-2.5 rounded-xl bg-blue-500/5 border border-blue-500/15 space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                        <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        {b.admin_principal.nom}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 shrink-0">@{b.admin_principal.username}</span>
+                    </div>
+                    {b.admin_principal.email && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                        <a href={`mailto:${b.admin_principal.email}`} className="hover:underline hover:text-blue-500 truncate">
+                          {b.admin_principal.email}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant={lb.variant} size="sm" title={b.licence?.cle}>
                     <KeyRound className="w-3 h-3" /> {lb.label}
@@ -751,6 +844,7 @@ export const OwnerConsole: React.FC = () => {
                     <StatChip icon={<Wallet className="w-3 h-3" />}>{formatCfaCompact(b.chiffre_affaires)}</StatChip>
                   )}
                 </div>
+
 
                 {/* Détails secondaires — repliés par défaut */}
                 <button
@@ -910,7 +1004,7 @@ export const OwnerConsole: React.FC = () => {
                   lic.status === 'active' ? 'green' : lic.status === 'unused' ? 'blue' : 'red';
                 const statusLabel =
                   lic.status === 'active'
-                    ? `Active (${lic.boutique_nom || 'Boutique'})`
+                    ? `Active`
                     : lic.status === 'unused'
                     ? 'Non utilisée'
                     : 'Expirée';
@@ -946,6 +1040,11 @@ export const OwnerConsole: React.FC = () => {
                         {lic.client_cible && (
                           <span>Destinataire : <strong>{lic.client_cible}</strong></span>
                         )}
+                        {lic.status === 'active' && lic.boutique_nom && (
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            Utilisée par : {lic.boutique_nom} {lic.boutique_slug ? `(${lic.boutique_slug}.azanga.tech)` : ''}
+                          </span>
+                        )}
                         <span>
                           Générée le {new Date(lic.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -956,6 +1055,7 @@ export const OwnerConsole: React.FC = () => {
                         )}
                       </div>
                     </div>
+
 
                     {lic.status === 'unused' && (
                       <button

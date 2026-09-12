@@ -55,16 +55,18 @@ licenceStatusRouter.post('/activer', async (req, res) => {
   try {
     const boutiqueId = req.tenant?.id || null;
     const boutiqueNom = req.tenant?.nom || null;
+    const boutiqueSlug = req.tenant?.slug || null;
     await controlPlanePool.query(
       `update licences_catalogue
-       set status = 'active', boutique_id = $1, boutique_nom = $2, activated_at = $3
-       where cle = $4`,
-      [boutiqueId, boutiqueNom, activeeLe, cleanKey]
+       set status = 'active', boutique_id = $1, boutique_nom = $2, boutique_slug = $3, activated_at = $4
+       where cle = $5`,
+      [boutiqueId, boutiqueNom, boutiqueSlug, activeeLe, cleanKey]
     );
   } catch (err) {
     console.error('Échec mise à jour catalogue licence :', err);
   }
 
   res.json(rows[0]);
+
 });
 

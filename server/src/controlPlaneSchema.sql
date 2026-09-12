@@ -84,9 +84,12 @@ create table if not exists licences_catalogue (
   client_cible text,
   boutique_id uuid references boutiques(id) on delete set null,
   boutique_nom text,
+  boutique_slug text,
   created_at timestamptz not null default now(),
   activated_at timestamptz
 );
+alter table licences_catalogue add column if not exists boutique_slug text;
 create index if not exists idx_licences_catalogue_status on licences_catalogue(status);
 create index if not exists idx_licences_catalogue_created on licences_catalogue(created_at desc);
+
 
