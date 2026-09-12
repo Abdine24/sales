@@ -2,16 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin,
   Power, Search, Users, Package, Wallet, KeyRound, History, Sun, Moon, ChevronDown, Calendar,
-  Eye, Download, HelpCircle, FileText, Check, AlertTriangle, Copy, Plus, Trash2, Filter, Mail,
-
+  Eye, Download, HelpCircle, FileText, Check, Copy, Plus, Trash2, Mail, ExternalLink,
 } from 'lucide-react';
-import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDialog } from '../components/ui/DialogProvider';
 import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost, ownerDelete, ownerGetBlob } from '../services/ownerApi';
 import { ApiError } from '../services/api';
-
 import { evaluateLicenceStatus } from '../utils/license';
 import { formatCfaCompact } from '../utils/currency';
 
@@ -58,8 +55,6 @@ interface Boutique {
   admin_principal: AdminPrincipal | null;
 }
 
-
-
 interface Annonce {
   id: number;
   message: string;
@@ -89,8 +84,6 @@ const statusBadge: Record<Boutique['status'], { variant: 'green' | 'amber' | 're
   failed: { variant: 'red', label: 'Échec' },
 };
 
-// Une clé de 7 jours ne peut venir que du preset d'essai gratuit — même heuristique déjà
-// utilisée côté serveur (voir server/src/routes/licenceStatus.js) pour reconnaître un essai.
 const licenceBadge = (licence: BoutiqueLicence | null) => {
   if (!licence) return { variant: 'gray' as const, label: 'Aucune licence' };
   const status = evaluateLicenceStatus(licence);
@@ -104,31 +97,30 @@ const licenceBadge = (licence: BoutiqueLicence | null) => {
 type ThemeMode = 'light' | 'dark';
 const THEME_KEY = 'owner-console-theme';
 
-// Petite puce compacte icône+valeur — utilisée partout dans la carte boutique pour garder
-// chaque info courte et lisible, quelle que soit la largeur disponible (elles s'enroulent
-// naturellement grâce à flex-wrap, contrairement à des colonnes de tableau).
+// Card solide à 100% d'opacité (sans aucun effet glassmorphism / flou)
+const SolidCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 text-slate-900 dark:text-white transition-colors ${className}`}>
+    {children}
+  </div>
+);
+
+// Puce compacte pour les statistiques
 const StatChip: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
-  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-500/5 border border-slate-200/50 dark:border-white/10 text-slate-600 dark:text-slate-300">
+  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
     {icon}
     {children}
   </span>
 );
 
-// Page cachée réservée au propriétaire de la plateforme — vue d'ensemble de toutes les
-// boutiques, réglages globaux (WhatsApp, téléphone), et diffusion de messages dans la cloche de
-// notifications des admins. Accessible via /proprietaire (voir App.tsx), authentification par
-// mot de passe dédié totalement séparée de Supabase (voir server/src/routes/plateforme.js).
 export const OwnerConsole: React.FC = () => {
   const { toast, alert, confirm } = useDialog();
 
-  // Thème clair/sombre — page rendue en dehors de l'app principale (voir App.tsx), donc pas de
-  // classe "dark" posée par ailleurs sur <html> : on la gère nous-mêmes ici, avec sa propre clé
-  // localStorage (indépendante du thème de l'app boutique) et la préférence système par défaut.
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(THEME_KEY) as ThemeMode | null;
     if (saved === 'light' || saved === 'dark') return saved;
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
+
   useEffect(() => {
     localStorage.setItem(THEME_KEY, themeMode);
     document.documentElement.classList.toggle('dark', themeMode === 'dark');
@@ -266,9 +258,6 @@ export const OwnerConsole: React.FC = () => {
     toast('Export CSV des administrateurs téléchargé !');
   };
 
-
-  // Recherche/filtre — purement côté client : le nombre de boutiques reste modeste, pas besoin
-  // d'un aller-retour serveur pour ça.
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Boutique['status'] | 'all'>('all');
   const filteredBoutiques = useMemo(() => {
@@ -280,9 +269,6 @@ export const OwnerConsole: React.FC = () => {
     });
   }, [boutiques, search, statusFilter]);
 
-  // Détails secondaires (téléphone, zones, employés, produits, dates) repliés par défaut — une
-  // carte n'affiche d'entrée que l'essentiel (nom, statut, licence, CA) pour ne pas noyer
-  // l'écran dès qu'il y a plusieurs boutiques.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -348,7 +334,6 @@ export const OwnerConsole: React.FC = () => {
     }
   }, [alert]);
 
-
   useEffect(() => {
     if (authed) reload();
   }, [authed, reload]);
@@ -408,24 +393,19 @@ export const OwnerConsole: React.FC = () => {
   const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     try {
       const htmlContent = await file.text();
-      // Simple parse to extract title if any, or use filename
       const nom = file.name.replace('.html', '');
-      
       const newTemplate = await ownerPost<ReceiptTemplate>('/plateforme/templates', {
         nom,
         description: 'Ajouté par le propriétaire',
         html: htmlContent
       });
-      
       setTemplates(prev => [newTemplate, ...prev]);
       toast(`Modèle "${nom}" ajouté avec succès.`);
     } catch (err) {
       await alert(err instanceof ApiError ? err.message : "Échec de l'upload.");
     } finally {
-      // Reset input
       e.target.value = '';
     }
   };
@@ -630,25 +610,24 @@ export const OwnerConsole: React.FC = () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-
   const ThemeToggle = (
     <button
       type="button"
       onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
-      className="p-2 rounded-xl glass-card border border-slate-200/60 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-blue-500 transition-colors"
+      className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm transition-colors"
       title={themeMode === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
     >
       {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
     </button>
   );
 
+  // ÉCRAN DE CONNEXION ADMIN (100% SOLIDE, STYLE FACEBOOK)
   if (!authed) {
     return (
       <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-[#18191A] flex flex-col items-center justify-center p-4 sm:p-6 relative">
         <div className="absolute top-4 right-4">{ThemeToggle}</div>
 
         <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-[#242526] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 transition-colors">
-          {/* Header Facebook Style */}
           <div className="flex flex-col items-center text-center gap-3 mb-6">
             <div className="w-14 h-14 rounded-2xl bg-[#1877F2] text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
               <ShieldCheck className="w-8 h-8" />
@@ -707,591 +686,642 @@ export const OwnerConsole: React.FC = () => {
     );
   }
 
-
-  // Cette page vit HORS de AppLayout (route dédiée, sans barre d'onglets) : elle
-  // ne bénéficie donc pas des marges de sécurité posées sur le conteneur racine
-  // de l'app, et doit gérer elle-même encoche et barre d'accueil.
+  // CONSOLE ADMIN PRINCIPALE (PAGES ET CARTE 100% SOLIDES AVEC MARGES GÉNÉREUSES)
   return (
-    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 space-y-6 p-4 sm:p-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] sm:pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] sm:pr-[calc(2rem+env(safe-area-inset-right))]">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
-          <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
-          <span className="truncate">Espace propriétaire</span>
-        </h1>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {ThemeToggle}
-          {/* Sous `sm`, les deux actions passent en icône seule : avec leurs
-              libellés, la rangée débordait de la largeur d'un téléphone. */}
-          <button
-            type="button"
-            onClick={reload}
-            disabled={loading}
-            aria-label="Actualiser"
-            className="sm:hidden touch-target flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale disabled:opacity-50"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            aria-label="Déconnexion"
-            className="sm:hidden touch-target flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-300 tap-scale"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-          <div className="hidden sm:flex items-center gap-2">
-            <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={reload} disabled={loading}>
-              Actualiser
-            </Button>
-            <Button variant="ghost" size="sm" icon={<LogOut className="w-3.5 h-3.5" />} onClick={logout}>
-              Déconnexion
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Boutiques */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <Store className="w-4 h-4 text-blue-500" /> Boutiques ({filteredBoutiques.length}/{boutiques.length})
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Download className="w-3.5 h-3.5 text-emerald-500" />}
-              onClick={exportAdminsCsv}
-              title="Exporter la liste des administrateurs et boutiques au format CSV"
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20"
-            >
-              Exporter Admins (CSV)
-            </Button>
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher..."
-                className="glass-input pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white w-full sm:w-44"
-              />
+    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 py-6 sm:py-10 px-4 sm:px-8 lg:px-12 transition-colors">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        
+        {/* En-tête de la Console Admin */}
+        <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+              <ShieldCheck className="w-6 h-6" />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as Boutique['status'] | 'all')}
-              className="glass-input px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white shrink-0"
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                Espace Propriétaire
+              </h1>
+              <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate">
+                Gestion multi-boutiques, licences et configuration globale
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {ThemeToggle}
+            <button
+              type="button"
+              onClick={reload}
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold transition-all disabled:opacity-50 inline-flex items-center gap-2 shadow-sm"
+              title="Actualiser les données"
             >
-              <option value="all">Tous statuts</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspendue</option>
-              <option value="provisioning">En cours</option>
-              <option value="failed">Échec</option>
-            </select>
+              <RefreshCw className={`w-4 h-4 text-blue-500 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold transition-all inline-flex items-center gap-2 shadow-sm"
+              title="Déconnexion"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Déconnexion</span>
+            </button>
           </div>
         </div>
 
-        {filteredBoutiques.length === 0 && !loading && (
-          <GlassCard>
-            <p className="text-xs text-slate-400 text-center py-4">
-              {boutiques.length === 0 ? 'Aucune boutique.' : 'Aucun résultat pour ce filtre.'}
-            </p>
-          </GlassCard>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredBoutiques.map((b) => {
-            const lb = licenceBadge(b.licence);
-            const expanded = expandedIds.has(b.id);
-            return (
-              <GlassCard key={b.id} className="flex flex-col gap-3">
-                {/* Essentiel — toujours visible */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white truncate">{b.nom}</h3>
-                    <p className="text-[11px] font-mono text-slate-400 truncate">{b.slug}.azanga.tech</p>
-                  </div>
-                  <Badge variant={statusBadge[b.status].variant} size="sm">
-                    {statusBadge[b.status].label}
-                  </Badge>
-                </div>
-
-                {/* Admin Principal Info */}
-                {b.admin_principal && (
-                  <div className="p-2.5 rounded-xl bg-blue-500/5 border border-blue-500/15 space-y-1 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                        <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        {b.admin_principal.nom}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 shrink-0">@{b.admin_principal.username}</span>
-                    </div>
-                    {b.admin_principal.email && (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                        <a href={`mailto:${b.admin_principal.email}`} className="hover:underline hover:text-blue-500 truncate">
-                          {b.admin_principal.email}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant={lb.variant} size="sm" title={b.licence?.cle}>
-                    <KeyRound className="w-3 h-3" /> {lb.label}
-                  </Badge>
-                  {b.chiffre_affaires !== null && (
-                    <StatChip icon={<Wallet className="w-3 h-3" />}>{formatCfaCompact(b.chiffre_affaires)}</StatChip>
-                  )}
-                </div>
-
-
-                {/* Détails secondaires — repliés par défaut */}
-                <button
-                  type="button"
-                  onClick={() => toggleExpanded(b.id)}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-500 transition-colors self-start min-h-[44px] sm:min-h-0 tap-scale"
-                >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-                  {expanded ? 'Masquer les détails' : 'Voir les détails'}
-                </button>
-
-                {expanded && (
-                  <div className="flex flex-wrap gap-1.5 text-[11px] pt-1 border-t border-slate-200/50 dark:border-white/10">
-                    {b.telephone && <StatChip icon={<Phone className="w-3 h-3" />}>{b.telephone}</StatChip>}
-                    {b.zones_actives !== null && <StatChip icon={<MapPin className="w-3 h-3" />}>{b.zones_actives} zone(s)</StatChip>}
-                    {b.personnel_count !== null && <StatChip icon={<Users className="w-3 h-3" />}>{b.personnel_count} employé(s)</StatChip>}
-                    {b.produits_count !== null && <StatChip icon={<Package className="w-3 h-3" />}>{b.produits_count} produit(s)</StatChip>}
-                    <StatChip icon={<Calendar className="w-3 h-3" />}>
-                      créée le {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </StatChip>
-                  </div>
-                )}
-
-                {/* Action */}
-                {(b.status === 'active' || b.status === 'suspended') && (
-                  <button
-                    type="button"
-                    onClick={() => toggleStatus(b)}
-                    disabled={togglingId === b.id}
-                    className={`mt-auto text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg border flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 tap-scale ${
-                      b.status === 'active'
-                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                    }`}
-                  >
-                    <Power className="w-3 h-3" />
-                    {togglingId === b.id ? '...' : b.status === 'active' ? 'Désactiver' : 'Réactiver'}
-                  </button>
-                )}
-              </GlassCard>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* GESTION & GÉNÉRATION DES LICENCES */}
-      <GlassCard className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-4">
-          <div>
+        {/* GESTION ET AGENCEMENT DES BOUTIQUES */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
             <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-blue-500" /> Gestion & Génération des Licences
+              <Store className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <span>Boutiques Enregistrées</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold">
+                {filteredBoutiques.length} / {boutiques.length}
+              </span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Générez des clés d'abonnement signées (7 jours, 1 mois, 3 mois, 6 mois, 1 an), stockez-les en base de données et suivez leur statut d'activation.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">
-              {catalogueLicences.filter((l) => l.status === 'unused').length} non utilisée(s)
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
-              {catalogueLicences.filter((l) => l.status === 'active').length} active(s)
-            </span>
-          </div>
-        </div>
 
-        {/* Formulaire de génération */}
-        <form onSubmit={generateLicenceKey} className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/10 space-y-4">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-            <Plus className="w-4 h-4 text-blue-500" /> Générer une nouvelle clé
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-            <div className="sm:col-span-4 space-y-1">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                Durée de l'abonnement
-              </label>
-              <select
-                value={licencePreset}
-                onChange={(e) => setLicencePreset(e.target.value as any)}
-                className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-slate-900 dark:text-white font-semibold"
-              >
-                <option value="essai">7 jours (Essai gratuit)</option>
-                <option value="mois">1 mois (30 jours)</option>
-                <option value="trimestre">3 mois (90 jours)</option>
-                <option value="semestre">6 mois (180 jours)</option>
-                <option value="an">1 an (365 jours - Maximum)</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-5 space-y-1">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                Client / Boutique destinataire (Optionnel)
-              </label>
-              <input
-                value={licenceClientCible}
-                onChange={(e) => setLicenceClientCible(e.target.value)}
-                placeholder="ex: Boutique Fatou / M. Diallo"
-                className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <div className="sm:col-span-3 flex items-end">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="w-full"
-                disabled={generatingLicence}
-                icon={<KeyRound className="w-4 h-4" />}
+                variant="ghost"
+                size="sm"
+                icon={<Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                onClick={exportAdminsCsv}
+                title="Exporter la liste des administrateurs au format CSV"
+                className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 border border-emerald-200 dark:border-emerald-800"
               >
-                {generatingLicence ? 'Génération...' : 'Générer la clé'}
+                Exporter Admins (CSV)
               </Button>
-            </div>
-          </div>
-        </form>
-
-        {/* Liste des licences avec recherche & filtres */}
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">
-              Historique & Statuts des Clés ({filteredLicences.length}/{catalogueLicences.length})
-            </h3>
-            <div className="flex items-center gap-2">
+              
               <div className="relative flex-1 sm:flex-none">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
-                  value={licenceSearch}
-                  onChange={(e) => setLicenceSearch(e.target.value)}
-                  placeholder="Rechercher clé ou client..."
-                  className="glass-input pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white w-full sm:w-48"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher une boutique..."
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-9 pr-3 py-2 rounded-xl text-xs font-medium w-full sm:w-52 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
+
               <select
-                value={licenceStatusFilter}
-                onChange={(e) => setLicenceStatusFilter(e.target.value as any)}
-                className="glass-input px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white shrink-0 font-semibold"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as Boutique['status'] | 'all')}
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-3 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none shrink-0"
               >
                 <option value="all">Tous statuts</option>
-                <option value="unused">Non utilisée</option>
                 <option value="active">Active</option>
-                <option value="expired">Expirée</option>
+                <option value="suspended">Suspendue</option>
+                <option value="provisioning">En cours</option>
+                <option value="failed">Échec</option>
               </select>
             </div>
           </div>
 
-          {filteredLicences.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200/60 dark:border-white/10 rounded-2xl">
-              {catalogueLicences.length === 0
-                ? 'Aucune clé générée. Utilisez le formulaire ci-dessus pour générer une clé.'
-                : 'Aucune clé ne correspond à ce filtre.'}
-            </p>
-          ) : (
-            <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-              {filteredLicences.map((lic) => {
-                const isCopied = copiedKey === lic.cle;
-                const statusBadgeVariant =
-                  lic.status === 'active' ? 'green' : lic.status === 'unused' ? 'blue' : 'red';
-                const statusLabel =
-                  lic.status === 'active'
-                    ? `Active`
-                    : lic.status === 'unused'
-                    ? 'Non utilisée'
-                    : 'Expirée';
+          {filteredBoutiques.length === 0 && !loading && (
+            <SolidCard>
+              <p className="text-xs font-medium text-slate-400 text-center py-6">
+                {boutiques.length === 0 ? 'Aucune boutique enregistrée.' : 'Aucun résultat pour ce filtre.'}
+              </p>
+            </SolidCard>
+          )}
 
-                return (
-                  <div
-                    key={lic.cle}
-                    className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/40 dark:bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-900/50"
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono font-black text-sm text-slate-900 dark:text-white tracking-wider">
-                          {lic.cle}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(lic.cle)}
-                          className="px-2 py-0.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-colors inline-flex items-center gap-1 tap-scale"
-                          title="Copier la clé"
-                        >
-                          {isCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                          {isCopied ? 'Copié !' : 'Copier'}
-                        </button>
-                        <Badge variant={statusBadgeVariant} size="sm">
-                          {statusLabel}
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">
-                          {lic.preset_label}
-                        </span>
-                        {lic.client_cible && (
-                          <span>Destinataire : <strong>{lic.client_cible}</strong></span>
-                        )}
-                        {lic.status === 'active' && lic.boutique_nom && (
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                            Utilisée par : {lic.boutique_nom} {lic.boutique_slug ? `(${lic.boutique_slug}.azanga.tech)` : ''}
-                          </span>
-                        )}
-                        <span>
-                          Générée le {new Date(lic.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {lic.activated_at && (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            Activée le {new Date(lic.activated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
+          {/* Grille agencée de manière compacte et ergonomique */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredBoutiques.map((b) => {
+              const lb = licenceBadge(b.licence);
+              const expanded = expandedIds.has(b.id);
+              return (
+                <div key={b.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+                  {/* En-tête de la Carte */}
+                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-base text-slate-900 dark:text-white truncate" title={b.nom}>
+                        {b.nom}
+                      </h3>
+                      <a
+                        href={`https://${b.slug}.azanga.tech`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate inline-flex items-center gap-1 mt-0.5"
+                      >
+                        <span>{b.slug}.azanga.tech</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
                     </div>
+                    <Badge variant={statusBadge[b.status].variant} size="sm">
+                      {statusBadge[b.status].label}
+                    </Badge>
+                  </div>
 
+                  {/* Profil Admin Principal */}
+                  {b.admin_principal ? (
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/70 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                          <Users className="w-4 h-4 text-blue-500 shrink-0" />
+                          <span className="truncate">{b.admin_principal.nom}</span>
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300 shrink-0">
+                          @{b.admin_principal.username}
+                        </span>
+                      </div>
+                      {b.admin_principal.email && (
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <a href={`mailto:${b.admin_principal.email}`} className="hover:underline hover:text-blue-500 truncate font-medium">
+                            {b.admin_principal.email}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 italic">
+                      Aucun admin principal répertorié
+                    </div>
+                  )}
 
-                    {lic.status === 'unused' && (
+                  {/* Statuts & Indicateurs Clés */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={lb.variant} size="sm" title={b.licence?.cle}>
+                      <KeyRound className="w-3.5 h-3.5" /> {lb.label}
+                    </Badge>
+                    {b.chiffre_affaires !== null && (
+                      <StatChip icon={<Wallet className="w-3.5 h-3.5 text-emerald-500" />}>
+                        {formatCfaCompact(b.chiffre_affaires)}
+                      </StatChip>
+                    )}
+                    {b.personnel_count !== null && (
+                      <StatChip icon={<Users className="w-3.5 h-3.5 text-blue-500" />}>
+                        {b.personnel_count} emp.
+                      </StatChip>
+                    )}
+                    {b.produits_count !== null && (
+                      <StatChip icon={<Package className="w-3.5 h-3.5 text-amber-500" />}>
+                        {b.produits_count} prod.
+                      </StatChip>
+                    )}
+                  </div>
+
+                  {/* Actions & Détails de la carte */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(b.id)}
+                      className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                      <span>{expanded ? 'Masquer' : 'Plus d\'infos'}</span>
+                    </button>
+
+                    {(b.status === 'active' || b.status === 'suspended') && (
                       <button
                         type="button"
-                        onClick={() => deleteLicence(lic.cle)}
-                        className="text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10 self-end sm:self-center shrink-0 tap-scale"
-                        title="Supprimer cette clé"
+                        onClick={() => toggleStatus(b)}
+                        disabled={togglingId === b.id}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all disabled:opacity-60 tap-scale ${
+                          b.status === 'active'
+                            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60'
+                            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Power className="w-3.5 h-3.5" />
+                        <span>{togglingId === b.id ? '...' : b.status === 'active' ? 'Désactiver' : 'Réactiver'}</span>
                       </button>
                     )}
+                  </div>
+
+                  {/* Accordéon avec informations secondaires */}
+                  {expanded && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-xl text-xs">
+                      {b.telephone && (
+                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Contact : <strong>{b.telephone}</strong></span>
+                        </div>
+                      )}
+                      {b.zones_actives !== null && (
+                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Zones de vente : <strong>{b.zones_actives} zone(s)</strong></span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Création : {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* GESTION & GÉNÉRATION DES LICENCES (100% SOLIDE) */}
+        <SolidCard className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Génération & Catalogue des Licences
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Générez des clés d'abonnement signées (7 jours, 1 mois, 3 mois, 6 mois, 1 an), enregistrez-les en base et suivez quelle boutique les utilise.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                {catalogueLicences.filter((l) => l.status === 'unused').length} non utilisée(s)
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                {catalogueLicences.filter((l) => l.status === 'active').length} active(s)
+              </span>
+            </div>
+          </div>
+
+          {/* Formulaire de génération */}
+          <form onSubmit={generateLicenceKey} className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Générer une nouvelle clé de licence
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+                  Durée de l'abonnement
+                </label>
+                <select
+                  value={licencePreset}
+                  onChange={(e) => setLicencePreset(e.target.value as any)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-3 py-2.5 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="essai">7 jours (Essai gratuit)</option>
+                  <option value="mois">1 mois (30 jours)</option>
+                  <option value="trimestre">3 mois (90 jours)</option>
+                  <option value="semestre">6 mois (180 jours)</option>
+                  <option value="an">1 an (365 jours - Maximum)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-5 space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+                  Client / Boutique destinataire (Optionnel)
+                </label>
+                <input
+                  value={licenceClientCible}
+                  onChange={(e) => setLicenceClientCible(e.target.value)}
+                  placeholder="ex: Boutique Fatou / M. Diallo"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-3 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-3 flex items-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="w-full shadow-sm"
+                  disabled={generatingLicence}
+                  icon={<KeyRound className="w-4 h-4" />}
+                >
+                  {generatingLicence ? 'Génération...' : 'Générer la clé'}
+                </Button>
+              </div>
+            </div>
+          </form>
+
+          {/* Liste & Historique des Licences */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Historique des Clés ({filteredLicences.length} / {catalogueLicences.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    value={licenceSearch}
+                    onChange={(e) => setLicenceSearch(e.target.value)}
+                    placeholder="Rechercher clé ou client..."
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-9 pr-3 py-1.5 rounded-xl text-xs font-medium w-full sm:w-48 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <select
+                  value={licenceStatusFilter}
+                  onChange={(e) => setLicenceStatusFilter(e.target.value as any)}
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-3 py-1.5 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none shrink-0"
+                >
+                  <option value="all">Tous statuts</option>
+                  <option value="unused">Non utilisée</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expirée</option>
+                </select>
+              </div>
+            </div>
+
+            {filteredLicences.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                {catalogueLicences.length === 0
+                  ? 'Aucune clé générée pour le moment.'
+                  : 'Aucune clé ne correspond à vos critères de recherche.'}
+              </p>
+            ) : (
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {filteredLicences.map((lic) => {
+                  const isCopied = copiedKey === lic.cle;
+                  const statusBadgeVariant =
+                    lic.status === 'active' ? 'green' : lic.status === 'unused' ? 'blue' : 'red';
+                  const statusLabel =
+                    lic.status === 'active'
+                      ? 'Active'
+                      : lic.status === 'unused'
+                      ? 'Non utilisée'
+                      : 'Expirée';
+
+                  return (
+                    <div
+                      key={lic.cle}
+                      className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/80"
+                    >
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono font-black text-sm text-slate-900 dark:text-white tracking-wider">
+                            {lic.cle}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(lic.cle)}
+                            className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-bold transition-colors inline-flex items-center gap-1 tap-scale"
+                            title="Copier la clé"
+                          >
+                            {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            {isCopied ? 'Copié !' : 'Copier'}
+                          </button>
+                          <Badge variant={statusBadgeVariant} size="sm">
+                            {statusLabel}
+                          </Badge>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            {lic.preset_label}
+                          </span>
+                          {lic.client_cible && (
+                            <span>Destinataire : <strong>{lic.client_cible}</strong></span>
+                          )}
+                          {lic.status === 'active' && lic.boutique_nom && (
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                              Utilisée par : {lic.boutique_nom} {lic.boutique_slug ? `(${lic.boutique_slug}.azanga.tech)` : ''}
+                            </span>
+                          )}
+                          <span>
+                            Générée le {new Date(lic.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {lic.activated_at && (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              Activée le {new Date(lic.activated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {lic.status === 'unused' && (
+                        <button
+                          type="button"
+                          onClick={() => deleteLicence(lic.cle)}
+                          className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 self-end sm:self-center shrink-0 tap-scale"
+                          title="Supprimer cette clé"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </SolidCard>
+
+        {/* GRILLE SECONDAIRE : RÉGLAGES & DIFFUSION */}
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* Réglages globaux */}
+          <SolidCard>
+            <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <Settings2 className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Réglages Globaux Plateforme
+            </h2>
+            <form onSubmit={saveConfig} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Numéro WhatsApp (format international sans "+")
+                </label>
+                <input
+                  value={config.whatsapp_number}
+                  onChange={(e) => setConfig((c) => ({ ...c, whatsapp_number: e.target.value }))}
+                  placeholder="226XXXXXXXXX"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Téléphone de contact support (optionnel)
+                </label>
+                <input
+                  value={config.contact_phone}
+                  onChange={(e) => setConfig((c) => ({ ...c, contact_phone: e.target.value }))}
+                  placeholder="+226 XX XX XX XX"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <Button type="submit" variant="primary" size="md" disabled={savingConfig}>
+                {savingConfig ? 'Enregistrement...' : 'Enregistrer les réglages'}
+              </Button>
+            </form>
+          </SolidCard>
+
+          {/* Diffusion d'Annonces */}
+          <SolidCard>
+            <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+              <Megaphone className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Diffusion d'Annonces
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Diffuse un message dans la cloche de notifications des administrateurs ciblés.
+            </p>
+            <form onSubmit={sendAnnonce} className="space-y-4">
+              <select
+                value={annonceTarget}
+                onChange={(e) => setAnnonceTarget(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="all">Toutes les boutiques actives</option>
+                {boutiques
+                  .filter((b) => b.status === 'active')
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.nom} ({b.slug})
+                    </option>
+                  ))}
+              </select>
+              <textarea
+                value={annonceMessage}
+                onChange={(e) => setAnnonceMessage(e.target.value)}
+                placeholder="Saisissez le message de l'annonce..."
+                rows={3}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+              />
+              <Button type="submit" variant="primary" size="md" icon={<Send className="w-4 h-4" />} disabled={sendingAnnonce || !annonceMessage.trim()}>
+                {sendingAnnonce ? 'Envoi...' : 'Envoyer l\'annonce'}
+              </Button>
+            </form>
+          </SolidCard>
+        </div>
+
+        {/* Historique des Annonces */}
+        <SolidCard>
+          <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+            <History className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Historique des Annonces Envoyées
+          </h2>
+          {annonces.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6">Aucune annonce envoyée pour l'instant.</p>
+          ) : (
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {annonces.map((a) => (
+                <div key={a.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed">{a.message}</p>
+                    <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                      {new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    {a.target_label} · Envoyé à {a.sent_count} boutique(s){a.failed_count ? `, ${a.failed_count} échec(s)` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </SolidCard>
+
+        {/* Templates de reçus A4 (Gestion globale) */}
+        <SolidCard>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Modèles de Reçus et Factures A4
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Modèles HTML d'impression A4 mis à disposition des boutiques de la plateforme.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadStarterTemplate}
+                className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm"
+                title="Télécharger un modèle HTML exemple valide"
+              >
+                <Download className="w-4 h-4" /> Modèle Exemple (.html)
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowGuide((v) => !v)}
+                className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <HelpCircle className="w-4 h-4 text-blue-500" /> Guide Balises
+              </button>
+              <input 
+                type="file" 
+                accept=".html"
+                id="upload-template" 
+                className="hidden" 
+                onChange={handleTemplateUpload} 
+              />
+              <label 
+                htmlFor="upload-template"
+                className="cursor-pointer px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-md"
+              >
+                + Importer un Modèle (.html)
+              </label>
+            </div>
+          </div>
+
+          {/* Guide des balises (accordéon) */}
+          {showGuide && (
+            <div className="p-4 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs space-y-3">
+              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Documentation du moteur de reçus HTML
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Pour créer un modèle compatible, utilisez un fichier <code>.html</code> encodé en UTF-8. 
+                Le serveur nettoie automatiquement les liens Google Fonts distants et force la mise en page A4.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;boutique&#125;</span> : Nom du magasin
+                </div>
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;client&#125;</span> : Nom du client
+                </div>
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;ref&#125;</span> : Réf / Numéro facture
+                </div>
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;date&#125;</span> : Date de vente
+                </div>
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;total&#125;</span> : Montant net à payer
+                </div>
+                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">&#123;paye&#125;</span> : Montant encaissé
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
+                <strong>Bloc articles obligatoire :</strong> Entourez les lignes du tableau avec <code>&lt;!--ITEMS--&gt; ... &lt;!--/ITEMS--&gt;</code>. 
+                Balises d'articles disponibles : <code>&#123;item_index&#125;</code>, <code>&#123;item_nom&#125;</code>, <code>&#123;item_attributs&#125;</code>, <code>&#123;item_qte&#125;</code>, <code>&#123;item_prix_unitaire&#125;</code>, <code>&#123;item_total&#125;</code>.
+              </div>
+            </div>
+          )}
+
+          {templates.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-8 px-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+              Aucun modèle ajouté pour le moment.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {templates.map(t => {
+                const isPreviewing = previewingTemplateId === t.id;
+                return (
+                  <div key={t.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="font-bold text-sm text-slate-900 dark:text-white mb-1 truncate">{t.nom}</div>
+                      <div className="text-[11px] font-medium text-slate-500 truncate">{t.description}</div>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        disabled={isPreviewing}
+                        onClick={() => handlePreviewTemplate(t.id, t.nom)}
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{isPreviewing ? 'Génération...' : 'Aperçu PDF'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTemplate(t.id, t.nom)}
+                        className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
-      </GlassCard>
+        </SolidCard>
 
-      <div className="grid md:grid-cols-2 gap-6">
-
-        {/* Réglages globaux */}
-        <GlassCard>
-          <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-            <Settings2 className="w-4 h-4 text-blue-500" /> Réglages globaux
-          </h2>
-          <form onSubmit={saveConfig} className="space-y-3">
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">
-                Numéro WhatsApp (format international, sans "+")
-              </label>
-              <input
-                value={config.whatsapp_number}
-                onChange={(e) => setConfig((c) => ({ ...c, whatsapp_number: e.target.value }))}
-                placeholder="226XXXXXXXXX"
-                className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">
-                Téléphone de contact (affiché, optionnel)
-              </label>
-              <input
-                value={config.contact_phone}
-                onChange={(e) => setConfig((c) => ({ ...c, contact_phone: e.target.value }))}
-                placeholder="+226 XX XX XX XX"
-                className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
-              />
-            </div>
-            <Button type="submit" variant="primary" size="sm" disabled={savingConfig}>
-              {savingConfig ? 'Enregistrement...' : 'Enregistrer'}
-            </Button>
-          </form>
-        </GlassCard>
-
-        {/* Annonce */}
-        <GlassCard>
-          <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-            <Megaphone className="w-4 h-4 text-blue-500" /> Envoyer une annonce
-          </h2>
-          <p className="text-[11px] text-slate-400 mb-3">
-            Apparaît dans la cloche de notifications des admins de la/les boutique(s) ciblée(s).
-          </p>
-          <form onSubmit={sendAnnonce} className="space-y-3">
-            <select
-              value={annonceTarget}
-              onChange={(e) => setAnnonceTarget(e.target.value)}
-              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
-            >
-              <option value="all">Toutes les boutiques actives</option>
-              {boutiques
-                .filter((b) => b.status === 'active')
-                .map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.nom} ({b.slug})
-                  </option>
-                ))}
-            </select>
-            <textarea
-              value={annonceMessage}
-              onChange={(e) => setAnnonceMessage(e.target.value)}
-              placeholder="Message à diffuser..."
-              rows={3}
-              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white resize-none"
-            />
-            <Button type="submit" variant="primary" size="sm" icon={<Send className="w-3.5 h-3.5" />} disabled={sendingAnnonce || !annonceMessage.trim()}>
-              {sendingAnnonce ? 'Envoi...' : 'Envoyer'}
-            </Button>
-          </form>
-        </GlassCard>
       </div>
-
-      {/* Historique des annonces */}
-      <GlassCard>
-        <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-          <History className="w-4 h-4 text-blue-500" /> Historique des annonces
-        </h2>
-        {annonces.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-4">Aucune annonce envoyée pour l'instant.</p>
-        ) : (
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {annonces.map((a) => (
-              <div key={a.id} className="p-3 rounded-xl bg-slate-500/5 border border-slate-200/50 dark:border-white/10">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs text-slate-700 dark:text-slate-200 leading-snug">{a.message}</p>
-                  <span className="text-[10px] text-slate-400 shrink-0">
-                    {new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  {a.target_label} · envoyé à {a.sent_count} boutique(s){a.failed_count ? `, ${a.failed_count} échec(s)` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </GlassCard>
-
-      {/* Templates de reçus A4 (Gestion globale) */}
-      <GlassCard>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div>
-            <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" /> Modèles de Reçus A4 
-            </h2>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Fichiers HTML mis à disposition de toutes les boutiques dans leurs paramètres.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadStarterTemplate}
-              className="px-3 py-1.5 rounded-lg glass-card border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-              title="Télécharger un modèle HTML exemple valide et prêt à être personnalisé"
-            >
-              <Download className="w-3.5 h-3.5" /> Modèle exemple (.html)
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowGuide((v) => !v)}
-              className="px-3 py-1.5 rounded-lg glass-card border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-blue-500" /> Guide balises
-            </button>
-            <input 
-              type="file" 
-              accept=".html"
-              id="upload-template" 
-              className="hidden" 
-              onChange={handleTemplateUpload} 
-            />
-            <label 
-              htmlFor="upload-template"
-              className="cursor-pointer px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-            >
-              + Importer un fichier .html
-            </label>
-          </div>
-        </div>
-
-        {/* Guide des balises (accordéon) */}
-        {showGuide && (
-          <div className="p-4 mb-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs space-y-3">
-            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm">
-              <HelpCircle className="w-4 h-4 text-blue-500" /> Documentation du moteur de reçus HTML
-            </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Pour créer un modèle compatible, utilisez un fichier <code>.html</code> encodé en UTF-8. 
-              Le serveur nettoie automatiquement les liens Google Fonts distants et force la mise en page A4.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;boutique&#125;</span> : Nom du magasin
-              </div>
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;client&#125;</span> : Nom du client
-              </div>
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;ref&#125;</span> : Réf / Numéro facture
-              </div>
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;date&#125;</span> : Date de vente
-              </div>
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;total&#125;</span> : Montant net à payer
-              </div>
-              <div className="p-2 rounded bg-slate-100 dark:bg-slate-900/60">
-                <span className="font-bold text-blue-600 dark:text-blue-400">&#123;paye&#125;</span> : Montant encaissé
-              </div>
-            </div>
-            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-300">
-              <strong>Bloc articles obligatoire :</strong> Entourez les lignes du tableau avec <code>&lt;!--ITEMS--&gt; ... &lt;!--/ITEMS--&gt;</code>. 
-              Balises d'articles disponibles : <code>&#123;item_index&#125;</code>, <code>&#123;item_nom&#125;</code>, <code>&#123;item_attributs&#125;</code>, <code>&#123;item_qte&#125;</code>, <code>&#123;item_prix_unitaire&#125;</code>, <code>&#123;item_total&#125;</code>.
-            </div>
-          </div>
-        )}
-
-        {templates.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6 px-4 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl">
-            Aucun modèle ajouté. Le serveur n'en embarque plus aucun : tant qu'aucun modèle n'est
-            déposé ici, les boutiques ne peuvent produire aucune facture A4.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {templates.map(t => {
-              const isPreviewing = previewingTemplateId === t.id;
-              return (
-                <div key={t.id} className="p-3.5 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col">
-                  <div className="font-bold text-sm text-slate-900 dark:text-white mb-1 truncate">{t.nom}</div>
-                  <div className="text-[11px] text-slate-500 mb-3 truncate">{t.description}</div>
-                  <div className="mt-auto flex justify-between items-center pt-2.5 border-t border-slate-200/50 dark:border-white/5">
-                    <button
-                      type="button"
-                      disabled={isPreviewing}
-                      onClick={() => handlePreviewTemplate(t.id, t.nom)}
-                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50 min-h-[44px] sm:min-h-0 pr-3 tap-scale"
-                    >
-                      <Eye className="w-3 h-3" />
-                      {isPreviewing ? 'Génération...' : 'Aperçu PDF'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTemplate(t.id, t.nom)}
-                      className="text-[11px] font-bold text-rose-500 hover:underline min-h-[44px] sm:min-h-0 pl-3 tap-scale"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </GlassCard>
-
     </div>
   );
 };
-
