@@ -31,25 +31,57 @@ const resolveCurrentPersonnel = async (): Promise<Personnel> => {
   }
 };
 
-export const authenticate = async (_username: string, email: string, password: string) => {
+export const authenticate = async (username: string, email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase doit être configuré pour se connecter.');
   }
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) {
-    throw new Error('Veuillez saisir votre adresse email.');
+
+  let targetEmail = email.trim().toLowerCase();
+  const cleanUsername = username.trim().toLowerCase();
+
+  if (!targetEmail || !targetEmail.includes('@')) {
+    const lookupKey = targetEmail || cleanUsername;
+    if (lookupKey) {
+      try {
+        const resolved = await apiPostPublic<{ email: string }>('/mot-de-passe-oublie/resolve-identifier', {
+          identifier: lookupKey,
+        });
+        if (resolved.email) targetEmail = resolved.email.toLowerCase();
+      } catch {
+        // En cas d'échec de la résolution, poursuit avec la valeur fournie
+      }
+    }
   }
-  const result = await signInWithPassword(normalizedEmail, password);
+
+  if (!targetEmail) {
+    throw new Error('Veuillez saisir votre nom d’utilisateur ou votre adresse email.');
+  }
+
+  let result = await signInWithPassword(targetEmail, password);
+
+  if (!result.success && cleanUsername && cleanUsername !== targetEmail) {
+    try {
+      const resolved = await apiPostPublic<{ email: string }>('/mot-de-passe-oublie/resolve-identifier', {
+        identifier: cleanUsername,
+      });
+      if (resolved.email && resolved.email.toLowerCase() !== targetEmail) {
+        result = await signInWithPassword(resolved.email.toLowerCase(), password);
+      }
+    } catch {
+      // Conserve l'erreur de connexion initiale
+    }
+  }
+
   if (!result.success) {
-    let msg = result.message || 'Identifiants Supabase incorrects.';
+    let msg = result.message || 'Identifiants incorrects.';
     if (msg.toLowerCase().includes('invalid login credentials')) {
-      msg = 'Adresse email ou mot de passe incorrect.';
+      msg = 'Nom d’utilisateur, email ou mot de passe incorrect.';
     } else if (msg.toLowerCase().includes('email not confirmed')) {
       msg = 'Veuillez confirmer votre adresse email avant de vous connecter.';
     }
     throw new Error(msg);
   }
-  
+
   return resolveCurrentPersonnel();
 };
 

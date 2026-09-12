@@ -38,3 +38,19 @@ motDePasseOublieRouter.post('/', limiter, async (req, res) => {
 
   res.json({ isAdmin: false, sendEmail: false });
 });
+
+// Permet de résoudre l'adresse email associée à un nom d'utilisateur ou email au moment du login
+motDePasseOublieRouter.post('/resolve-identifier', limiter, async (req, res) => {
+  const identifier = (req.body?.identifier || '').trim().toLowerCase();
+  if (!identifier) return res.status(400).json({ error: 'Identifiant requis.' });
+
+  const { rows } = await req.tenantPool.query(
+    'select email, username from personnel where lower(username)=$1 or lower(email)=$1 limit 1',
+    [identifier]
+  );
+  if (rows.length === 0 || !rows[0].email) {
+    return res.status(404).json({ error: 'Compte introuvable.' });
+  }
+
+  res.json({ email: rows[0].email, username: rows[0].username });
+});
