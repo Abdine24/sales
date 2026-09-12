@@ -582,37 +582,69 @@ export const OwnerConsole: React.FC = () => {
 
   if (!authed) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-950">
+      <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-[#18191A] flex flex-col items-center justify-center p-4 sm:p-6 relative">
         <div className="absolute top-4 right-4">{ThemeToggle}</div>
-        <GlassCard className="w-full max-w-sm">
-          <div className="flex flex-col items-center gap-2 mb-6 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6" />
+
+        <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-[#242526] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 transition-colors">
+          {/* Header Facebook Style */}
+          <div className="flex flex-col items-center text-center gap-3 mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-[#1877F2] text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <ShieldCheck className="w-8 h-8" />
             </div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white">Espace propriétaire</h1>
-            <p className="text-xs text-slate-400">Réservé — accès par mot de passe dédié.</p>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                Espace Propriétaire
+              </h1>
+              <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                Connexion d'administration plateforme
+              </p>
+            </div>
           </div>
-          <form onSubmit={submitLogin} className="space-y-3">
-            <div className="relative">
-              <LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="password"
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mot de passe"
-                className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 dark:text-white"
-              />
+
+          <form onSubmit={submitLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Mot de passe d'administration
+              </label>
+              <div className="relative">
+                <LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  autoFocus
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Saisissez votre mot de passe"
+                  className="w-full bg-slate-50 dark:bg-[#3A3B3C] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white pl-10 pr-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1877F2] focus:border-transparent transition-all min-h-[48px]"
+                />
+              </div>
             </div>
-            {loginError && <p className="text-xs font-semibold text-rose-500">{loginError}</p>}
-            <Button type="submit" variant="primary" className="w-full" disabled={loggingIn || !password}>
-              {loggingIn ? 'Connexion...' : 'Se connecter'}
-            </Button>
+
+            {loginError && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold text-center">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loggingIn || !password}
+              className="w-full bg-[#1877F2] hover:bg-[#166FE5] disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-sm shadow-md active:scale-[0.99] transition-all flex items-center justify-center gap-2 min-h-[48px]"
+            >
+              {loggingIn ? 'Connexion en cours...' : 'Se connecter'}
+            </button>
           </form>
-        </GlassCard>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+              iVente Pro Platform · Accès sécurisé par mot de passe dédié
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
+
 
   // Cette page vit HORS de AppLayout (route dédiée, sans barre d'onglets) : elle
   // ne bénéficie donc pas des marges de sécurité posées sur le conteneur racine
