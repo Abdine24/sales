@@ -6,6 +6,7 @@ import { getTenantPool } from '../tenantDb.js';
 import { simpleRateLimit } from '../rateLimit.js';
 import { renderReceiptHtml } from '../receiptTemplate.js';
 import { htmlToPdf } from '../pdfRenderer.js';
+import { generateLicenseKey } from '../licence.js';
 
 
 // Espace propriétaire de la plateforme — vue d'ensemble de toutes les boutiques, réglages
@@ -328,6 +329,63 @@ plateformeRouter.get('/templates/:id/apercu.pdf', async (req, res) => {
     console.error('Échec aperçu PDF propriétaire :', err);
     res.status(500).json({ error: 'Échec de la génération de l’aperçu PDF.' });
   }
+});
+
+// -- Catalogue des clés de licences (Génération & Gestion Propriétaire) --
+const DURATION_PRESET_MAP = {
+  essai: { days: 7, label: '7 jours (Essai)' },
+  mois: { days: 30, label: '1 mois (30 jours)' },
+  trimestre: { days: 90, label: '3 mois (90 jours)' },
+  semestre: { days: 180, label: '6 mois (180 jours)' },
+  an: { days: 365, label: '1 an (365 jours)' },
+};
+
+plateformeRouter.get('/licences', async (_req, res) => {
+  const { rows } = await controlPlanePool.query(
+    `select cle, duree_jours, preset_label, status, client_cible, boutique_id, boutique_nom, created_at, activated_at
+     from licences_catalogue order by created_at desc`
+  );
+  res.json(rows);
+});
+
+plateformeRouter.post('/licences/generer', async (req, res) => {
+  const body = req.body || {};
+  const presetKey = body.preset || 'mois';
+  const clientCible = typeof body.client_cible === 'string' ? body.client_cible.trim() : null;
+
+  let days = 30;
+  let presetLabel = '1 mois (30 jours)';
+
+  if (presetKey in DURATION_PRESET_MAP) {
+    days = DURATION_PRESET_MAP[presetKey].days;
+    presetLabel = DURATION_PRESET_MAP[presetKey].label;
+  } else if (typeof body.days === 'number' && body.days > 0 && body.days <= 365) {
+    days = body.days;
+    presetLabel = `${days} jour(s)`;
+  }
+
+  const cle = generateLicenseKey(days);
+
+  const { rows } = await controlPlanePool.query(
+    `insert into licences_catalogue (cle, duree_jours, preset_label, status, client_cible)
+     values ($1, $2, $3, 'unused', $4)
+     returning cle, duree_jours, preset_label, status, client_cible, boutique_id, boutique_nom, created_at, activated_at`,
+    [cle, days, presetLabel, clientCible || null]
+  );
+
+  res.json(rows[0]);
+});
+
+plateformeRouter.delete('/licences/:cle', async (req, res) => {
+  const { cle } = req.params;
+  const { rows } = await controlPlanePool.query(
+    `delete from licences_catalogue where cle=$1 returning cle`,
+    [cle]
+  );
+  if (rows.length === 0) {
+    return res.status(404).json({ error: 'Clé introuvable.' });
+  }
+  res.json({ success: true });
 });
 
 

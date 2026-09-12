@@ -73,3 +73,20 @@ create table if not exists receipt_templates (
   html text not null,
   created_at timestamptz not null default now()
 );
+
+-- Catalogue des clés de licence générées par le propriétaire de la plateforme.
+-- Conserve l'état de chaque clé (non utilisée, active, expirée, révoquée) et le client/boutique destinataire.
+create table if not exists licences_catalogue (
+  cle text primary key,
+  duree_jours integer not null,
+  preset_label text not null,
+  status text not null default 'unused' check (status in ('unused', 'active', 'expired', 'revoked')),
+  client_cible text,
+  boutique_id uuid references boutiques(id) on delete set null,
+  boutique_nom text,
+  created_at timestamptz not null default now(),
+  activated_at timestamptz
+);
+create index if not exists idx_licences_catalogue_status on licences_catalogue(status);
+create index if not exists idx_licences_catalogue_created on licences_catalogue(created_at desc);
+

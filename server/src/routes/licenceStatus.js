@@ -1,6 +1,6 @@
 import { Router } from 'express';
-
 import { validateLicenseKey } from '../licence.js';
+import { controlPlanePool } from '../controlPlaneDb.js';
 
 export const licenceStatusRouter = Router();
 
@@ -19,10 +19,13 @@ licenceStatusRouter.get('/', async (req, res) => {
 // période repart toujours de la date d'activation — pas de cumul avec le temps restant de
 // l'ancienne clé, comme le faisait déjà l'app côté client.
 licenceStatusRouter.post('/activer', async (req, res) => {
-  const validation = validateLicenseKey(req.body?.cle);
+  const rawKey = req.body?.cle;
+  const validation = validateLicenseKey(rawKey);
   if (!validation.valid) {
     return res.status(400).json({ error: validation.reason || 'Clé de licence invalide.' });
   }
+
+  const cleanKey = rawKey.trim().toUpperCase();
 
   // Une clé de 7 jours ne peut venir que du preset d'essai gratuit (voir DURATION_PRESET_DAYS
   // côté client — aucun abonnement payant ne dure 7 jours) : une seule utilisation par
@@ -45,7 +48,23 @@ licenceStatusRouter.post('/activer', async (req, res) => {
        duree_jours=excluded.duree_jours, expire_le=excluded.expire_le,
        trial_used=licence.trial_used or excluded.trial_used
      returning *`,
-    [req.body.cle.trim().toUpperCase(), activeeLe, validation.days, expireLe, isTrial]
+    [cleanKey, activeeLe, validation.days, expireLe, isTrial]
   );
+
+  // Mettre à jour la clé dans le catalogue du panneau propriétaire si elle y a été générée
+  try {
+    const boutiqueId = req.tenant?.id || null;
+    const boutiqueNom = req.tenant?.nom || null;
+    await controlPlanePool.query(
+      `update licences_catalogue
+       set status = 'active', boutique_id = $1, boutique_nom = $2, activated_at = $3
+       where cle = $4`,
+      [boutiqueId, boutiqueNom, activeeLe, cleanKey]
+    );
+  } catch (err) {
+    console.error('Échec mise à jour catalogue licence :', err);
+  }
+
   res.json(rows[0]);
 });
+

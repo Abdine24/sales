@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LockKeyhole, Store, Megaphone, Settings2, LogOut, Send, RefreshCw, ShieldCheck, Phone, MapPin,
   Power, Search, Users, Package, Wallet, KeyRound, History, Sun, Moon, ChevronDown, Calendar,
-  Eye, Download, HelpCircle, FileText, Check, AlertTriangle,
+  Eye, Download, HelpCircle, FileText, Check, AlertTriangle, Copy, Plus, Trash2, Filter,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -22,6 +22,18 @@ interface BoutiqueLicence {
   trial_used: boolean;
 }
 
+interface CatalogueLicence {
+  cle: string;
+  duree_jours: number;
+  preset_label: string;
+  status: 'unused' | 'active' | 'expired' | 'revoked';
+  client_cible: string | null;
+  boutique_id: string | null;
+  boutique_nom: string | null;
+  created_at: string;
+  activated_at: string | null;
+}
+
 interface Boutique {
   id: string;
   slug: string;
@@ -36,6 +48,7 @@ interface Boutique {
   chiffre_affaires: number | null;
   licence: BoutiqueLicence | null;
 }
+
 
 interface Annonce {
   id: number;
@@ -123,6 +136,75 @@ export const OwnerConsole: React.FC = () => {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [templates, setTemplates] = useState<ReceiptTemplate[]>([]);
 
+  // Catalogue des clés de licences
+  const [catalogueLicences, setCatalogueLicences] = useState<CatalogueLicence[]>([]);
+  const [licencePreset, setLicencePreset] = useState<'essai' | 'mois' | 'trimestre' | 'semestre' | 'an'>('mois');
+  const [licenceClientCible, setLicenceClientCible] = useState('');
+  const [generatingLicence, setGeneratingLicence] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [licenceSearch, setLicenceSearch] = useState('');
+  const [licenceStatusFilter, setLicenceStatusFilter] = useState<'all' | 'unused' | 'active' | 'expired'>('all');
+
+  const filteredLicences = useMemo(() => {
+    const q = licenceSearch.trim().toLowerCase();
+    return catalogueLicences.filter((l) => {
+      if (licenceStatusFilter !== 'all' && l.status !== licenceStatusFilter) return false;
+      if (q && !l.cle.toLowerCase().includes(q) && !(l.client_cible || '').toLowerCase().includes(q) && !(l.boutique_nom || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [catalogueLicences, licenceSearch, licenceStatusFilter]);
+
+  const generateLicenceKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGeneratingLicence(true);
+    try {
+      const newKey = await ownerPost<CatalogueLicence>('/plateforme/licences/generer', {
+        preset: licencePreset,
+        client_cible: licenceClientCible.trim() || undefined,
+      });
+      setCatalogueLicences((prev) => [newKey, ...prev]);
+      setLicenceClientCible('');
+      toast(`Clé ${newKey.cle} générée avec succès !`);
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(newKey.cle);
+        setCopiedKey(newKey.cle);
+        setTimeout(() => setCopiedKey(null), 3000);
+      }
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la génération de la clé.');
+    } finally {
+      setGeneratingLicence(false);
+    }
+  };
+
+  const copyToClipboard = async (cle: string) => {
+    try {
+      await navigator.clipboard.writeText(cle);
+      setCopiedKey(cle);
+      toast('Clé copiée dans le presse-papier !');
+      setTimeout(() => setCopiedKey(null), 3000);
+    } catch {
+      toast('Impossible de copier automatiquement.');
+    }
+  };
+
+  const deleteLicence = async (cle: string) => {
+    const ok = await confirm({
+      title: 'Supprimer cette clé de licence ?',
+      message: `Voulez-vous vraiment supprimer la clé "${cle}" ? Elle ne pourra plus être utilisée.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await ownerDelete(`/plateforme/licences/${cle}`);
+      setCatalogueLicences((prev) => prev.filter((l) => l.cle !== cle));
+      toast('Clé supprimée.');
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Échec de la suppression.');
+    }
+  };
+
   // Recherche/filtre — purement côté client : le nombre de boutiques reste modeste, pas besoin
   // d'un aller-retour serveur pour ça.
   const [search, setSearch] = useState('');
@@ -181,16 +263,18 @@ export const OwnerConsole: React.FC = () => {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [b, c, a, t] = await Promise.all([
+      const [b, c, a, t, l] = await Promise.all([
         ownerGet<Boutique[]>('/plateforme/boutiques'),
         ownerGet<{ whatsapp_number: string | null; contact_phone: string | null }>('/plateforme/config'),
         ownerGet<Annonce[]>('/plateforme/annonces'),
         ownerGet<ReceiptTemplate[]>('/plateforme/templates'),
+        ownerGet<CatalogueLicence[]>('/plateforme/licences').catch(() => []),
       ]);
       setBoutiques(b);
       setConfig({ whatsapp_number: c.whatsapp_number || '', contact_phone: c.contact_phone || '' });
       setAnnonces(a);
       setTemplates(t);
+      setCatalogueLicences(l);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuthed(false);
@@ -201,6 +285,7 @@ export const OwnerConsole: React.FC = () => {
       setLoading(false);
     }
   }, [alert]);
+
 
   useEffect(() => {
     if (authed) reload();
@@ -679,7 +764,187 @@ export const OwnerConsole: React.FC = () => {
         </div>
       </div>
 
+      {/* GESTION & GÉNÉRATION DES LICENCES */}
+      <GlassCard className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-4">
+          <div>
+            <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-blue-500" /> Gestion & Génération des Licences
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Générez des clés d'abonnement signées (7 jours, 1 mois, 3 mois, 6 mois, 1 an), stockez-les en base de données et suivez leur statut d'activation.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">
+              {catalogueLicences.filter((l) => l.status === 'unused').length} non utilisée(s)
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+              {catalogueLicences.filter((l) => l.status === 'active').length} active(s)
+            </span>
+          </div>
+        </div>
+
+        {/* Formulaire de génération */}
+        <form onSubmit={generateLicenceKey} className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/10 space-y-4">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+            <Plus className="w-4 h-4 text-blue-500" /> Générer une nouvelle clé
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-4 space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Durée de l'abonnement
+              </label>
+              <select
+                value={licencePreset}
+                onChange={(e) => setLicencePreset(e.target.value as any)}
+                className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-slate-900 dark:text-white font-semibold"
+              >
+                <option value="essai">7 jours (Essai gratuit)</option>
+                <option value="mois">1 mois (30 jours)</option>
+                <option value="trimestre">3 mois (90 jours)</option>
+                <option value="semestre">6 mois (180 jours)</option>
+                <option value="an">1 an (365 jours - Maximum)</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-5 space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Client / Boutique destinataire (Optionnel)
+              </label>
+              <input
+                value={licenceClientCible}
+                onChange={(e) => setLicenceClientCible(e.target.value)}
+                placeholder="ex: Boutique Fatou / M. Diallo"
+                className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div className="sm:col-span-3 flex items-end">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                className="w-full"
+                disabled={generatingLicence}
+                icon={<KeyRound className="w-4 h-4" />}
+              >
+                {generatingLicence ? 'Génération...' : 'Générer la clé'}
+              </Button>
+            </div>
+          </div>
+        </form>
+
+        {/* Liste des licences avec recherche & filtres */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              Historique & Statuts des Clés ({filteredLicences.length}/{catalogueLicences.length})
+            </h3>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  value={licenceSearch}
+                  onChange={(e) => setLicenceSearch(e.target.value)}
+                  placeholder="Rechercher clé ou client..."
+                  className="glass-input pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white w-full sm:w-48"
+                />
+              </div>
+              <select
+                value={licenceStatusFilter}
+                onChange={(e) => setLicenceStatusFilter(e.target.value as any)}
+                className="glass-input px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-white shrink-0 font-semibold"
+              >
+                <option value="all">Tous statuts</option>
+                <option value="unused">Non utilisée</option>
+                <option value="active">Active</option>
+                <option value="expired">Expirée</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredLicences.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200/60 dark:border-white/10 rounded-2xl">
+              {catalogueLicences.length === 0
+                ? 'Aucune clé générée. Utilisez le formulaire ci-dessus pour générer une clé.'
+                : 'Aucune clé ne correspond à ce filtre.'}
+            </p>
+          ) : (
+            <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+              {filteredLicences.map((lic) => {
+                const isCopied = copiedKey === lic.cle;
+                const statusBadgeVariant =
+                  lic.status === 'active' ? 'green' : lic.status === 'unused' ? 'blue' : 'red';
+                const statusLabel =
+                  lic.status === 'active'
+                    ? `Active (${lic.boutique_nom || 'Boutique'})`
+                    : lic.status === 'unused'
+                    ? 'Non utilisée'
+                    : 'Expirée';
+
+                return (
+                  <div
+                    key={lic.cle}
+                    className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/40 dark:bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-900/50"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-black text-sm text-slate-900 dark:text-white tracking-wider">
+                          {lic.cle}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(lic.cle)}
+                          className="px-2 py-0.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-colors inline-flex items-center gap-1 tap-scale"
+                          title="Copier la clé"
+                        >
+                          {isCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                          {isCopied ? 'Copié !' : 'Copier'}
+                        </button>
+                        <Badge variant={statusBadgeVariant} size="sm">
+                          {statusLabel}
+                        </Badge>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {lic.preset_label}
+                        </span>
+                        {lic.client_cible && (
+                          <span>Destinataire : <strong>{lic.client_cible}</strong></span>
+                        )}
+                        <span>
+                          Générée le {new Date(lic.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {lic.activated_at && (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            Activée le {new Date(lic.activated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {lic.status === 'unused' && (
+                      <button
+                        type="button"
+                        onClick={() => deleteLicence(lic.cle)}
+                        className="text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10 self-end sm:self-center shrink-0 tap-scale"
+                        title="Supprimer cette clé"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
       <div className="grid md:grid-cols-2 gap-6">
+
         {/* Réglages globaux */}
         <GlassCard>
           <h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 mb-4">
