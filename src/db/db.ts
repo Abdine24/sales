@@ -79,11 +79,11 @@ export interface AppSettings {
   whatsapp_custom_message?: string;
   whatsapp_auto_open?: boolean;
 
-  // Modèle de facture/reçu PDF choisi — id d'une ligne de control_plane.receipt_templates,
-  // ajoutée par le propriétaire depuis la Console Propriétaire. null/absent = aucun modèle
-  // configuré : la facture A4 (téléchargement, impression, WhatsApp) n'est alors pas disponible,
-  // il n'existe plus aucun design de facture intégré à l'application.
+  // Modèle de facture/reçu PDF choisi
   receipt_template_id?: string | null;
+
+  // Option de saisie dynamique des prix lors de la vente (Prix libres)
+  saisie_prix_a_la_vente?: boolean;
 }
 
 export type PersonnelRole = 'admin' | 'gerant' | 'caissier';

@@ -2607,19 +2607,22 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
               <div>
                 <label className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 block">
-                  Prix de Vente Conseillé (F, Optionnel)
+                  {settings?.saisie_prix_a_la_vente ? "Prix de Vente Conseillé (F, Optionnel)" : "Prix de Vente Client (F) *"}
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
+                  required={!isVariable && !settings?.saisie_prix_a_la_vente}
                   value={prix}
                   onChange={(e) => setPrix(e.target.value)}
-                  placeholder="Optionnel (saisie à la vente)"
+                  placeholder={settings?.saisie_prix_a_la_vente ? "Optionnel (saisi à la vente)" : "ex: 150000"}
                   className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-black text-blue-600 dark:text-blue-400"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Optionnel — Le prix de vente peut être librement saisi lors de la vente en caisse.
+                  {settings?.saisie_prix_a_la_vente
+                    ? "Optionnel — Le prix de vente sera saisi par le caissier lors de la vente."
+                    : "Prix de vente appliqué automatiquement en caisse."}
                 </span>
               </div>
 

@@ -18,6 +18,7 @@ import {
   Smartphone,
   LayoutTemplate,
   Eye,
+  Tag,
 } from 'lucide-react';
 import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord, Vente } from '../db/db';
 import { apiGet, apiPut, apiPost, apiDelete, ApiError } from '../services/api';
@@ -116,6 +117,9 @@ export const Settings: React.FC = () => {
   // Audio / Beep State
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // Saisie dynamique des prix de vente au moment de la vente
+  const [saisiePrixALaVente, setSaisiePrixALaVente] = useState(false);
+
   useEffect(() => {
     if (settings) {
       setNomSite(settings.nom_site || 'iVente Pro');
@@ -142,6 +146,8 @@ export const Settings: React.FC = () => {
         'Bonjour {client}, toute notre équipe vous remercie chaleureusement pour votre fidélité et votre confiance ! ✨'
       );
       setReceiptTemplateId(settings.receipt_template_id || null);
+
+      setSaisiePrixALaVente(Boolean(settings.saisie_prix_a_la_vente));
 
       const isSound = settings.sound_enabled !== false;
       setSoundEnabled(isSound);
@@ -175,6 +181,8 @@ export const Settings: React.FC = () => {
       whatsapp_custom_message: whatsappCustomMessage.trim(),
 
       receipt_template_id: receiptTemplateId,
+
+      saisie_prix_a_la_vente: saisiePrixALaVente,
 
       sound_enabled: soundEnabled,
     };
@@ -419,6 +427,39 @@ export const Settings: React.FC = () => {
               </div>
             </div>
           </div>
+        </GlassCard>
+
+        {/* MODE DE SAISIE DES PRIX (PRIX FIXES VS PRIX LIBRES À LA VENTE) */}
+        <GlassCard>
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50 dark:border-white/10">
+            <Tag className="w-5 h-5 text-emerald-500" />
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                Mode de Tarification & Saisie des Prix
+              </h3>
+              <p className="text-xs text-slate-400">
+                Définissez la politique de prix de vente appliquée dans votre magasin.
+              </p>
+            </div>
+          </div>
+
+          <label className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-500/5 border border-slate-200/60 dark:border-white/10 cursor-pointer hover:bg-slate-500/10 transition-colors">
+            <input
+              type="checkbox"
+              checked={saisiePrixALaVente}
+              onChange={(e) => setSaisiePrixALaVente(e.target.checked)}
+              className="mt-1 w-5 h-5 text-blue-600 rounded-lg focus:ring-blue-500 border-slate-300 dark:border-slate-600 shrink-0"
+            />
+            <div className="space-y-1 min-w-0">
+              <span className="font-bold text-sm text-slate-900 dark:text-white block">
+                Saisir les prix de vente au moment de la caisse (Prix libres / variables)
+              </span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <strong>Non coché (Prix Fixes par défaut) :</strong> Le prix de vente est obligatoirement défini lors de la création du produit et appliqué automatiquement en caisse.<br />
+                <strong>Coché (Prix Libres à la Vente) :</strong> Lors de la création du produit, seul le prix d'achat est demandé. En caisse, le caissier saisit directement le prix de vente souhaité pour chaque produit.
+              </p>
+            </div>
+          </label>
         </GlassCard>
 
         {/* 2. FORMAT D'IMPRESSION & PERSONNALISATION DES TICKETS DE CAISSE */}

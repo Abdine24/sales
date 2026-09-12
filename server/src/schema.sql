@@ -208,7 +208,8 @@ create table if not exists settings (
   whatsapp_enabled boolean default false,
   whatsapp_custom_message text,
   whatsapp_auto_open boolean default false,
-  receipt_template_id text
+  receipt_template_id text,
+  saisie_prix_a_la_vente boolean default false
 );
 
 create table if not exists licence (
@@ -217,15 +218,11 @@ create table if not exists licence (
   activee_le timestamptz not null default now(),
   duree_jours integer,
   expire_le timestamptz,
-  -- Une fois passé à true, ne redescend jamais à false (voir licenceStatus.js) : l'essai
-  -- gratuit de 7 jours ne doit pouvoir être utilisé qu'une seule fois par boutique, même après
-  -- l'avoir remplacé par une clé payante.
   trial_used boolean not null default false
 );
--- Migration pour les installations existantes (CREATE TABLE IF NOT EXISTS ne touche pas aux
--- tables déjà créées) : rejoué à chaque démarrage, sans effet une fois la colonne en place.
 alter table licence add column if not exists trial_used boolean not null default false;
 alter table settings add column if not exists receipt_template_id text;
+alter table settings add column if not exists saisie_prix_a_la_vente boolean default false;
 
 -- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
 -- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin

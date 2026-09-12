@@ -30,6 +30,7 @@ interface ProductCardProps {
   onOpenVariableModal?: (produit: Produit) => void;
   compact?: boolean;
   showImage?: boolean;
+  saisiePrixALaVente?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -39,6 +40,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onOpenVariableModal,
   compact = false,
   showImage = false,
+  saisiePrixALaVente = false,
 }) => {
   // Détecter si le produit est variable
   const isVariable = Boolean(produit.is_variable && produit.variantes_detaillees && produit.variantes_detaillees.length > 0);
@@ -211,9 +213,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 truncate">
             {isVariable && priceRange?.isRange && priceRange.min > 0
               ? `Dès ${formatCfa(priceRange.min)}`
-              : displayPrice > 0
-              ? formatCfa(displayPrice)
-              : 'Saisie à la vente'}
+              : (saisiePrixALaVente || displayPrice === 0)
+              ? 'Saisie à la vente'
+              : formatCfa(displayPrice)}
           </div>
           {isVariable && priceRange?.isRange && priceRange.max > 0 && (
             <div className="text-[10px] font-semibold text-slate-400 truncate">

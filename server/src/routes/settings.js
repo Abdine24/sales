@@ -8,7 +8,7 @@ const COLUMNS = [
   'print_format_default', 'ticket_show_logo', 'ticket_show_vendeur', 'ticket_show_adresse',
   'ticket_show_ifu', 'ticket_show_qrcode', 'ticket_footer_message', 'sound_enabled',
   'whatsapp_enabled', 'whatsapp_custom_message', 'whatsapp_auto_open',
-  'receipt_template_id',
+  'receipt_template_id', 'saisie_prix_a_la_vente',
 ];
 
 settingsRouter.get('/', async (req, res) => {
