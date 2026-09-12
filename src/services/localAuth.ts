@@ -31,11 +31,14 @@ const resolveCurrentPersonnel = async (): Promise<Personnel> => {
   }
 };
 
-export const authenticate = async (username: string, email: string, password: string) => {
+export const authenticate = async (_username: string, email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase doit être configuré pour se connecter.');
   }
   const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error('Veuillez saisir votre adresse email.');
+  }
   const result = await signInWithPassword(normalizedEmail, password);
   if (!result.success) {
     let msg = result.message || 'Identifiants Supabase incorrects.';
@@ -47,11 +50,7 @@ export const authenticate = async (username: string, email: string, password: st
     throw new Error(msg);
   }
   
-  const personnel = await resolveCurrentPersonnel();
-  if (username && username.trim() && personnel.username && personnel.username.toLowerCase() !== username.trim().toLowerCase()) {
-    throw new Error(`Le nom d'utilisateur "${username.trim()}" ne correspond pas à l'adresse email ${normalizedEmail} (@${personnel.username}).`);
-  }
-  return personnel;
+  return resolveCurrentPersonnel();
 };
 
 // Termine le parcours "mot de passe oublié" : appelé une fois que l'utilisateur a défini

@@ -38,7 +38,7 @@ personnelRouter.get('/', async (req, res) => {
 // pour cet utilisateur (ex: compte tout juste activé).
 personnelRouter.get('/me', async (req, res) => {
   const { rows } = await req.tenantPool.query(
-    'select * from personnel where supabase_user_id=$1 or (email=$2 and supabase_user_id is null)',
+    'select * from personnel where supabase_user_id=$1 or (lower(email)=lower($2) and supabase_user_id is null)',
     [req.user.id, req.user.email]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Aucun profil personnel pour ce compte.' });

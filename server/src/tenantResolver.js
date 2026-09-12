@@ -52,7 +52,7 @@ async function lookupBoutique(hostname) {
 // confirmée partout (voir plan §7).
 async function resolveWithTransitionalFallback(hostname) {
   const boutique = await lookupBoutique(hostname);
-  if (boutique || hostname) return boutique;
+  if (boutique) return boutique;
   const { rows } = await controlPlanePool.query("select * from boutiques where slug='principale'");
   return rows[0] || null;
 }
