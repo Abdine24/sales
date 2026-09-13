@@ -100,20 +100,29 @@ async function migrateExistingTenants() {
   console.log(`Schéma vérifié/mis à jour pour ${boutiques.length} boutique(s) active(s).`);
 }
 
-async function start() {
-  // Seule la base de contrôle a SON schéma appliqué directement ici — celui de chaque boutique
-  // est rejoué séparément par migrateExistingTenants() (nouvelles boutiques ET existantes).
-  await applyControlPlaneSchema();
-  // Vérifie que la connexion de maintenance (utilisée pour CREATE DATABASE) fonctionne dès
-  // le démarrage plutôt que d'échouer silencieusement à la première création de boutique.
-  await maintenancePool.query('select 1');
-  await migrateExistingTenants();
-  app.listen(PORT, () => {
-    console.log(`API iVente démarrée sur le port ${PORT}`);
-  });
+async function startWithRetry(retries = 10, delayMs = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      // Seule la base de contrôle a SON schéma appliqué directement ici — celui de chaque boutique
+      // est rejoué séparément par migrateExistingTenants() (nouvelles boutiques ET existantes).
+      await applyControlPlaneSchema();
+      // Vérifie que la connexion de maintenance (utilisée pour CREATE DATABASE) fonctionne dès
+      // le démarrage plutôt que d'échouer silencieusement à la première création de boutique.
+      await maintenancePool.query('select 1');
+      await migrateExistingTenants();
+      app.listen(PORT, () => {
+        console.log(`API iVente démarrée sur le port ${PORT}`);
+      });
+      return;
+    } catch (err) {
+      console.error(`Tentative de démarrage ${attempt}/${retries} échouée (${err.message}) — nouvel essai dans ${delayMs / 1000}s...`);
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
 }
 
-start().catch((err) => {
+startWithRetry().catch((err) => {
   console.error("Échec du démarrage de l'API :", err);
   process.exit(1);
 });
