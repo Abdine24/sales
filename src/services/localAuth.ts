@@ -2,7 +2,7 @@ import { Licence, Personnel, PersonnelRole } from '../db/db';
 import { validateLicenseKey } from '../utils/license';
 import { isSupabaseConfigured } from './supabase';
 import { signInWithPassword, updateOwnPassword } from './supabaseAuth';
-import { apiGet, apiPost, ApiError } from './api';
+import { apiGet, apiPost, apiPostPublic, ApiError } from './api';
 
 // SaaS mode: Auth is always required.
 export const AUTH_REQUIRED = true;
