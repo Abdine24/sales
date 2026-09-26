@@ -287,12 +287,52 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
     return cart.reduce((sum, item) => sum + (item.prix_unitaire ?? item.produit.prix) * item.quantite, 0);
   }, [cart]);
 
-  const numericRemise = Math.min(Math.max(parseAmount(remiseInput), 0), totalCart);
+  // Remise désactivable dans Réglages : masquée, elle vaut toujours 0 (même si un ancien état
+  // de saisie traînait encore).
+  const remiseActive = settings?.afficher_remise !== false;
+  const numericRemise = remiseActive ? Math.min(Math.max(parseAmount(remiseInput), 0), totalCart) : 0;
   const totalApresRemise = Math.max(0, totalCart - numericRemise);
 
-  // Add to cart from ProductCard or Modal (Simple or Variable)
+  // Mode « prix saisi à la vente » (Réglages) : tout ajout passe d'abord par une fenêtre où le
+  // caissier tape le prix de vente — le prix n'est jamais prédéfini.
+  const saisiePrixActive = Boolean(settings?.saisie_prix_a_la_vente);
+  const [pendingPriceAdd, setPendingPriceAdd] = useState<AddToCartPayload | null>(null);
+  const [pendingPriceInput, setPendingPriceInput] = useState('');
+  const [pendingPriceQty, setPendingPriceQty] = useState(1);
+
+  const findCartLine = (payload: AddToCartPayload) =>
+    cart.find(
+      (i) =>
+        i.produit.id === payload.productId &&
+        (payload.type === 'variable' ? i.variant_id === payload.variantId : !i.variant_id)
+    );
+
+  // Add to cart from ProductCard, Modal, scanner (Simple or Variable)
   const handleProductCardAddToCart = (payload: AddToCartPayload) => {
+    if (!saisiePrixActive) {
+      addToCartDirect(payload);
+      return;
+    }
+    const existing = findCartLine(payload);
+    setPendingPriceAdd(payload);
+    // Produit déjà au panier : on repropose son prix (le nouveau prix s'appliquera à toute la ligne)
+    setPendingPriceInput(existing?.prix_unitaire ? String(existing.prix_unitaire) : '');
+    setPendingPriceQty(payload.quantite && payload.quantite > 0 ? payload.quantite : 1);
+  };
+
+  const confirmPendingPriceAdd = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!pendingPriceAdd) return;
+    const prix = parseAmount(pendingPriceInput);
+    if (!(prix > 0)) return;
+    addToCartDirect({ ...pendingPriceAdd, prix, quantite: pendingPriceQty }, true);
+    setPendingPriceAdd(null);
+  };
+
+  // remplacerPrix : le prix du payload remplace celui d'une ligne déjà présente (prix saisi à la vente)
+  const addToCartDirect = (payload: AddToCartPayload, remplacerPrix = false) => {
     const qtyToAdd = payload.quantite && payload.quantite > 0 ? payload.quantite : 1;
+    const prixLigne = remplacerPrix ? { prix_unitaire: payload.prix } : {};
     if (payload.type === 'simple') {
       const produit = payload.produit;
       if ((produit.stock ?? 0) <= 0) return;
@@ -306,11 +346,11 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
             const maxAdd = Math.max(0, produit.stock - item.quantite);
             if (maxAdd <= 0) return prev;
             const copy = [...prev];
-            copy[existingIndex] = { ...item, quantite: item.quantite + maxAdd };
+            copy[existingIndex] = { ...item, ...prixLigne, quantite: item.quantite + maxAdd };
             return copy;
           }
           const copy = [...prev];
-          copy[existingIndex] = { ...item, quantite: item.quantite + qtyToAdd };
+          copy[existingIndex] = { ...item, ...prixLigne, quantite: item.quantite + qtyToAdd };
           return copy;
         }
         return [
@@ -336,11 +376,11 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
             const maxAdd = Math.max(0, variante.stock - item.quantite);
             if (maxAdd <= 0) return prev;
             const copy = [...prev];
-            copy[existingIndex] = { ...item, quantite: item.quantite + maxAdd };
+            copy[existingIndex] = { ...item, ...prixLigne, quantite: item.quantite + maxAdd };
             return copy;
           }
           const copy = [...prev];
-          copy[existingIndex] = { ...item, quantite: item.quantite + qtyToAdd };
+          copy[existingIndex] = { ...item, ...prixLigne, quantite: item.quantite + qtyToAdd };
           return copy;
         }
         return [
@@ -486,8 +526,13 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   };
 
   // Open Checkout Modal
-  const handleOpenCheckout = () => {
+  const handleOpenCheckout = async () => {
     if (cart.length === 0) return;
+    const sansPrix = saisiePrixActive ? cart.find((i) => !((i.prix_unitaire ?? i.produit.prix) > 0)) : undefined;
+    if (sansPrix) {
+      await alert(`Le prix de vente de « ${sansPrix.produit.nom} » n'est pas saisi. Retire-le du panier puis ajoute-le à nouveau avec son prix.`);
+      return;
+    }
     setRemiseInput('0');
     setMontantPayeInput(totalCart.toString());
     setIsCheckoutOpen(true);
@@ -1054,6 +1099,92 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
         )}
       </Modal>
 
+      {/* SAISIE DU PRIX DE VENTE (mode « prix saisi à la vente ») */}
+      <Modal
+        isOpen={pendingPriceAdd !== null}
+        onClose={() => setPendingPriceAdd(null)}
+        title="Prix de vente"
+        maxWidth="sm"
+      >
+        {pendingPriceAdd && (() => {
+          const existing = findCartLine(pendingPriceAdd);
+          const stock =
+            pendingPriceAdd.type === 'variable' ? pendingPriceAdd.variante.stock ?? 0 : pendingPriceAdd.produit.stock ?? 0;
+          const maxQty = Math.max(1, stock - (existing?.quantite ?? 0));
+          const prixSaisi = parseAmount(pendingPriceInput);
+          return (
+            <form onSubmit={confirmPendingPriceAdd} className="space-y-5">
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white">{pendingPriceAdd.produit.nom}</div>
+                {pendingPriceAdd.type === 'variable' && (
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{pendingPriceAdd.varianteLabel}</div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                  Prix de vente unitaire (F)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  required
+                  value={pendingPriceInput}
+                  onChange={(e) => setPendingPriceInput(e.target.value)}
+                  placeholder="ex: 85000"
+                  className="w-full glass-input px-4 py-3 rounded-2xl text-2xl font-black text-slate-900 dark:text-white"
+                />
+                {pendingPriceAdd.prix > 0 && (
+                  <p className="text-[11px] text-slate-400 mt-1">Prix conseillé : {formatCfa(pendingPriceAdd.prix)}</p>
+                )}
+                {existing && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                    Déjà {existing.quantite} au panier — ce prix s'appliquera à toute la ligne.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quantité</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPendingPriceQty((q) => Math.max(1, q - 1))}
+                    className="p-2 rounded-xl glass-card text-slate-600 dark:text-slate-300"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-8 text-center font-bold text-slate-900 dark:text-white">{pendingPriceQty}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPendingPriceQty((q) => Math.min(maxQty, q + 1))}
+                    className="p-2 rounded-xl glass-card text-slate-600 dark:text-slate-300"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {prixSaisi > 0 && (
+                <div className="text-right text-sm text-slate-500 dark:text-slate-400">
+                  Total ligne : <span className="font-black text-blue-600 dark:text-blue-400">{formatCfa(prixSaisi * pendingPriceQty)}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setPendingPriceAdd(null)}>
+                  Annuler
+                </Button>
+                <Button type="submit" className="flex-1" disabled={!(prixSaisi > 0)} icon={<CheckCircle2 className="w-4 h-4" />}>
+                  Ajouter
+                </Button>
+              </div>
+            </form>
+          );
+        })()}
+      </Modal>
+
       {/* CHECKOUT MODAL */}
       <Modal
         isOpen={isCheckoutOpen}
@@ -1064,7 +1195,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
           {/* Total Display */}
           <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
             <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">
-              Total à Payer après remise
+              {remiseActive ? 'Total à Payer après remise' : 'Total à Payer'}
             </span>
             <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">
               {formatCfa(totalApresRemise)}
@@ -1120,18 +1251,20 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
 
           {/* Discount, amount paid and balance */}
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
-                Remise (F)
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={remiseInput}
-                onChange={(e) => setRemiseInput(e.target.value)}
-                className="w-full glass-input px-4 py-3 rounded-2xl text-lg font-bold text-slate-900 dark:text-white"
-              />
-            </div>
+            {remiseActive && (
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                  Remise (F)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={remiseInput}
+                  onChange={(e) => setRemiseInput(e.target.value)}
+                  className="w-full glass-input px-4 py-3 rounded-2xl text-lg font-bold text-slate-900 dark:text-white"
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
                 Montant Versé par le Client (F)

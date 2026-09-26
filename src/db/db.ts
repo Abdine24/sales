@@ -84,6 +84,9 @@ export interface AppSettings {
 
   // Option de saisie dynamique des prix lors de la vente (Prix libres)
   saisie_prix_a_la_vente?: boolean;
+
+  // Champ « Remise » affiché à l'encaissement (absent/null = affiché, comportement historique)
+  afficher_remise?: boolean | null;
 }
 
 export type PersonnelRole = 'admin' | 'gerant' | 'caissier';

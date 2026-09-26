@@ -7,7 +7,7 @@ const COLUMNS = [
   'print_format_default', 'ticket_show_logo', 'ticket_show_vendeur', 'ticket_show_adresse',
   'ticket_show_ifu', 'ticket_show_qrcode', 'ticket_footer_message', 'sound_enabled',
   'whatsapp_enabled', 'whatsapp_custom_message', 'whatsapp_auto_open',
-  'receipt_template_id', 'saisie_prix_a_la_vente',
+  'receipt_template_id', 'saisie_prix_a_la_vente', 'afficher_remise',
 ];
 
 async function ensureColumns(pool) {
@@ -15,6 +15,7 @@ async function ensureColumns(pool) {
     await pool.query(`
       alter table settings add column if not exists receipt_template_id text;
       alter table settings add column if not exists saisie_prix_a_la_vente boolean default false;
+      alter table settings add column if not exists afficher_remise boolean default true;
     `);
   } catch (err) {
     console.error('ensureColumns settings error:', err);
