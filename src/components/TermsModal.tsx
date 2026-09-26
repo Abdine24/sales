@@ -79,15 +79,6 @@ export const TermsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
       <section className="space-y-1.5">
         <h3 className="font-bold text-slate-900 dark:text-white">8. Contact</h3>
         <p>Pour toute question sur ces conditions, contactez-nous via WhatsApp (lien en bas de l'écran de connexion).</p>
-      </section>
-
-      <p className="pt-2 text-[11px] text-slate-400">
-        Police Pin Sans :{' '}
-        <a href="http://www.onlinewebfonts.com" target="_blank" rel="noopener noreferrer" className="underline">
-          Web Fonts
-        </a>{' '}
-        (licence CC BY 4.0).
-      </p>
-    </div>
+      </section>    </div>
   </Modal>
 );

@@ -7,7 +7,6 @@ export default {
       fontFamily: {
         // Polices déclarées dans src/index.css (@font-face)
         sans: ['"App Sans"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
-        swiss: ['"Swiss 721 BT"', '"App Sans"', '"Inter"', 'system-ui', 'sans-serif'],
         inter: ['"Inter"', 'system-ui', 'sans-serif'],
       },
       colors: {

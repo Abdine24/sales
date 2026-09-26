@@ -4,23 +4,20 @@
 
 /* ==========================================================================
    Polices de l'application (fichiers dans src/assets/fonts)
-   - "App Sans" (police par défaut, classe font-sans) : les lettres viennent de Pin Sans,
-     les chiffres et signes numériques d'Inter (unicode-range) — prix, montants et quantités
-     sont donc en Inter partout, sans rien changer dans les écrans. Les faces à unicode-range
-     sont déclarées APRÈS Pin Sans : pour un même caractère, la dernière face déclarée gagne.
-     Un seul poids par police : le gras est simulé par le navigateur. Ne pas déclarer de face
-     Inter à d'autres poids ici, sinon les lettres en gras tomberaient sur une police système.
-   - "Swiss 721 BT" (titres h1-h4, classe font-swiss).
+   - "App Sans" (police par défaut, classe font-sans) : les lettres viennent de Google Sans
+     Flex (6 graisses statiques 400 à 900, version 24pt), les chiffres et signes numériques
+     d'Inter (unicode-range) — prix, montants et quantités sont donc en Inter partout, sans
+     rien changer dans les écrans. Les faces Inter à unicode-range sont déclarées APRÈS
+     Google Sans : pour un même caractère, la dernière face déclarée gagne.
    - "Inter" complète (classe font-inter).
-   Pin Sans : OnlineWebFonts, CC BY 4.0 — crédit affiché dans les Conditions d'utilisation.
+   Google Sans Flex : SIL Open Font License 1.1 (voir assets/fonts/GoogleSans-OFL.txt).
    ========================================================================== */
-@font-face {
-  font-family: 'App Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./assets/fonts/PinSans.woff') format('woff');
-}
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/GoogleSans-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/GoogleSans-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/GoogleSans-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/GoogleSans-Bold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./assets/fonts/GoogleSans-ExtraBold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./assets/fonts/GoogleSans-Black.woff2') format('woff2'); }
 @font-face {
   font-family: 'App Sans';
   font-style: normal;
@@ -30,11 +27,12 @@
   unicode-range: U+0025, U+002B-002E, U+0030-0039;
 }
 @font-face {
-  font-family: 'Swiss 721 BT';
+  font-family: 'App Sans';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 500 900;
   font-display: swap;
-  src: url('./assets/fonts/Swiss721BT.ttf') format('truetype');
+  src: url('./assets/fonts/Inter-Medium.woff2') format('woff2');
+  unicode-range: U+0025, U+002B-002E, U+0030-0039;
 }
 @font-face {
   font-family: 'Inter';
@@ -64,13 +62,6 @@
 
   body {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    @apply font-swiss;
   }
 }
 
