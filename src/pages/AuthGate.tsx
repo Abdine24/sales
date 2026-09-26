@@ -24,7 +24,7 @@ import { authenticate, createPrincipal, completePasswordReset } from '../service
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
-import { apiPostPublic } from '../services/api';
+import { apiGetPublic, apiPostPublic } from '../services/api';
 import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
 import { getPlatformConfig, buildWhatsappUrl, DEFAULT_CONTACT_MESSAGE } from '../services/platformConfig';
 import { Button } from '../components/ui/Button';
@@ -147,6 +147,18 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
+
+  // Boutique déjà activée (administrateur principal créé) ? Si oui, son lien n'affiche plus que
+  // la connexion — l'activation n'a de sens qu'une seule fois, pour créer le premier admin. null
+  // tant que la réponse n'est pas arrivée (ou en cas d'échec) : le lien reste alors proposé,
+  // pour ne jamais bloquer l'activation d'une boutique neuve.
+  const [boutiqueActivee, setBoutiqueActivee] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isPlatformLandingHost()) return;
+    apiGetPublic<{ activee: boolean }>('/licences/activation')
+      .then((result) => setBoutiqueActivee(result.activee))
+      .catch(() => setBoutiqueActivee(null));
+  }, []);
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -891,8 +903,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         )}
 
         {/* Footer Navigation — rien à proposer ici sur l'écran de création de boutique : il
-            n'y a encore ni licence à activer ni compte auquel se connecter. */}
-        {mode !== 'create-boutique' && (
+            n'y a encore ni licence à activer ni compte auquel se connecter. Ni sur la connexion
+            d'une boutique déjà activée : l'activation n'y mènerait nulle part. */}
+        {mode !== 'create-boutique' && !(mode === 'login' && boutiqueActivee === true) && (
         <div className="mt-6 text-center border-t border-slate-200/50 dark:border-white/5 pt-4">
           {mode === 'login' ? (
             <button

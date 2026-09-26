@@ -11,6 +11,18 @@ const validateLimiter = simpleRateLimit({ windowMs: 60_000, max: 20 }); // 20/mi
 // pas trop serré non plus, pour ne pas gêner un admin qui teste plusieurs fois de suite
 // pendant la mise en place initiale de sa boutique.
 const trialLimiter = simpleRateLimit({ windowMs: 60 * 60_000, max: 20 }); // 20/heure/IP
+// Appelé à chaque ouverture de la page de connexion — compteur séparé pour ne pas entamer
+// celui de la validation de clés.
+const activationLimiter = simpleRateLimit({ windowMs: 60_000, max: 60 }); // 60/min/IP
+
+// Public : indique si la boutique a déjà été activée (administrateur principal créé). Une fois
+// activée, son lien ne doit plus proposer l'activation, seulement la connexion (voir
+// AuthGate.tsx) — le bootstrap d'un second principal serait de toute façon refusé (voir
+// personnel.js). Renouveler une licence expirée se fait après connexion (LicenceGate.tsx).
+licencesRouter.get('/activation', activationLimiter, async (req, res) => {
+  const { rows } = await req.tenantPool.query('select 1 from personnel where principal=true limit 1');
+  res.json({ activee: rows.length > 0 });
+});
 
 licencesRouter.post('/valider', validateLimiter, (req, res) => {
   const result = validateLicenseKey(req.body?.cle);
