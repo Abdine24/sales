@@ -19,7 +19,9 @@ import {
   LayoutTemplate,
   Eye,
   Tag,
+  Upload,
 } from 'lucide-react';
+import { fileToLogoDataUrl } from '../utils/logoImage';
 import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord, Vente } from '../db/db';
 import { apiGet, apiPut, apiPost, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -85,6 +87,8 @@ export const Settings: React.FC = () => {
   const [nomSite, setNomSite] = useState('');
   const [slogan, setSlogan] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [telephone, setTelephone] = useState('');
   const [ifu, setIfu] = useState('');
@@ -158,6 +162,38 @@ export const Settings: React.FC = () => {
       localStorage.setItem('app_sound_enabled', String(isSound));
     }
   }, [settings]);
+
+  // Logo : envoyé et enregistré sur le serveur dès qu'il est choisi (pas besoin de cliquer sur
+  // « Enregistrer ») — logo_url pointe ensuite vers l'image stockée côté serveur.
+  const handleLogoFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setLogoBusy(true);
+    try {
+      const dataUrl = await fileToLogoDataUrl(file);
+      const { logo_url } = await apiPost<{ logo_url: string }>('/settings/logo', { dataUrl });
+      setLogoUrl(logo_url);
+      window.dispatchEvent(new Event('app-settings-updated'));
+    } catch (err) {
+      await alert(err instanceof Error ? err.message : "Échec de l'envoi du logo.");
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setLogoBusy(true);
+    try {
+      await apiDelete('/settings/logo');
+      setLogoUrl('');
+      window.dispatchEvent(new Event('app-settings-updated'));
+    } catch (err) {
+      await alert(err instanceof ApiError ? err.message : 'Impossible de retirer le logo.');
+    } finally {
+      setLogoBusy(false);
+    }
+  };
 
   const saveSettings = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -412,26 +448,51 @@ export const Settings: React.FC = () => {
 
             <div>
               <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">
-                URL du Logo officiel
+                Logo de la boutique
               </label>
-              <div className="relative flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Image className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    value={logoUrl}
-                    onChange={(event) => setLogoUrl(event.target.value)}
-                    className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
-                    placeholder="https://.../logo.png ou data:image/..."
-                  />
+              <div className="flex items-center gap-3">
+                <div className="h-16 w-16 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+                  ) : (
+                    <Image className="w-6 h-6 text-slate-300" />
+                  )}
                 </div>
-                {logoUrl && (
-                  <img
-                    src={logoUrl}
-                    alt="Logo"
-                    className="h-10 w-10 object-contain rounded-xl border border-slate-200/80 dark:border-white/10 p-0.5 bg-white shrink-0"
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFile}
+                    className="hidden"
                   />
-                )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={logoBusy}
+                    onClick={() => logoInputRef.current?.click()}
+                    icon={<Upload className="w-4 h-4" />}
+                  >
+                    {logoBusy ? 'Envoi...' : logoUrl ? 'Changer le logo' : 'Choisir une image'}
+                  </Button>
+                  {logoUrl && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={logoBusy}
+                      onClick={handleRemoveLogo}
+                      icon={<Trash2 className="w-4 h-4" />}
+                    >
+                      Retirer
+                    </Button>
+                  )}
+                </div>
               </div>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Photo ou image de ton logo (PNG, JPEG…). Elle est enregistrée sur le serveur et apparaît dans le menu, les tickets et les factures.
+              </p>
             </div>
           </div>
         </GlassCard>

@@ -210,7 +210,9 @@ create table if not exists settings (
   whatsapp_auto_open boolean default false,
   receipt_template_id text,
   saisie_prix_a_la_vente boolean default false,
-  afficher_remise boolean default true
+  afficher_remise boolean default true,
+  logo_data bytea,
+  logo_mime text
 );
 
 create table if not exists licence (
@@ -225,6 +227,8 @@ alter table licence add column if not exists trial_used boolean not null default
 alter table settings add column if not exists receipt_template_id text;
 alter table settings add column if not exists saisie_prix_a_la_vente boolean default false;
 alter table settings add column if not exists afficher_remise boolean default true;
+alter table settings add column if not exists logo_data bytea;
+alter table settings add column if not exists logo_mime text;
 
 -- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
 -- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin

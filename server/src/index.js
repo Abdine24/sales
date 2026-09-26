@@ -24,6 +24,7 @@ import { notificationsRouter } from './routes/notifications.js';
 import { motDePasseOublieRouter } from './routes/motDePasseOublie.js';
 import { plateformeRouter } from './routes/plateforme.js';
 import { facturesRouter } from './routes/factures.js';
+import { logoRouter } from './routes/logo.js';
 import { applySchemaToTenant } from './schemaApply.js';
 import { getTenantPool } from './tenantDb.js';
 
@@ -53,6 +54,9 @@ app.use('/boutiques', boutiquesRouter);
 // distincte de Supabase (voir routes/plateforme.js). /config est public (lu par toutes les
 // boutiques), le reste exige une session propriétaire valide.
 app.use('/plateforme', plateformeRouter);
+
+// Logo de chaque boutique, public (lu par des balises <img>) — voir routes/logo.js.
+app.use('/logo', logoRouter);
 
 // Publiques (pas de JWT), mais un tenant DOIT être résolu (essai gratuit et
 // mot-de-passe-oublié sont tous deux propres à une boutique — voir tenantResolver.js).
