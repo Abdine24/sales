@@ -1135,9 +1135,6 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
                   placeholder="ex: 85000"
                   className="w-full glass-input px-4 py-3 rounded-2xl text-2xl font-black text-slate-900 dark:text-white"
                 />
-                {pendingPriceAdd.prix > 0 && (
-                  <p className="text-[11px] text-slate-400 mt-1">Prix conseillé : {formatCfa(pendingPriceAdd.prix)}</p>
-                )}
                 {existing && (
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                     Déjà {existing.quantite} au panier — ce prix s'appliquera à toute la ligne.
