@@ -22,6 +22,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
+import { VentesParProduit } from '../components/VentesParProduit';
 import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
@@ -82,6 +83,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
   const [statutFilter, setStatutFilter] = useState<'all' | 'paye' | 'partiel' | 'credit'>('all');
   const [page, setPage] = useState(1);
   const pageSize = 12;
+  const [vue, setVue] = useState<'ventes' | 'produit'>('ventes');
 
   const [retourVente, setRetourVente] = useState<Vente | null>(null);
   const [selectedReceiptSale, setSelectedReceiptSale] = useState<Vente | null>(null);
@@ -175,6 +177,28 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
         />
       </div>
 
+      {/* Deux façons de consulter l'historique : vente par vente, ou toutes les ventes d'un produit */}
+      <div className="inline-flex p-1 rounded-2xl bg-slate-200/60 dark:bg-white/5 gap-1">
+        {([
+          ['ventes', 'Par vente'],
+          ['produit', 'Par produit'],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setVue(id)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              vue === id
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {vue === 'ventes' && (
       <GlassCard className="p-0 overflow-hidden">
         <div className="p-4 border-b border-slate-200/50 dark:border-white/10 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-md">
@@ -367,6 +391,17 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           </div>
         )}
       </GlassCard>
+      )}
+
+      {vue === 'produit' && (
+        <VentesParProduit
+          ventes={ventes}
+          lignesVente={lignesVente}
+          dateDebut={dateDebut}
+          dateFin={dateFin}
+          activeZoneId={activeZoneId}
+        />
+      )}
 
       {/* MODAL: Réimpression de Ticket */}
       {selectedReceiptSale && (
