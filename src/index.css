@@ -3,15 +3,19 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   Police de l'application : Arial, celle installée sur l'appareil (aucun fichier de police
-   embarqué — Arial n'est pas redistribuable). Pile définie dans tailwind.config.js (font-sans
-   ET font-mono) : Arial sur Windows/Mac/iOS, Liberation Sans ou Arimo (mêmes dimensions
-   qu'Arial) sur Linux, Roboto sur Android. Les factures PDF du serveur utilisent Liberation
-   Sans (voir server/Dockerfile et server/src/receiptFonts.js).
+   Police de l'application : --app-font, choisie par l'utilisateur parmi Arial, Microsoft Sans
+   Serif et Swiss 721 BT (voir utils/appFont.ts). Aucune n'est embarquée (non
+   redistribuables) : on utilise celle installée sur l'appareil, avec Arial en secours
+   (Liberation Sans / Arimo sur Linux, Roboto sur Android). Utilisée par font-sans et font-mono
+   (tailwind.config.js). Les factures PDF du serveur restent en Arial / Liberation Sans (voir
+   server/Dockerfile et server/src/receiptFonts.js).
    ========================================================================== */
 
 @layer base {
   :root {
+    /* Valeur par défaut ; remplacée au démarrage par le choix de l'utilisateur (main.tsx) */
+    --app-font: Arial, "Liberation Sans", Arimo, Roboto, Helvetica, sans-serif;
+
     --bg-glass-light: rgba(255, 255, 255, 0.72);
     --border-glass-light: rgba(255, 255, 255, 0.5);
     --shadow-glass-light: 0 10px 30px rgba(0, 0, 0, 0.04);
@@ -502,7 +506,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     left: 0;
     width: 100%;
     color: #000;
-    font-family: Arial, 'Liberation Sans', Arimo, Roboto, Helvetica, sans-serif;
+    font-family: var(--app-font);
   }
 
   .print-receipt[data-format="thermique"] {

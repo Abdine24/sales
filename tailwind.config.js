@@ -5,11 +5,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // Arial partout, installée sur l'appareil (voir src/index.css) — y compris les
-        // codes/références affichés en font-mono. Liberation Sans / Arimo ont exactement les
-        // dimensions d'Arial (Linux) ; Roboto la remplace sur Android.
-        sans: ['Arial', '"Liberation Sans"', 'Arimo', 'Roboto', 'Helvetica', 'sans-serif'],
-        mono: ['Arial', '"Liberation Sans"', 'Arimo', 'Roboto', 'Helvetica', 'sans-serif'],
+        // Police choisie par l'utilisateur (Arial, Microsoft Sans Serif ou Swiss 721 BT — voir
+        // src/utils/appFont.ts et la variable --app-font de src/index.css), y compris pour les
+        // codes/références affichés en font-mono.
+        sans: ['var(--app-font)'],
+        mono: ['var(--app-font)'],
       },
       colors: {
         apple: {

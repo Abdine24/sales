@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,6 +17,7 @@ import {
 import { Button } from '../ui/Button';
 import { NotificationBell } from '../NotificationBell';
 import { Zone, AppSettings } from '../../db/db';
+import { APP_FONTS, AppFontId, applyAppFont, getAppFont, isFontInstalled } from '../../utils/appFont';
 
 export type ThemeMode = 'light' | 'dark' | 'emerald' | 'contrast';
 
@@ -59,6 +60,35 @@ export const Topbar: React.FC<TopbarProps> = ({
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
   const [accountOpen, setAccountOpen] = useState(false);
+
+  // Police d'affichage choisie par l'utilisateur (mémorisée sur cet appareil, voir appFont.ts).
+  // Une police absente de l'appareil est signalée : l'app retombe alors sur Arial.
+  const [appFont, setAppFont] = useState<AppFontId>(getAppFont);
+  const installedFonts = useMemo(
+    () => new Set(APP_FONTS.filter((f) => f.id === 'arial' || f.families.some(isFontInstalled)).map((f) => f.id)),
+    []
+  );
+  const changeFont = (id: AppFontId) => {
+    setAppFont(id);
+    applyAppFont(id);
+  };
+
+  const fontSelect = (className: string) => (
+    <select
+      value={appFont}
+      onChange={(event) => changeFont(event.target.value as AppFontId)}
+      className={className}
+      title="Police d'affichage"
+      aria-label="Police d'affichage"
+    >
+      {APP_FONTS.map((font) => (
+        <option key={font.id} value={font.id}>
+          {font.label}
+          {installedFonts.has(font.id) ? '' : ' (non installée — Arial utilisée)'}
+        </option>
+      ))}
+    </select>
+  );
 
   useEffect(() => {
     const updateClock = () => {
@@ -201,6 +231,13 @@ export const Topbar: React.FC<TopbarProps> = ({
               {themeSwitcher('lg')}
             </div>
 
+            <div className="mb-6">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 block">
+                Police d'affichage
+              </label>
+              {fontSelect('glass-input w-full px-3 py-3 rounded-xl font-semibold text-slate-700 dark:text-slate-200')}
+            </div>
+
             <Button
               variant="ghost"
               className="w-full justify-center"
@@ -300,6 +337,10 @@ export const Topbar: React.FC<TopbarProps> = ({
             </div>
 
             {themeSwitcher('sm')}
+
+            {fontSelect(
+              'glass-input px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-40'
+            )}
 
             <div className="text-right border-l border-slate-200/50 dark:border-white/10 pl-4 text-slate-600 dark:text-slate-300">
               <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">

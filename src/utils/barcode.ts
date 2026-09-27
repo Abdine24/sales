@@ -2,6 +2,7 @@
  * Utilitaires pour la génération, le rendu SVG et le bip sonore de codes-barres.
  * Supporte le standard Code 128B universel et EAN-13.
  */
+import { currentFontStack } from './appFont';
 
 // Table de motifs pour Code 128 (Patterns des barres/espaces)
 const CODE128_PATTERNS: string[] = [
@@ -232,7 +233,7 @@ export function printBarcodeLabelsDirect(options: DirectPrintOptions): void {
             print-color-adjust: exact;
           }
           body {
-            font-family: Arial, 'Liberation Sans', Arimo, Roboto, Helvetica, sans-serif;
+            font-family: ${currentFontStack()};
             margin: 0;
             padding: 0;
             background: #fff;
