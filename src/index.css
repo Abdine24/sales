@@ -4,20 +4,20 @@
 
 /* ==========================================================================
    Polices de l'application (fichiers dans src/assets/fonts)
-   - "App Sans" (police par défaut, classe font-sans) : les lettres viennent de Google Sans
-     Flex (6 graisses statiques 400 à 900, version 24pt), les chiffres et signes numériques
-     d'Inter (unicode-range) — prix, montants et quantités sont donc en Inter partout, sans
-     rien changer dans les écrans. Les faces Inter à unicode-range sont déclarées APRÈS
-     Google Sans : pour un même caractère, la dernière face déclarée gagne.
+   - "App Sans" (police par défaut, classe font-sans) : les lettres viennent de DM Sans
+     (6 graisses statiques 400 à 900), les chiffres et signes numériques d'Inter
+     (unicode-range) — prix, montants et quantités sont donc en Inter partout, sans rien
+     changer dans les écrans. Les faces Inter à unicode-range sont déclarées APRÈS DM Sans :
+     pour un même caractère, la dernière face déclarée gagne.
    - "Inter" complète (classe font-inter).
-   Google Sans Flex : SIL Open Font License 1.1 (voir assets/fonts/GoogleSans-OFL.txt).
+   DM Sans : SIL Open Font License 1.1 (voir assets/fonts/DMSans-OFL.txt).
    ========================================================================== */
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/GoogleSans-Regular.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/GoogleSans-Medium.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/GoogleSans-SemiBold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/GoogleSans-Bold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./assets/fonts/GoogleSans-ExtraBold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./assets/fonts/GoogleSans-Black.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/DMSans-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/DMSans-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/DMSans-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/DMSans-Bold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./assets/fonts/DMSans-ExtraBold.woff2') format('woff2'); }
+@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./assets/fonts/DMSans-Black.woff2') format('woff2'); }
 @font-face {
   font-family: 'App Sans';
   font-style: normal;
