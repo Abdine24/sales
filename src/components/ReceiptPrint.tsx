@@ -118,7 +118,7 @@ export const ReceiptPrint: React.FC<Props> = ({ data, format, settings }) => {
           {data.regenere ? <p className="receipt-muted">Duplicata édité le {new Date().toLocaleString('fr-FR')}</p> : null}
           <p>{footerMessage}</p>
           {showQrcode && (
-            <div style={{ marginTop: '6px', fontSize: '9px', opacity: 0.7, fontFamily: 'monospace' }}>
+            <div style={{ marginTop: '6px', fontSize: '9px', opacity: 0.7 }}>
               REF: {data.ref.toUpperCase()}
             </div>
           )}

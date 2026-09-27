@@ -7,7 +7,7 @@
 // Puppeteer gère tout ça correctement) : resolveCssVariablesForCapture, prepareHtmlForCapture,
 // withRenderFrame, renderReceiptPdf — voir server/src/pdfRenderer.js pour le rendu PDF lui-même.
 
-import { INTER_FONT_FACE_CSS } from './receiptFonts.js';
+import { RECEIPT_FONT_FACE_CSS, RECEIPT_FONT_FAMILY, HAS_RECEIPT_FONT } from './receiptFonts.js';
 import { PDF_CONTENT_HEIGHT_MM } from './pdfRenderer.js';
 
 const ITEMS_BLOCK_RE = /<!--\s*ITEMS\s*-->([\s\S]*?)<!--\s*\/ITEMS\s*-->/i;
@@ -121,14 +121,28 @@ export function sanitizeTemplateHtml(templateHtml) {
   // passe après celle du dessus, qui a déjà consommé les `min-height: 297mm`.
   html = html.replace(/height:\s*297mm/gi, 'height: auto');
 
-  // 3. Overrides CSS d'impression A4 stricts + police Inter embarquée en base64.
+  // DM Sans partout dans les factures : toute police demandée par le modèle dans une
+  // déclaration font-family (Inter, Roboto, system-ui...) est remplacée par DM Sans, embarquée
+  // ci-dessous — seules les piles génériques de secours (sans-serif...) restent derrière.
+  // La valeur remplacée englobe les noms entre guillemets ('Inter', "Segoe UI") et s'arrête au
+  // premier ; } < > ou guillemet non apparié (fin d'un attribut style="..." ou style='...').
+  // Le nom inséré est sans guillemets (DM Sans est un identifiant CSS valide) pour ne jamais
+  // casser un attribut, quel que soit son type de guillemets.
+  if (HAS_RECEIPT_FONT) {
+    html = html.replace(
+      /font-family\s*:\s*(?:'[^'<>]*'|"[^"<>]*"|[^;}"'<>])*/gi,
+      `font-family: ${RECEIPT_FONT_FAMILY}, sans-serif`
+    );
+  }
+
+  // 3. Overrides CSS d'impression A4 stricts + police DM Sans embarquée en base64.
   // Les @font-face viennent en TÊTE du <style> : une règle @font-face doit être connue du moteur
-  // avant les règles qui l'utilisent. `font-family` n'est PAS forcé ici — un modèle uploadé garde
-  // la police qu'il déclare ; il suffit qu'il demande 'Inter' pour que celle-ci soit trouvée
-  // localement, sans le moindre appel réseau (voir receiptFonts.js).
+  // avant les règles qui l'utilisent (voir receiptFonts.js — aucun appel réseau). Le body est
+  // aussi mis en DM Sans pour les modèles qui ne déclarent aucune police.
   const printOverrideCss = `
 <style>
-${INTER_FONT_FACE_CSS}
+${RECEIPT_FONT_FACE_CSS}
+${HAS_RECEIPT_FONT ? `  body { font-family: '${RECEIPT_FONT_FAMILY}', sans-serif; }` : ''}
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

@@ -5,9 +5,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // Polices déclarées dans src/index.css (@font-face)
-        sans: ['"App Sans"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
-        inter: ['"Inter"', 'system-ui', 'sans-serif'],
+        // DM Sans partout (déclarée dans src/index.css) — y compris les codes/références
+        // affichés en font-mono, qui n'utilisent plus de police à chasse fixe.
+        sans: ['"App Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"App Sans"', 'system-ui', 'sans-serif'],
       },
       colors: {
         apple: {

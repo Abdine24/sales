@@ -2,6 +2,10 @@
  * Utilitaires pour la génération, le rendu SVG et le bip sonore de codes-barres.
  * Supporte le standard Code 128B universel et EAN-13.
  */
+import dmSansRegular from '../assets/fonts/DMSans-Regular.woff2';
+import dmSansBold from '../assets/fonts/DMSans-Bold.woff2';
+import dmSansExtraBold from '../assets/fonts/DMSans-ExtraBold.woff2';
+import dmSansBlack from '../assets/fonts/DMSans-Black.woff2';
 
 // Table de motifs pour Code 128 (Patterns des barres/espaces)
 const CODE128_PATTERNS: string[] = [
@@ -231,8 +235,9 @@ export function printBarcodeLabelsDirect(options: DirectPrintOptions): void {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          ${labelFontFaceCss()}
           body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'App Sans', system-ui, sans-serif;
             margin: 0;
             padding: 0;
             background: #fff;
@@ -293,7 +298,6 @@ export function printBarcodeLabelsDirect(options: DirectPrintOptions): void {
             margin: 3px 0;
           }
           .barcode-num {
-            font-family: "Courier New", Courier, monospace;
             font-size: 9px;
             font-weight: 800;
             letter-spacing: 1.5px;
@@ -320,9 +324,13 @@ export function printBarcodeLabelsDirect(options: DirectPrintOptions): void {
   doc.write(fullHtml);
   doc.close();
 
-  // Déclencher l'impression immédiatement dès que l'iframe est prête
+  // Imprimer dès que DM Sans est chargée dans l'iframe (sinon les premières étiquettes
+  // sortiraient dans la police de secours) — au plus tard après 1,5 s pour ne jamais bloquer.
   iframe.contentWindow?.focus();
-  setTimeout(() => {
+  const fontsLoaded = Promise.all(
+    ['400', '700', '800', '900'].map((w) => doc.fonts?.load(`${w} 10px "App Sans"`) ?? Promise.resolve())
+  ).catch(() => undefined);
+  Promise.race([fontsLoaded, new Promise((resolve) => setTimeout(resolve, 1500))]).then(() => {
     try {
       iframe.contentWindow?.print();
     } catch {
@@ -331,5 +339,22 @@ export function printBarcodeLabelsDirect(options: DirectPrintOptions): void {
       // Nettoyage de l'iframe après déclenchement
       setTimeout(() => iframe.remove(), 2000);
     }
-  }, 50);
+  });
+}
+
+// L'iframe d'impression est un document séparé : les @font-face de l'application n'y existent
+// pas. On y redéclare DM Sans avec des URL absolues (l'iframe n'a pas la base du site).
+function labelFontFaceCss(): string {
+  const faces: [string, string][] = [
+    ['400', dmSansRegular],
+    ['700', dmSansBold],
+    ['800', dmSansExtraBold],
+    ['900', dmSansBlack],
+  ];
+  return faces
+    .map(
+      ([weight, url]) =>
+        `@font-face { font-family: 'App Sans'; font-weight: ${weight}; src: url('${new URL(url, window.location.href).href}') format('woff2'); }`
+    )
+    .join('\n');
 }
