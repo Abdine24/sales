@@ -23,6 +23,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
 import { VentesParProduit } from '../components/VentesParProduit';
+import { RetoursListe } from '../components/RetoursListe';
 import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
@@ -83,7 +84,13 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
   const [statutFilter, setStatutFilter] = useState<'all' | 'paye' | 'partiel' | 'credit'>('all');
   const [page, setPage] = useState(1);
   const pageSize = 12;
-  const [vue, setVue] = useState<'ventes' | 'produit'>('ventes');
+  const [vue, setVue] = useState<'ventes' | 'produit' | 'retours'>('ventes');
+
+  const changePeriode = (start: string, end: string) => {
+    setDateDebut(start);
+    setDateFin(end);
+    setPage(1);
+  };
 
   const [retourVente, setRetourVente] = useState<Vente | null>(null);
   const [selectedReceiptSale, setSelectedReceiptSale] = useState<Vente | null>(null);
@@ -166,22 +173,18 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
             Historique complet des ventes. Enregistre un retour quand un client rapporte un article.
           </p>
         </div>
-        <DateRangePicker
-          startDate={dateDebut}
-          endDate={dateFin}
-          onChange={(start, end) => {
-            setDateDebut(start);
-            setDateFin(end);
-            setPage(1);
-          }}
-        />
+        {/* Les onglets « Par produit » et « Retours » ont leur propre sélecteur de période dans
+            leur barre de filtres (même état) : un seul sélecteur visible à la fois. */}
+        {vue === 'ventes' && <DateRangePicker startDate={dateDebut} endDate={dateFin} onChange={changePeriode} />}
       </div>
 
-      {/* Deux façons de consulter l'historique : vente par vente, ou toutes les ventes d'un produit */}
+      {/* Trois façons de consulter l'historique : vente par vente, toutes les ventes d'un
+          produit, ou les retours d'articles */}
       <div className="inline-flex p-1 rounded-2xl bg-slate-200/60 dark:bg-white/5 gap-1">
         {([
           ['ventes', 'Par vente'],
           ['produit', 'Par produit'],
+          ['retours', 'Retours'],
         ] as const).map(([id, label]) => (
           <button
             key={id}
@@ -399,6 +402,17 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           lignesVente={lignesVente}
           dateDebut={dateDebut}
           dateFin={dateFin}
+          onDateChange={changePeriode}
+          activeZoneId={activeZoneId}
+        />
+      )}
+
+      {vue === 'retours' && (
+        <RetoursListe
+          retours={retours}
+          dateDebut={dateDebut}
+          dateFin={dateFin}
+          onDateChange={changePeriode}
           activeZoneId={activeZoneId}
         />
       )}

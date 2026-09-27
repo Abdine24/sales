@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Search, Package, Users, ShoppingBag, Banknote } from 'lucide-react';
 import type { Vente, LigneVente } from '../db/db';
 import { GlassCard } from './ui/GlassCard';
+import { DateRangePicker } from './ui/DateRangePicker';
 import { formatCfa } from '../utils/currency';
 
 // Onglet « Par produit » de la page Ventes : on tape un produit et on voit toutes ses ventes
@@ -12,6 +13,7 @@ interface VentesParProduitProps {
   lignesVente: LigneVente[];
   dateDebut: string; // YYYY-MM-DD
   dateFin: string; // YYYY-MM-DD
+  onDateChange: (dateDebut: string, dateFin: string) => void;
   activeZoneId: number | null;
 }
 
@@ -27,6 +29,7 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
   lignesVente,
   dateDebut,
   dateFin,
+  onDateChange,
   activeZoneId,
 }) => {
   const [search, setSearch] = useState('');
@@ -105,7 +108,7 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
   return (
     <div className="space-y-4">
       <GlassCard className="p-4">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -132,6 +135,8 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
               </option>
             ))}
           </select>
+          {/* Période : jour précis, mois en cours, mois dernier, dates au choix... */}
+          <DateRangePicker startDate={dateDebut} endDate={dateFin} onChange={onDateChange} align="right" />
         </div>
       </GlassCard>
 
