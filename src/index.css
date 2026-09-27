@@ -3,18 +3,12 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   Polices de l'application (fichiers dans src/assets/fonts)
-   "App Sans" = DM Sans (6 graisses statiques 400 à 900), seule police de l'application :
-   textes, chiffres, codes (font-sans ET font-mono, voir tailwind.config.js) et impressions.
-   Les factures PDF du serveur utilisent les mêmes fichiers (server/src/receiptFonts.js).
-   DM Sans : SIL Open Font License 1.1 (voir assets/fonts/DMSans-OFL.txt).
+   Police de l'application : Arial, celle installée sur l'appareil (aucun fichier de police
+   embarqué — Arial n'est pas redistribuable). Pile définie dans tailwind.config.js (font-sans
+   ET font-mono) : Arial sur Windows/Mac/iOS, Liberation Sans ou Arimo (mêmes dimensions
+   qu'Arial) sur Linux, Roboto sur Android. Les factures PDF du serveur utilisent Liberation
+   Sans (voir server/Dockerfile et server/src/receiptFonts.js).
    ========================================================================== */
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/DMSans-Regular.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/DMSans-Medium.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/DMSans-SemiBold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/DMSans-Bold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./assets/fonts/DMSans-ExtraBold.woff2') format('woff2'); }
-@font-face { font-family: 'App Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./assets/fonts/DMSans-Black.woff2') format('woff2'); }
 
 @layer base {
   :root {
@@ -508,7 +502,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     left: 0;
     width: 100%;
     color: #000;
-    font-family: 'App Sans', system-ui, sans-serif;
+    font-family: Arial, 'Liberation Sans', Arimo, Roboto, Helvetica, sans-serif;
   }
 
   .print-receipt[data-format="thermique"] {

@@ -465,7 +465,7 @@ export const OwnerConsole: React.FC = () => {
         }
         body {
             background-color: #ffffff;
-            font-family: 'DM Sans', system-ui, sans-serif;
+            font-family: Arial, 'Liberation Sans', sans-serif;
             color: #1e293b;
         }
         .a4-page {

@@ -7,7 +7,10 @@ WORKDIR /app
 # télécharger son propre binaire incompatible. `font-noto` est nécessaire pour que les accents
 # français (é, è, à...) s'affichent correctement dans les PDF générés — sans lui, Chromium les
 # rend en tofu (rectangles vides) faute de police couvrant ces caractères.
-RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto
+# `font-liberation` fournit Liberation Sans (licence OFL), aux dimensions exactes d'Arial :
+# fontconfig la substitue automatiquement à « Arial », la police des factures PDF (Arial
+# elle-même n'est pas redistribuable).
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto font-liberation
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Le nom du binaire Chromium fourni par Alpine a changé selon les versions (chromium-browser
 # puis chromium, selon les releases) — résolu une fois ici via un lien symbolique plutôt que

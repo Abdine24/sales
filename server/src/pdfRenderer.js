@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { RECEIPT_FONT_STACK } from './receiptFonts.js';
 
 // Marge basse réservée à la pagination "Page X / Y" imprimée par Chromium (voir footerTemplate).
 export const PDF_BOTTOM_MARGIN_MM = 12;
@@ -63,12 +64,11 @@ export async function htmlToPdf(html) {
       printBackground: true,
       displayHeaderFooter: true,
       // Le contenu réel de la page ne va jamais dans ces templates — seulement la pagination,
-      // dans une marge dédiée en bas de chaque page. Pas de police externe ici non plus (voir
-      // receiptFonts.js) — juste sans-serif générique, résolu par une police du
-      // conteneur.
+      // dans une marge dédiée en bas de chaque page. Même pile Arial que le document (voir
+      // receiptFonts.js), résolue par Liberation Sans installée dans le conteneur.
       headerTemplate: '<span></span>',
       footerTemplate:
-        '<div style="width:100%;font-size:9px;text-align:center;color:#86868b;font-family:sans-serif;">' +
+        `<div style="width:100%;font-size:9px;text-align:center;color:#86868b;font-family:${RECEIPT_FONT_STACK};">` +
         'Page <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
       margin: { top: '0mm', right: '0mm', bottom: `${PDF_BOTTOM_MARGIN_MM}mm`, left: '0mm' },
     });

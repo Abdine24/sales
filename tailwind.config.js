@@ -5,10 +5,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // DM Sans partout (déclarée dans src/index.css) — y compris les codes/références
-        // affichés en font-mono, qui n'utilisent plus de police à chasse fixe.
-        sans: ['"App Sans"', 'system-ui', 'sans-serif'],
-        mono: ['"App Sans"', 'system-ui', 'sans-serif'],
+        // Arial partout, installée sur l'appareil (voir src/index.css) — y compris les
+        // codes/références affichés en font-mono. Liberation Sans / Arimo ont exactement les
+        // dimensions d'Arial (Linux) ; Roboto la remplace sur Android.
+        sans: ['Arial', '"Liberation Sans"', 'Arimo', 'Roboto', 'Helvetica', 'sans-serif'],
+        mono: ['Arial', '"Liberation Sans"', 'Arimo', 'Roboto', 'Helvetica', 'sans-serif'],
       },
       colors: {
         apple: {
