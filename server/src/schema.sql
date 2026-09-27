@@ -212,7 +212,8 @@ create table if not exists settings (
   saisie_prix_a_la_vente boolean default false,
   afficher_remise boolean default true,
   logo_data bytea,
-  logo_mime text
+  logo_mime text,
+  police_affichage text default 'arial'
 );
 
 create table if not exists licence (
@@ -229,6 +230,7 @@ alter table settings add column if not exists saisie_prix_a_la_vente boolean def
 alter table settings add column if not exists afficher_remise boolean default true;
 alter table settings add column if not exists logo_data bytea;
 alter table settings add column if not exists logo_mime text;
+alter table settings add column if not exists police_affichage text default 'arial';
 
 -- Notifications in-app (cloche dans la navbar). target_role='admin' = diffusée à tous les
 -- admins ; lue par n'importe lequel d'entre eux la marque lue pour tous (équipes admin

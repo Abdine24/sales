@@ -7,6 +7,7 @@ import { canAccess, firstAllowedPage, roleLabel } from '../../services/localAuth
 import { signOutSupabase } from '../../services/supabaseAuth';
 import type { Personnel, AppSettings, Zone } from '../../db/db';
 import { apiGet } from '../../services/api';
+import { applyAppFont } from '../../utils/appFont';
 
 interface AppLayoutProps {
   personnel: Personnel;
@@ -54,6 +55,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
       document.title = `${settings.nom_site} - Gestion de Vente & Caisse`;
     }
   }, [settings?.nom_site]);
+
+  // Police d'affichage de la boutique (Paramètres) — appliquée sur tous ses appareils
+  useEffect(() => {
+    if (settings) applyAppFont(settings.police_affichage || 'arial');
+  }, [settings]);
 
   useEffect(() => {
     localStorage.setItem('app-theme-mode', themeMode);

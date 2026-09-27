@@ -20,8 +20,10 @@ import {
   Eye,
   Tag,
   Upload,
+  Type,
 } from 'lucide-react';
 import { fileToLogoDataUrl } from '../utils/logoImage';
+import { APP_FONTS, AppFontId, applyAppFont, isFontInstalled } from '../utils/appFont';
 import type { AppSettings, Zone, Produit, Personnel as PersonnelRecord, Vente } from '../db/db';
 import { apiGet, apiPut, apiPost, apiDelete, ApiError } from '../services/api';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -127,6 +129,12 @@ export const Settings: React.FC = () => {
   // Champ « Remise » proposé à l'encaissement
   const [afficherRemise, setAfficherRemise] = useState(true);
 
+  // Police d'affichage de la boutique (voir utils/appFont.ts). Un clic l'applique tout de suite en
+  // aperçu ; si l'admin quitte la page sans enregistrer, la police enregistrée est rétablie.
+  const [policeAffichage, setPoliceAffichage] = useState<AppFontId>('arial');
+  const savedPoliceRef = React.useRef<AppFontId>('arial');
+  useEffect(() => () => applyAppFont(savedPoliceRef.current), []);
+
   useEffect(() => {
     if (settings) {
       setNomSite(settings.nom_site || 'iVente Pro');
@@ -156,6 +164,8 @@ export const Settings: React.FC = () => {
 
       setSaisiePrixALaVente(Boolean(settings.saisie_prix_a_la_vente));
       setAfficherRemise(settings.afficher_remise !== false);
+      setPoliceAffichage(settings.police_affichage || 'arial');
+      savedPoliceRef.current = settings.police_affichage || 'arial';
 
       const isSound = settings.sound_enabled !== false;
       setSoundEnabled(isSound);
@@ -224,6 +234,7 @@ export const Settings: React.FC = () => {
 
       saisie_prix_a_la_vente: saisiePrixALaVente,
       afficher_remise: afficherRemise,
+      police_affichage: policeAffichage,
 
       sound_enabled: soundEnabled,
     };
@@ -234,6 +245,8 @@ export const Settings: React.FC = () => {
       setSettingsState(saved);
       setSaisiePrixALaVente(Boolean(saved.saisie_prix_a_la_vente));
       setAfficherRemise(saved.afficher_remise !== false);
+      setPoliceAffichage(saved.police_affichage || 'arial');
+      savedPoliceRef.current = saved.police_affichage || 'arial';
       window.dispatchEvent(new Event('app-settings-updated'));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -546,6 +559,58 @@ export const Settings: React.FC = () => {
               </p>
             </div>
           </label>
+        </GlassCard>
+
+        {/* POLICE D'AFFICHAGE (appliquée sur tous les appareils de la boutique) */}
+        <GlassCard>
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50 dark:border-white/10">
+            <Type className="w-5 h-5 text-indigo-500" />
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">Police d'affichage</h3>
+              <p className="text-xs text-slate-400">
+                Police utilisée dans toute l'application et sur les tickets, pour tous les appareils de la boutique.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {APP_FONTS.map((font) => {
+              const installed = font.id === 'arial' || font.families.some(isFontInstalled);
+              const selected = policeAffichage === font.id;
+              return (
+                <button
+                  key={font.id}
+                  type="button"
+                  onClick={() => {
+                    setPoliceAffichage(font.id);
+                    applyAppFont(font.id); // aperçu immédiat ; enregistré avec « Enregistrer »
+                  }}
+                  className={`text-left p-4 rounded-2xl border transition-colors ${
+                    selected
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-slate-200/60 dark:border-white/10 bg-slate-500/5 hover:bg-slate-500/10'
+                  }`}
+                >
+                  <span className="block text-lg text-slate-900 dark:text-white" style={{ fontFamily: font.stack }}>
+                    {font.label}
+                  </span>
+                  <span className="block text-sm text-slate-600 dark:text-slate-300 mt-1" style={{ fontFamily: font.stack }}>
+                    Total : 125 000 F
+                  </span>
+                  {!installed && (
+                    <span className="block text-[11px] text-amber-600 dark:text-amber-400 mt-2">
+                      Non installée sur cet appareil — Arial y sera utilisée.
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3">
+            Ces polices ne sont pas fournies par l'application : chaque appareil utilise celle qui y est installée
+            (Microsoft Sans Serif existe sur Windows ; Swiss 721 BT doit être installée). Sinon, Arial est utilisée.
+            Les factures PDF restent en Arial.
+          </p>
         </GlassCard>
 
         {/* 2. FORMAT D'IMPRESSION & PERSONNALISATION DES TICKETS DE CAISSE */}

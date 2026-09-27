@@ -87,6 +87,9 @@ export interface AppSettings {
 
   // Champ « Remise » affiché à l'encaissement (absent/null = affiché, comportement historique)
   afficher_remise?: boolean | null;
+
+  // Police d'affichage de la boutique (voir utils/appFont.ts) — absente/null = Arial
+  police_affichage?: 'arial' | 'mssans' | 'swiss' | null;
 }
 
 export type PersonnelRole = 'admin' | 'gerant' | 'caissier';

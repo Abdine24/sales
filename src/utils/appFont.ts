@@ -1,5 +1,7 @@
-// Police d'affichage choisie par l'utilisateur (sélecteur dans la barre du haut, voir
-// Topbar.tsx). Mémorisée par appareil (localStorage), comme le thème.
+// Police d'affichage de la boutique, choisie par l'administrateur dans Paramètres (réglage
+// settings.police_affichage, appliqué par AppLayout.tsx sur tous les appareils de la boutique).
+// La dernière police appliquée est aussi gardée en localStorage, pour l'appliquer dès le
+// démarrage (main.tsx) sans attendre le chargement des réglages.
 //
 // Aucune de ces polices n'est embarquée dans le site : Arial, Microsoft Sans Serif et Swiss 721
 // BT sont sous licence propriétaire et non redistribuables. On utilise celle qui est installée
