@@ -104,6 +104,36 @@ async function migrateExistingTenants() {
   console.log(`Schéma vérifié/mis à jour pour ${boutiques.length} boutique(s) active(s).`);
 }
 
+// Rattrapage : les clés du catalogue activées avant la correction de licenceStatus.js n'ont
+// pas de boutique associée. La clé en cours de chaque boutique est dans sa propre base
+// (table licence) — on la relie au catalogue. Idempotent : ne touche que les clés sans boutique.
+async function backfillLicenceBoutiques() {
+  const { rows: boutiques } = await controlPlanePool.query(
+    "select id, slug, nom, db_name from boutiques where status in ('active', 'suspended')"
+  );
+  let linked = 0;
+  for (const b of boutiques) {
+    try {
+      const { rows } = await getTenantPool(b.db_name).query(
+        "select cle, activee_le from licence where id='principale'"
+      );
+      if (!rows[0]?.cle) continue;
+      const result = await controlPlanePool.query(
+        `update licences_catalogue
+         set status = case when status = 'unused' then 'active' else status end,
+             boutique_id = $1, boutique_nom = $2, boutique_slug = $3,
+             activated_at = coalesce(activated_at, $4)
+         where cle = $5 and boutique_id is null`,
+        [b.id, b.nom, b.slug, rows[0].activee_le, rows[0].cle.trim().toUpperCase()]
+      );
+      linked += result.rowCount;
+    } catch (err) {
+      console.error(`Rattrapage des licences impossible pour "${b.slug}" :`, err.message);
+    }
+  }
+  if (linked > 0) console.log(`${linked} clé(s) du catalogue reliée(s) à leur boutique.`);
+}
+
 async function startWithRetry(retries = 10, delayMs = 2000) {
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
@@ -114,6 +144,7 @@ async function startWithRetry(retries = 10, delayMs = 2000) {
       // le démarrage plutôt que d'échouer silencieusement à la première création de boutique.
       await maintenancePool.query('select 1');
       await migrateExistingTenants();
+      await backfillLicenceBoutiques().catch((err) => console.error('Rattrapage des licences :', err.message));
       app.listen(PORT, () => {
         console.log(`API iVente démarrée sur le port ${PORT}`);
       });

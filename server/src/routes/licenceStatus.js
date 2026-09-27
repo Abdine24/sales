@@ -27,6 +27,19 @@ licenceStatusRouter.post('/activer', async (req, res) => {
 
   const cleanKey = rawKey.trim().toUpperCase();
 
+  // Clé générée depuis l'espace propriétaire : une seule boutique peut l'utiliser (la même
+  // boutique peut la ressaisir). Les clés hors catalogue (script CLI, essais) ne sont pas suivies.
+  const { rows: catalogue } = await controlPlanePool.query(
+    'select status, boutique_id from licences_catalogue where cle=$1',
+    [cleanKey]
+  );
+  if (catalogue[0]?.status === 'revoked') {
+    return res.status(409).json({ error: 'Cette clé de licence a été révoquée.' });
+  }
+  if (catalogue[0]?.boutique_id && catalogue[0].boutique_id !== req.boutique.id) {
+    return res.status(409).json({ error: 'Cette clé de licence est déjà utilisée par une autre boutique.' });
+  }
+
   // Une clé de 7 jours ne peut venir que du preset d'essai gratuit (voir DURATION_PRESET_DAYS
   // côté client — aucun abonnement payant ne dure 7 jours) : une seule utilisation par
   // boutique, vérifiée ici même si /licences/essai a déjà refusé d'en signer une seconde —
@@ -51,16 +64,15 @@ licenceStatusRouter.post('/activer', async (req, res) => {
     [cleanKey, activeeLe, validation.days, expireLe, isTrial]
   );
 
-  // Mettre à jour la clé dans le catalogue du panneau propriétaire si elle y a été générée
+  // Mettre à jour la clé dans le catalogue du panneau propriétaire si elle y a été générée, avec
+  // la boutique qui l'a utilisée (req.boutique, posé par tenantResolver.js — l'ancien code lisait
+  // req.tenant, qui n'existe pas : la boutique restait toujours vide).
   try {
-    const boutiqueId = req.tenant?.id || null;
-    const boutiqueNom = req.tenant?.nom || null;
-    const boutiqueSlug = req.tenant?.slug || null;
     await controlPlanePool.query(
       `update licences_catalogue
        set status = 'active', boutique_id = $1, boutique_nom = $2, boutique_slug = $3, activated_at = $4
        where cle = $5`,
-      [boutiqueId, boutiqueNom, boutiqueSlug, activeeLe, cleanKey]
+      [req.boutique.id, req.boutique.nom, req.boutique.slug, activeeLe, cleanKey]
     );
   } catch (err) {
     console.error('Échec mise à jour catalogue licence :', err);

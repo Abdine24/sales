@@ -11,6 +11,7 @@ import { getOwnerToken, ownerLogin, ownerLogout, ownerGet, ownerPut, ownerPost, 
 import { ApiError } from '../services/api';
 import { evaluateLicenceStatus } from '../utils/license';
 import { formatCfaCompact } from '../utils/currency';
+import './ownerConsole.css';
 
 interface BoutiqueLicence {
   cle: string;
@@ -151,7 +152,7 @@ export const OwnerConsole: React.FC = () => {
     const q = licenceSearch.trim().toLowerCase();
     return catalogueLicences.filter((l) => {
       if (licenceStatusFilter !== 'all' && l.status !== licenceStatusFilter) return false;
-      if (q && !l.cle.toLowerCase().includes(q) && !(l.client_cible || '').toLowerCase().includes(q) && !(l.boutique_nom || '').toLowerCase().includes(q)) return false;
+      if (q && !l.cle.toLowerCase().includes(q) && !(l.client_cible || '').toLowerCase().includes(q) && !(l.boutique_nom || '').toLowerCase().includes(q) && !(l.boutique_slug || '').toLowerCase().includes(q)) return false;
       return true;
     });
   }, [catalogueLicences, licenceSearch, licenceStatusFilter]);
@@ -624,7 +625,7 @@ export const OwnerConsole: React.FC = () => {
   // ÉCRAN DE CONNEXION ADMIN (100% SOLIDE, STYLE FACEBOOK)
   if (!authed) {
     return (
-      <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-[#18191A] flex flex-col items-center justify-center p-4 sm:p-6 relative">
+      <div className="owner-fb min-h-[100dvh] bg-[#F0F2F5] dark:bg-[#18191A] flex flex-col items-center justify-center p-4 sm:p-6 relative">
         <div className="absolute top-4 right-4">{ThemeToggle}</div>
 
         <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-[#242526] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 transition-colors">
@@ -688,7 +689,7 @@ export const OwnerConsole: React.FC = () => {
 
   // CONSOLE ADMIN PRINCIPALE (PAGES ET CARTE 100% SOLIDES AVEC MARGES GÉNÉREUSES)
   return (
-    <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 py-6 sm:py-10 px-4 sm:px-8 lg:px-12 transition-colors">
+    <div className="owner-fb min-h-[100dvh] bg-slate-100 dark:bg-slate-950 py-6 sm:py-10 px-4 sm:px-8 lg:px-12 transition-colors">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         
         {/* En-tête de la Console Admin */}
@@ -1001,7 +1002,7 @@ export const OwnerConsole: React.FC = () => {
                   <input
                     value={licenceSearch}
                     onChange={(e) => setLicenceSearch(e.target.value)}
-                    placeholder="Rechercher clé ou client..."
+                    placeholder="Rechercher clé, client ou boutique..."
                     className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-9 pr-3 py-1.5 rounded-xl text-xs font-medium w-full sm:w-48 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
@@ -1061,17 +1062,33 @@ export const OwnerConsole: React.FC = () => {
                           </Badge>
                         </div>
 
+                        {/* Boutique qui a utilisé la clé (enregistrée à l'activation) */}
+                        {lic.boutique_nom ? (
+                          <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                            <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="text-slate-600 dark:text-slate-400">Utilisée par</span>
+                            <strong className="text-slate-900 dark:text-white">{lic.boutique_nom}</strong>
+                            {lic.boutique_slug && (
+                              <a
+                                href={`https://${lic.boutique_slug}.azanga.tech/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                {lic.boutique_slug}.azanga.tech
+                              </a>
+                            )}
+                          </div>
+                        ) : lic.status === 'unused' ? (
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Pas encore utilisée par une boutique</div>
+                        ) : null}
+
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
                           <span className="font-bold text-slate-800 dark:text-slate-200">
                             {lic.preset_label}
                           </span>
                           {lic.client_cible && (
                             <span>Destinataire : <strong>{lic.client_cible}</strong></span>
-                          )}
-                          {lic.status === 'active' && lic.boutique_nom && (
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                              Utilisée par : {lic.boutique_nom} {lic.boutique_slug ? `(${lic.boutique_slug}.azanga.tech)` : ''}
-                            </span>
                           )}
                           <span>
                             Générée le {new Date(lic.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Espace propriétaire — style « Facebook »
+   Remplace, uniquement dans l'espace propriétaire (.owner-fb), le style « Apple » du reste de
+   l'application : plus de verre dépoli ni de fonds/bordures semi-transparents, plus de coins
+   très arrondis ni d'ombres diffuses. Fonds gris uni, cartes blanches pleines à coins de 8 px,
+   ombre fine, bleu Facebook, textes contrastés.
+   Chaque règle est préfixée par html:not(.dark) ou html.dark : sinon, chargée après Tailwind,
+   une règle « clair » l'emporterait sur les variantes dark: de Tailwind en mode sombre.
+   ========================================================================== */
+
+/* ---------- Mode clair ---------- */
+html:not(.dark) .owner-fb {
+  background-color: #f0f2f5 !important;
+  color: #050505;
+}
+
+/* Cartes et panneaux : blanc plein, ombre fine Facebook */
+html:not(.dark) .owner-fb .bg-white {
+  background-color: #ffffff;
+}
+html:not(.dark) .owner-fb .bg-slate-50,
+html:not(.dark) .owner-fb .bg-slate-100 {
+  background-color: #f0f2f5;
+}
+html:not(.dark) .owner-fb .shadow-sm,
+html:not(.dark) .owner-fb .shadow-md,
+html:not(.dark) .owner-fb .shadow-lg,
+html:not(.dark) .owner-fb .shadow-xl,
+html:not(.dark) .owner-fb .hover\:shadow-md:hover {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+html:not(.dark) .owner-fb .border-slate-100,
+html:not(.dark) .owner-fb .border-slate-200,
+html:not(.dark) .owner-fb .border-slate-200\/80 {
+  border-color: #dadde1;
+}
+html:not(.dark) .owner-fb .border-slate-300 {
+  border-color: #ccd0d5;
+}
+
+/* Textes */
+html:not(.dark) .owner-fb .text-slate-900,
+html:not(.dark) .owner-fb .text-slate-800 {
+  color: #050505;
+}
+html:not(.dark) .owner-fb .text-slate-700 {
+  color: #1c1e21;
+}
+html:not(.dark) .owner-fb .text-slate-600,
+html:not(.dark) .owner-fb .text-slate-500,
+html:not(.dark) .owner-fb .text-slate-400 {
+  color: #65676b;
+}
+
+/* Bleu Facebook */
+html:not(.dark) .owner-fb .bg-blue-600,
+html:not(.dark) .owner-fb .bg-blue-500 {
+  background-color: #1877f2;
+}
+html:not(.dark) .owner-fb .text-blue-500,
+html:not(.dark) .owner-fb .text-blue-600,
+html:not(.dark) .owner-fb .text-blue-700 {
+  color: #1877f2;
+}
+html:not(.dark) .owner-fb .bg-blue-50,
+html:not(.dark) .owner-fb .bg-blue-100 {
+  background-color: #e7f3ff;
+}
+
+/* Fonds / bordures semi-transparents (badges, alertes) remplacés par des teintes pleines */
+html:not(.dark) .owner-fb .bg-blue-500\/10 { background-color: #e7f3ff; }
+html:not(.dark) .owner-fb .bg-emerald-500\/10 { background-color: #e6f4ea; }
+html:not(.dark) .owner-fb .bg-amber-500\/10 { background-color: #fef3e0; }
+html:not(.dark) .owner-fb .bg-rose-500\/10 { background-color: #ffebe9; }
+html:not(.dark) .owner-fb .bg-purple-500\/10 { background-color: #f3e8fd; }
+html:not(.dark) .owner-fb .bg-slate-500\/10 { background-color: #e4e6eb; }
+html:not(.dark) .owner-fb .border-blue-500\/20 { border-color: #b8d6fb; }
+html:not(.dark) .owner-fb .border-emerald-500\/20 { border-color: #b7dfc3; }
+html:not(.dark) .owner-fb .border-amber-500\/20 { border-color: #f5d49a; }
+html:not(.dark) .owner-fb .border-rose-500\/20 { border-color: #f5c2c7; }
+html:not(.dark) .owner-fb .border-purple-500\/20 { border-color: #dcc3f7; }
+html:not(.dark) .owner-fb .border-slate-500\/20 { border-color: #ccd0d5; }
+
+/* Champs de saisie : fond clair plein, bordure nette, focus bleu */
+html:not(.dark) .owner-fb input:not([type='checkbox']):not([type='radio']),
+html:not(.dark) .owner-fb select,
+html:not(.dark) .owner-fb textarea {
+  background-color: #ffffff;
+  border: 1px solid #ccd0d5;
+  color: #050505;
+}
+html:not(.dark) .owner-fb input:focus,
+html:not(.dark) .owner-fb select:focus,
+html:not(.dark) .owner-fb textarea:focus {
+  border-color: #1877f2;
+  box-shadow: 0 0 0 2px #e7f3ff;
+  outline: none;
+}
+
+/* ---------- Mode sombre (palette Facebook) ---------- */
+html.dark .owner-fb {
+  background-color: #18191a !important;
+  color: #e4e6eb;
+}
+html.dark .owner-fb .dark\:bg-slate-900,
+html.dark .owner-fb .dark\:bg-slate-950,
+html.dark .owner-fb .dark\:bg-\[\#242526\] {
+  background-color: #242526;
+}
+html.dark .owner-fb .dark\:bg-slate-800,
+html.dark .owner-fb .dark\:bg-slate-800\/40,
+html.dark .owner-fb .dark\:bg-slate-800\/80 {
+  background-color: #3a3b3c;
+}
+html.dark .owner-fb .dark\:border-slate-700,
+html.dark .owner-fb .dark\:border-slate-800,
+html.dark .owner-fb .dark\:border-slate-700\/80 {
+  border-color: #3e4042;
+}
+html.dark .owner-fb .dark\:text-white,
+html.dark .owner-fb .dark\:text-slate-200 {
+  color: #e4e6eb;
+}
+html.dark .owner-fb .dark\:text-slate-300,
+html.dark .owner-fb .dark\:text-slate-400,
+html.dark .owner-fb .dark\:text-slate-500 {
+  color: #b0b3b8;
+}
+html.dark .owner-fb .shadow-sm,
+html.dark .owner-fb .shadow-md,
+html.dark .owner-fb .shadow-lg,
+html.dark .owner-fb .shadow-xl {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+html.dark .owner-fb .bg-blue-600,
+html.dark .owner-fb .bg-blue-500 {
+  background-color: #2d88ff;
+}
+html.dark .owner-fb .dark\:text-blue-300,
+html.dark .owner-fb .dark\:text-blue-400 {
+  color: #4599ff;
+}
+html.dark .owner-fb input:not([type='checkbox']):not([type='radio']),
+html.dark .owner-fb select,
+html.dark .owner-fb textarea {
+  background-color: #3a3b3c;
+  border: 1px solid #3e4042;
+  color: #e4e6eb;
+}
+html.dark .owner-fb input:focus,
+html.dark .owner-fb select:focus,
+html.dark .owner-fb textarea:focus {
+  border-color: #2d88ff;
+  box-shadow: 0 0 0 2px rgba(45, 136, 255, 0.35);
+  outline: none;
+}
+
+/* ---------- Formes (clair et sombre) ---------- */
+/* Coins de 8 px pour les cartes, 6 px pour boutons/champs — plus de gros arrondis « Apple » */
+.owner-fb .rounded-3xl,
+.owner-fb .rounded-2xl {
+  border-radius: 8px;
+}
+.owner-fb .rounded-xl,
+.owner-fb .rounded-lg,
+.owner-fb button,
+.owner-fb input:not([type='checkbox']):not([type='radio']),
+.owner-fb select,
+.owner-fb textarea {
+  border-radius: 6px;
+}
+/* Pas de verre dépoli */
+.owner-fb [class*='backdrop-blur'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* Boutons : texte semi-gras, sans effet de ressort ni de réduction au clic */
+.owner-fb button {
+  font-weight: 600;
+}
+.owner-fb button:active,
+.owner-fb .tap-scale:active {
+  transform: none !important;
+}
