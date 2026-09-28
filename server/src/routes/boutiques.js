@@ -3,7 +3,7 @@ import { poolFor, closePool, maintenancePool } from '../db.js';
 import { controlPlanePool } from '../controlPlaneDb.js';
 import { applySchemaToTenant } from '../schemaApply.js';
 import { simpleRateLimit } from '../rateLimit.js';
-import { SLUG_RE, RESERVED_SLUGS } from '../tenantResolver.js';
+import { SLUG_RE, isReservedSlug } from '../tenantResolver.js';
 
 export const boutiquesRouter = Router();
 
@@ -24,11 +24,14 @@ boutiquesRouter.post('/', limiter, async (req, res) => {
   if (!nom) {
     return res.status(400).json({ error: 'Le nom de la boutique est requis.' });
   }
-  if (!SLUG_RE.test(slug) || RESERVED_SLUGS.has(slug)) {
+  if (!SLUG_RE.test(slug)) {
     return res.status(400).json({
       error:
         "Adresse de boutique invalide — lettres minuscules, chiffres et tirets uniquement, doit commencer par une lettre (3 à 31 caractères).",
     });
+  }
+  if (isReservedSlug(slug)) {
+    return res.status(400).json({ error: 'Cette adresse est réservée par Azanga — choisis-en une autre.' });
   }
 
   const dbName = `tenant_${slug}`;

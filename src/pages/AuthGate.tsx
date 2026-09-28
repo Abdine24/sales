@@ -25,7 +25,7 @@ import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
 import { sendPasswordResetEmail, subscribeToAuthEvents } from '../services/supabaseAuth';
 import { validateLicenseKey, requestTrialLicenseKey } from '../utils/license';
 import { apiGetPublic, apiPostPublic } from '../services/api';
-import { isPlatformLandingHost, buildBoutiqueUrl } from '../services/tenant';
+import { isPlatformLandingHost, buildBoutiqueUrl, isReservedBoutiqueSlug } from '../services/tenant';
 import { getPlatformConfig, buildWhatsappUrl, DEFAULT_CONTACT_MESSAGE } from '../services/platformConfig';
 import { Button } from '../components/ui/Button';
 import { TermsModal } from '../components/TermsModal';
@@ -44,6 +44,9 @@ const slugify = (nom: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 31);
+
+// Même message que le refus côté serveur (server/src/routes/boutiques.js).
+const ADRESSE_RESERVEE = 'Cette adresse est réservée par Azanga — choisis-en une autre.';
 
 // Champ mot de passe avec bouton afficher/masquer — évite les erreurs de saisie silencieuses
 // (fautes de frappe, mauvaise touche, clavier différent) qui ont causé plusieurs blocages de
@@ -203,6 +206,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const handleCreateBoutique = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    // Le bouton est déjà désactivé dans ce cas (message affiché sous l'adresse) : simple garde-fou.
+    if (isReservedBoutiqueSlug(boutiqueSlug)) return;
     setLoading(true);
     try {
       const result = await apiPostPublic<{ slug: string; nom: string }>('/boutiques', {
@@ -474,6 +479,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   .azanga.tech
                 </span>
               </div>
+              {isReservedBoutiqueSlug(boutiqueSlug) && (
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{ADRESSE_RESERVEE}</p>
+              )}
             </div>
 
             {error && (
@@ -486,7 +494,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               type="submit"
               size="lg"
               className="w-full mt-2"
-              disabled={loading}
+              disabled={loading || isReservedBoutiqueSlug(boutiqueSlug)}
               icon={<Store className="w-4 h-4" />}
             >
               {loading ? 'Création en cours...' : 'Créer ma boutique'}

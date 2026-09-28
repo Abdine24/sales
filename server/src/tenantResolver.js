@@ -6,7 +6,18 @@ import { getTenantPool, withTenantTransaction } from './tenantDb.js';
 export const RESERVED_SLUGS = new Set([
   'api', 'app', 'www', 'admin', 'mail', 'ftp', 'static', 'assets', 'support', 'help',
   'test', 'staging', 'ns1', 'ns2',
+  // Azanga Net (accès distant aux routeurs MikroTik), hébergé sur le même VPS.
+  'net', 'mikhmon', 'netapi', 'aide',
 ]);
+
+// Serveurs d'accès d'Azanga Net, présents et futurs : r1, r2, r3…
+const ACCESS_SERVER_RE = /^r\d+$/;
+
+// Adresse refusée à la création d'une boutique. Copie côté client dans
+// src/services/tenant.ts, pour prévenir dès la saisie : garder les deux listes identiques.
+export function isReservedSlug(slug) {
+  return RESERVED_SLUGS.has(slug) || ACCESS_SERVER_RE.test(slug);
+}
 
 // Même domaine racine que VITE_ROOT_DOMAIN côté client (src/services/tenant.ts).
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'azanga.tech';

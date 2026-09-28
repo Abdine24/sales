@@ -9,6 +9,24 @@ const ROOT_DOMAIN = import.meta.env.VITE_ROOT_DOMAIN || 'azanga.tech';
 // Étiquettes jamais attribuables à une boutique — le domaine applicatif servi par GitHub Pages.
 const RESERVED_LABELS = new Set(['api', 'app', 'www']);
 
+// Adresses qu'une nouvelle boutique ne peut pas prendre : copie de RESERVED_SLUGS côté
+// serveur (server/src/tenantResolver.js), qui reste seul juge. Sert à prévenir dès la saisie
+// dans l'écran "créer ma boutique" (AuthGate.tsx) : garder les deux listes identiques.
+const RESERVED_BOUTIQUE_SLUGS = new Set([
+  'api', 'app', 'www', 'admin', 'mail', 'ftp', 'static', 'assets', 'support', 'help',
+  'test', 'staging', 'ns1', 'ns2',
+  // Azanga Net (accès distant aux routeurs MikroTik), hébergé sur le même VPS.
+  'net', 'mikhmon', 'netapi', 'aide',
+]);
+
+// Serveurs d'accès d'Azanga Net, présents et futurs : r1, r2, r3…
+const ACCESS_SERVER_RE = /^r\d+$/;
+
+export function isReservedBoutiqueSlug(slug: string): boolean {
+  const label = slug.trim().toLowerCase();
+  return RESERVED_BOUTIQUE_SLUGS.has(label) || ACCESS_SERVER_RE.test(label);
+}
+
 function isLocalhost(): boolean {
   return typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 }
