@@ -25,6 +25,15 @@ RUN npm install --omit=dev
 
 COPY src ./src
 
+# Service `backup` de deploy/docker-compose.yml : il réutilise CETTE image (déjà construite par
+# la CI et tirée par le VPS) au lieu d'une image à part — le projet Compose du VPS est créé à
+# partir du seul docker-compose.yml, sans les autres fichiers du dépôt, donc le script ne peut
+# pas y être monté depuis le disque. Client Postgres 16 = même version majeure que le serveur
+# (postgres:16-alpine) ; rclone sert uniquement à la copie hors VPS, optionnelle.
+# Voir deploy/README-backups.md.
+RUN apk add --no-cache postgresql16-client rclone
+COPY backup ./backup
+
 ENV NODE_ENV=production
 EXPOSE 3000
 

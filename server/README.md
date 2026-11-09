@@ -44,3 +44,5 @@ ce Nginx existant qui sert de reverse proxy HTTPS vers elle (voir `deploy/nginx-
    mis à jour via l'outil MCP `VPS_updateProjectV1` (récupère la nouvelle image).
 3. Variables d'environnement fournies au déploiement (jamais dans le compose file lui-même) :
    `POSTGRES_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LICENSE_SECRET`.
+4. Sauvegardes quotidiennes de toutes les bases (service `backup`) et procédure de
+   restauration d'une boutique : voir `deploy/README-backups.md`.
