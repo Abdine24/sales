@@ -1,3 +1,5 @@
+// Doit rester le tout premier import : rattrape les erreurs des routes async (voir le fichier).
+import { errorHandler } from './asyncErrors.js';
 import express from 'express';
 import cors from 'cors';
 import { maintenancePool } from './db.js';
@@ -82,6 +84,10 @@ app.use('/retours', requireAuth, resolveTenant, retoursRouter);
 app.use('/reglements', requireAuth, resolveTenant, reglementsRouter);
 app.use('/notifications', requireAuth, resolveTenant, notificationsRouter);
 app.use('/factures', requireAuth, resolveTenant, facturesRouter);
+
+// Toujours en dernier : transforme toute erreur (y compris celles des routes async) en réponse
+// JSON propre au lieu d'arrêter le process (voir asyncErrors.js).
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
