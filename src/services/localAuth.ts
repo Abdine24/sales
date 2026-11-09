@@ -2,7 +2,7 @@ import { Licence, Personnel, PersonnelRole } from '../db/db';
 import { validateLicenseKey } from '../utils/license';
 import { isSupabaseConfigured } from './supabase';
 import { signInWithPassword, updateOwnPassword } from './supabaseAuth';
-import { apiGet, apiPost, apiPostPublic, ApiError } from './api';
+import { apiGet, apiPost, ApiError } from './api';
 
 // SaaS mode: Auth is always required.
 export const AUTH_REQUIRED = true;
@@ -31,46 +31,23 @@ const resolveCurrentPersonnel = async (): Promise<Personnel> => {
   }
 };
 
-export const authenticate = async (username: string, email: string, password: string) => {
+// `_username` : affiché par le formulaire mais pas utilisé pour la connexion (seuls l'email et
+// le mot de passe le sont) — paramètre gardé pour ne pas changer l'appel dans AuthGate.tsx.
+export const authenticate = async (_username: string, email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase doit être configuré pour se connecter.');
   }
 
-  let targetEmail = email.trim().toLowerCase();
-  const cleanUsername = username.trim().toLowerCase();
+  // La connexion se fait avec l'email saisi (champ obligatoire du formulaire). Il n'existe
+  // plus de route publique qui retrouve l'email d'un employé à partir de son nom
+  // d'utilisateur : n'importe qui pouvait ainsi récupérer les emails de toute l'équipe.
+  const targetEmail = email.trim().toLowerCase();
 
   if (!targetEmail || !targetEmail.includes('@')) {
-    const lookupKey = targetEmail || cleanUsername;
-    if (lookupKey) {
-      try {
-        const resolved = await apiPostPublic<{ email: string }>('/mot-de-passe-oublie/resolve-identifier', {
-          identifier: lookupKey,
-        });
-        if (resolved.email) targetEmail = resolved.email.toLowerCase();
-      } catch {
-        // En cas d'échec de la résolution, poursuit avec la valeur fournie
-      }
-    }
+    throw new Error('Veuillez saisir votre adresse email.');
   }
 
-  if (!targetEmail) {
-    throw new Error('Veuillez saisir votre nom d’utilisateur ou votre adresse email.');
-  }
-
-  let result = await signInWithPassword(targetEmail, password);
-
-  if (!result.success && cleanUsername && cleanUsername !== targetEmail) {
-    try {
-      const resolved = await apiPostPublic<{ email: string }>('/mot-de-passe-oublie/resolve-identifier', {
-        identifier: cleanUsername,
-      });
-      if (resolved.email && resolved.email.toLowerCase() !== targetEmail) {
-        result = await signInWithPassword(resolved.email.toLowerCase(), password);
-      }
-    } catch {
-      // Conserve l'erreur de connexion initiale
-    }
-  }
+  const result = await signInWithPassword(targetEmail, password);
 
   if (!result.success) {
     let msg = result.message || 'Identifiants incorrects.';
