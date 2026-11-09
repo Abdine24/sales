@@ -31,7 +31,7 @@ export const NotificationBell: React.FC = () => {
   const toggleOpen = () => {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      setMenuPos({ top: rect.bottom + 8, right: Math.max(12, window.innerWidth - rect.right) });
     }
     setOpen((prev) => !prev);
   };
@@ -51,6 +51,15 @@ export const NotificationBell: React.FC = () => {
   }, [reload]);
 
   const unreadCount = items.filter((item) => !item.read).length;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   const markRead = async (id: number) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
@@ -76,12 +85,14 @@ export const NotificationBell: React.FC = () => {
         ref={buttonRef}
         type="button"
         onClick={toggleOpen}
-        className="relative p-2 rounded-xl glass-card text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors"
+        className="relative touch-target md:min-w-9 md:min-h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors"
+        aria-label={unreadCount > 0 ? `Notifications (${unreadCount} non lues)` : 'Notifications'}
+        aria-expanded={open}
         title="Notifications"
       >
-        <Bell className="w-4 h-4" />
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+          <span className="absolute top-1 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-xs font-semibold leading-none flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -92,23 +103,23 @@ export const NotificationBell: React.FC = () => {
           {/* Zone invisible pour fermer le menu au clic extérieur */}
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div
-            className="fixed w-80 max-h-96 overflow-y-auto glass-panel rounded-2xl border border-slate-200/60 dark:border-white/10 shadow-xl z-40"
+            className="fixed w-80 max-w-[calc(100vw-24px)] max-h-96 overflow-y-auto bg-surface rounded-xl border border-line shadow-lg z-40"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             <div className="p-3 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Notifications</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Notifications</span>
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                 >
                   <Check className="w-3 h-3" /> Tout marquer lu
                 </button>
               )}
             </div>
             {items.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">Aucune notification.</div>
+              <div className="p-6 text-center text-xs text-slate-500">Aucune notification.</div>
             ) : (
               <div className="divide-y divide-slate-200/40 dark:divide-white/5">
                 {items.map((item) => {
@@ -129,7 +140,7 @@ export const NotificationBell: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-slate-700 dark:text-slate-200 leading-snug">{item.message}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {new Date(item.created_at).toLocaleString('fr-FR', {
                             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                           })}

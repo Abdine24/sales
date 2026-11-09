@@ -17,6 +17,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Fournisseurs: React.FC = () => {
   const { confirm, alert } = useDialog();
@@ -106,7 +107,7 @@ export const Fournisseurs: React.FC = () => {
   );
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <PageSkeleton variant="cards" />;
   }
 
   return (
@@ -114,7 +115,7 @@ export const Fournisseurs: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             Fournisseurs & Partenaires
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -132,13 +133,13 @@ export const Fournisseurs: React.FC = () => {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           type="text"
           placeholder="Rechercher un fournisseur..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+          className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
         />
       </div>
 
@@ -152,7 +153,7 @@ export const Fournisseurs: React.FC = () => {
             <GlassCard key={fournisseur.id} hoverEffect className="flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <div className="p-3 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
                     <Truck className="w-6 h-6" />
                   </div>
                   <div className="flex gap-1">
@@ -171,18 +172,18 @@ export const Fournisseurs: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-3">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mt-3">
                   {fournisseur.nom}
                 </h3>
 
                 <div className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span>{fournisseur.contact}</span>
                   </div>
                   {fournisseur.email && (
                     <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                       <span>{fournisseur.email}</span>
                     </div>
                   )}
@@ -190,7 +191,7 @@ export const Fournisseurs: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/10 flex items-center justify-between text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
+                <span className="text-slate-500 flex items-center gap-1">
                   <Package className="w-3.5 h-3.5" /> {supplierAchats.length} commandes
                 </span>
                 <Badge variant="purple" size="sm">

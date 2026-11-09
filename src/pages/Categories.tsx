@@ -6,6 +6,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { useDialog } from '../components/ui/DialogProvider';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Categories: React.FC = () => {
   const { confirm, alert } = useDialog();
@@ -168,14 +169,14 @@ export const Categories: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <PageSkeleton variant="cards" />;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Catégories & Variantes</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Catégories & Variantes</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Organisez vos produits et leurs déclinaisons depuis un seul endroit.</p>
         </div>
         <Button
@@ -188,10 +189,10 @@ export const Categories: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-white/10 pb-2">
-        <button onClick={() => setActiveTab('categories')} className={`px-4 py-2 rounded-xl text-sm font-bold ${activeTab === 'categories' ? 'bg-emerald-600 text-white' : 'glass-card text-slate-600 dark:text-slate-400'}`}>
+        <button onClick={() => setActiveTab('categories')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === 'categories' ? 'bg-emerald-600 text-white' : 'glass-card text-slate-600 dark:text-slate-400'}`}>
           Catégories ({categories.length})
         </button>
-        <button onClick={() => setActiveTab('variantes')} className={`px-4 py-2 rounded-xl text-sm font-bold ${activeTab === 'variantes' ? 'bg-emerald-600 text-white' : 'glass-card text-slate-600 dark:text-slate-400'}`}>
+        <button onClick={() => setActiveTab('variantes')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${activeTab === 'variantes' ? 'bg-emerald-600 text-white' : 'glass-card text-slate-600 dark:text-slate-400'}`}>
           Variantes ({variants.length})
         </button>
       </div>
@@ -208,7 +209,7 @@ export const Categories: React.FC = () => {
                     <FolderKanban className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900 dark:text-white">{category.nom}</div>
+                    <div className="font-semibold text-slate-900 dark:text-white">{category.nom}</div>
                     <div className="text-xs text-slate-500">{category.description || 'Aucune description'} · {count} produit(s)</div>
                   </div>
                 </div>
@@ -231,7 +232,7 @@ export const Categories: React.FC = () => {
         <GlassCard className="p-0 overflow-hidden">
           <div className="divide-y divide-slate-200/40 dark:divide-white/5">
             {variants.length === 0 ? (
-              <div className="p-8 text-center text-sm text-slate-400">Aucune variante enregistrée.</div>
+              <div className="p-8 text-center text-sm text-slate-500">Aucune variante enregistrée.</div>
             ) : variants.map((variant) => {
               const variantProducts = produits.filter((produit) => produit.variantes?.includes(variant));
               return (
@@ -241,7 +242,7 @@ export const Categories: React.FC = () => {
                       <Layers3 className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 dark:text-white">{variant}</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{variant}</div>
                       <div className="text-xs text-slate-500">{variantProducts.map((produit) => produit.nom).join(', ')}</div>
                     </div>
                   </div>

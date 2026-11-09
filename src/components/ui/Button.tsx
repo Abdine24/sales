@@ -1,7 +1,6 @@
 import React from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
 
-interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass' | 'success';
   size?: 'sm' | 'md' | 'lg';
@@ -9,49 +8,56 @@ interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
   icon?: React.ReactNode;
 }
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'md',
-  className = '',
-  icon,
-  disabled,
-  ...props
-}) => {
-  const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none';
+// Bouton unique de l'application.
+// - Pas de grossissement au survol : un bouton métier ne bouge pas sous la souris.
+// - Retour au clic en CSS (scale 0.97, 120 ms) : il reste fluide même quand la page est
+//   occupée, contrairement à une animation JS.
+// - Cible tactile de 44 px sur mobile, hauteur compacte à partir de md.
+// - Focus clavier : l'anneau global de index.css (:focus-visible), jamais supprimé ici.
+// - Bouton-icône (sans texte) : carré, et `aria-label` obligatoire côté appelant.
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, variant = 'primary', size = 'md', className = '', icon, disabled, ...props }, ref) => {
+    const iconOnly = !children;
 
-  const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2 text-sm gap-2',
-    lg: 'px-6 py-3 text-base gap-2.5 rounded-2xl',
-  };
+    const baseStyles =
+      'inline-flex items-center justify-center shrink-0 font-medium rounded-lg select-none transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
 
-  const variantStyles = {
-    primary:
-      'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white shadow-md shadow-blue-500/20 dark:bg-blue-500 dark:hover:bg-blue-400',
-    secondary:
-      'bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100',
-    danger:
-      'bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white shadow-md shadow-rose-500/20',
-    success:
-      'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-md shadow-emerald-500/20',
-    ghost:
-      'bg-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200',
-    glass:
-      'glass-card hover:bg-white/90 dark:hover:bg-slate-800/90 text-slate-900 dark:text-white shadow-sm border border-slate-200/50 dark:border-white/10',
-  };
+    const sizeStyles = iconOnly
+      ? {
+          sm: 'min-w-11 min-h-11 md:min-w-8 md:min-h-8',
+          md: 'min-w-11 min-h-11 md:min-w-9 md:min-h-9',
+          lg: 'min-w-12 min-h-12',
+        }
+      : {
+          sm: 'min-h-11 md:min-h-8 px-3 text-xs gap-1.5',
+          md: 'min-h-11 md:min-h-9 px-4 text-sm gap-2',
+          lg: 'min-h-12 px-5 text-base gap-2.5',
+        };
 
-  return (
-    <motion.button
-      whileTap={disabled ? undefined : { scale: 0.95 }}
-      whileHover={disabled ? undefined : { scale: 1.02 }}
-      className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
-      disabled={disabled}
-      {...props}
-    >
-      {icon && <span className="shrink-0">{icon}</span>}
-      {children && <span>{children}</span>}
-    </motion.button>
-  );
-};
+    const neutral =
+      'bg-surface text-ink border border-line-strong hover:bg-surface-muted shadow-xs';
+
+    const variantStyles = {
+      primary: 'bg-accent text-white hover:bg-accent-hover shadow-xs',
+      secondary: neutral,
+      glass: neutral,
+      danger: 'bg-rose-600 text-white hover:bg-rose-700 shadow-xs',
+      success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs',
+      ghost: 'bg-transparent text-ink hover:bg-slate-900/5 dark:hover:bg-white/10',
+    };
+
+    return (
+      <button
+        ref={ref}
+        className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+        disabled={disabled}
+        {...props}
+      >
+        {icon && <span className="shrink-0 inline-flex">{icon}</span>}
+        {children && <span>{children}</span>}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';

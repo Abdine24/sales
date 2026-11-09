@@ -30,6 +30,7 @@ import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptP
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt, openWhatsAppDebtReceipt } from '../utils/whatsapp';
 import { generateReceiptPdf, generateDebtReceiptA4Pdf, printReceiptA4 } from '../utils/pdfInvoice';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 interface ClientsProps {
   activeZoneId?: number | null;
@@ -289,7 +290,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
     : [];
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <PageSkeleton variant="list" />;
   }
 
   return (
@@ -297,7 +298,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             Clients & Règlements
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -338,7 +339,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
       <div className="flex border-b border-slate-200/60 dark:border-white/10 gap-2">
         <button
           onClick={() => setActiveMainTab('clients')}
-          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'clients'
+          className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'clients'
             ? 'border-blue-600 text-blue-600 dark:text-blue-400'
             : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
@@ -348,7 +349,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         </button>
         <button
           onClick={() => setActiveMainTab('reglements')}
-          className={`pb-3 px-4 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'reglements'
+          className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${activeMainTab === 'reglements'
             ? 'border-blue-600 text-blue-600 dark:text-blue-400'
             : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
@@ -364,13 +365,13 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
           {/* Search & Stats bar */}
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Rechercher un client par nom, téléphone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
               />
             </div>
 
@@ -389,7 +390,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 actions, qui sont pourtant le but principal de cette page. --- */}
             <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
               {filteredClients.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">Aucun client trouvé.</div>
+                <div className="p-8 text-center text-sm text-slate-500">Aucun client trouvé.</div>
               ) : (
                 filteredClients.map((client) => {
                   const hasDebt = client.total_dette > 0;
@@ -404,17 +405,17 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                               <span className="truncate">{client.nom}</span>
-                              <History className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <History className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                               <span className="truncate selectable">{client.telephone}</span>
                             </div>
                             {client.email && (
                               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                                 <span className="truncate selectable">{client.email}</span>
                               </div>
                             )}
@@ -480,7 +481,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                     <th className="p-4 font-semibold">Client</th>
                     <th className="p-4 font-semibold">Téléphone</th>
                     <th className="p-4 font-semibold">Email</th>
@@ -497,7 +498,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         key={client.id}
                         className="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition-colors"
                       >
-                        <td className="p-4 font-bold text-slate-900 dark:text-white">
+                        <td className="p-4 font-semibold text-slate-900 dark:text-white">
                           <button
                             onClick={() => {
                               setHistoryClient(client);
@@ -506,19 +507,19 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                             className="text-left hover:text-blue-600 transition-colors flex items-center gap-2 group"
                           >
                             <span>{client.nom}</span>
-                            <History className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                            <History className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-500 transition-colors" />
                           </button>
                         </td>
                         <td className="p-4 text-xs text-slate-600 dark:text-slate-300">
                           <span className="flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            <Phone className="w-3.5 h-3.5 text-slate-500" />
                             {client.telephone}
                           </span>
                         </td>
                         <td className="p-4 text-xs text-slate-500">
                           {client.email ? (
                             <span className="flex items-center gap-1.5">
-                              <Mail className="w-3.5 h-3.5 text-slate-400" />
+                              <Mail className="w-3.5 h-3.5 text-slate-500" />
                               {client.email}
                             </span>
                           ) : (
@@ -579,7 +580,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   })}
                   {filteredClients.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400">
+                      <td colSpan={5} className="p-8 text-center text-slate-500">
                         Aucun client trouvé pour « {search} ».
                       </td>
                     </tr>
@@ -596,13 +597,13 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Filtrer par nom client, vendeur, note..."
                 value={reglementSearch}
                 onChange={(e) => setReglementSearch(e.target.value)}
-                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -623,7 +624,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 de l'opération (entrée/sortie) sautent aux yeux d'abord. --- */}
             <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
               {filteredReglements.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">
+                <div className="p-8 text-center text-sm text-slate-500">
                   Aucun règlement enregistré pour le moment.
                 </div>
               ) : (
@@ -633,10 +634,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                     <div key={reg.id} className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-900 dark:text-white truncate">
+                          <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {reg.client_nom}
                           </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                             <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
                             {new Date(reg.date).toLocaleDateString('fr-FR')} ·{' '}
                             {new Date(reg.date).toLocaleTimeString('fr-FR', {
@@ -646,7 +647,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                           </div>
                         </div>
                         <div
-                          className={`text-lg font-black shrink-0 whitespace-nowrap selectable ${
+                          className={`text-lg font-semibold shrink-0 whitespace-nowrap selectable ${
                             isRetour
                               ? 'text-rose-600 dark:text-rose-400'
                               : 'text-emerald-600 dark:text-emerald-400'
@@ -659,17 +660,17 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
 
                       <div className="flex flex-wrap items-center gap-1.5">
                         {isRetour ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400">
                             <ArrowDownLeft className="w-3 h-3" />
                             Remboursement
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                             <ArrowUpRight className="w-3 h-3" />
                             Paiement dette
                           </span>
                         )}
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
                           {reg.mode_paiement === 'mobile_money'
                             ? 'Mobile money'
                             : reg.mode_paiement === 'virement'
@@ -678,7 +679,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         </span>
                         {reg.dette_apres !== undefined && (
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                               reg.dette_apres > 0
                                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
@@ -689,7 +690,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                         <UserCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                         <span className="truncate">
                           {reg.vendeur_nom || 'Caissier non précisé'}
@@ -715,7 +716,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                     <th className="p-4 font-semibold">Date & Heure (Quand)</th>
                     <th className="p-4 font-semibold">Client</th>
                     <th className="p-4 font-semibold">Type</th>
@@ -735,18 +736,18 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         className="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition-colors"
                       >
                         <td className="p-4 font-mono text-xs text-slate-600 dark:text-slate-300">
-                          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+                          <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
                             <Calendar className="w-3.5 h-3.5 text-blue-500" />
                             {new Date(reg.date).toLocaleDateString('fr-FR')}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-xs text-slate-500">
                             {new Date(reg.date).toLocaleTimeString('fr-FR', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })}
                           </div>
                         </td>
-                        <td className="p-4 font-bold text-slate-900 dark:text-white">
+                        <td className="p-4 font-semibold text-slate-900 dark:text-white">
                           {reg.client_nom}
                         </td>
                         <td className="p-4">
@@ -764,7 +765,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         </td>
                         <td className="p-4">
                           <div
-                            className={`text-base font-black ${isRetour
+                            className={`text-base font-semibold ${isRetour
                               ? 'text-rose-600 dark:text-rose-400'
                               : 'text-emerald-600 dark:text-emerald-400'
                               }`}
@@ -779,7 +780,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                             {reg.vendeur_nom || 'Caissier non précisé'}
                           </div>
                           {reg.vendeur_identifiant && (
-                            <div className="text-[10px] text-slate-400 font-mono">
+                            <div className="text-xs text-slate-500 font-mono">
                               ID: {reg.vendeur_identifiant}
                             </div>
                           )}
@@ -793,7 +794,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                         </td>
                         <td className="p-4 text-xs">
                           {reg.dette_apres !== undefined ? (
-                            <span className={reg.dette_apres > 0 ? 'text-rose-500 font-bold' : 'text-emerald-500 font-semibold'}>
+                            <span className={reg.dette_apres > 0 ? 'text-rose-500 font-semibold' : 'text-emerald-500 font-semibold'}>
                               {formatCfa(reg.dette_apres)}
                             </span>
                           ) : (
@@ -815,7 +816,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   })}
                   {filteredReglements.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                      <td colSpan={8} className="p-8 text-center text-slate-500">
                         Aucun règlement enregistré pour le moment.
                       </td>
                     </tr>
@@ -844,7 +845,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
               value={nom}
               onChange={(e) => setNom(e.target.value)}
               placeholder="ex: Jean Dupont"
-              className="w-full glass-input px-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
             />
           </div>
 
@@ -858,7 +859,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
               value={telephone}
               onChange={(e) => setTelephone(e.target.value)}
               placeholder="ex: +229 97000000"
-              className="w-full glass-input px-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
             />
           </div>
 
@@ -871,7 +872,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="ex: client@gmail.com"
-              className="w-full glass-input px-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
             />
           </div>
 
@@ -895,11 +896,11 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         >
           <form onSubmit={handleConfirmPayment} className="space-y-4">
             {/* Header dette */}
-            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center">
-              <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400">
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+              <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
                 Créance Actuelle Due
               </span>
-              <div className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-1">
+              <div className="text-3xl font-semibold text-rose-600 dark:text-rose-400 mt-1">
                 {formatCfa(payingClient.total_dette)}
               </div>
             </div>
@@ -914,7 +915,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   <button
                     type="button"
                     onClick={() => setReglementAmount(payingClient.total_dette.toString())}
-                    className="text-[11px] font-bold text-blue-600 hover:underline"
+                    className="text-xs font-semibold text-blue-600 hover:underline"
                   >
                     Tout solder
                   </button>
@@ -922,7 +923,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   <button
                     type="button"
                     onClick={() => setReglementAmount(Math.round(payingClient.total_dette / 2).toString())}
-                    className="text-[11px] font-bold text-blue-600 hover:underline"
+                    className="text-xs font-semibold text-blue-600 hover:underline"
                   >
                     50%
                   </button>
@@ -934,7 +935,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 required
                 value={reglementAmount}
                 onChange={(e) => setReglementAmount(e.target.value)}
-                className="w-full glass-input px-4 py-3 rounded-2xl text-xl font-black text-emerald-600 dark:text-emerald-400"
+                className="w-full glass-input px-4 py-3 rounded-xl text-xl font-semibold text-emerald-600 dark:text-emerald-400"
               />
             </div>
 
@@ -953,7 +954,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                     key={m.id}
                     type="button"
                     onClick={() => setPaymentMode(m.id as any)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${paymentMode === m.id
+                    className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-colors ${paymentMode === m.id
                       ? 'bg-blue-600 text-white border-blue-600 shadow-md'
                       : 'glass-input text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
                       }`}
@@ -1017,15 +1018,15 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
           <div className="space-y-4">
             {/* Top Client Summary Cards */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                 <div className="text-xs text-slate-500">Achats totaux</div>
-                <div className="text-xl font-black text-blue-600">
+                <div className="text-xl font-semibold text-blue-600">
                   {formatCfa(historySales.reduce((sum, v) => sum + v.total, 0))}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                 <div className="text-xs text-slate-500">Règlements reçus</div>
-                <div className="text-xl font-black text-emerald-600">
+                <div className="text-xl font-semibold text-emerald-600">
                   {formatCfa(
                     historyReglements
                       .filter((r) => r.type === 'paiement_dette' || r.type === 'acompte')
@@ -1033,9 +1034,9 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   )}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
                 <div className="text-xs text-slate-500">Dette restante</div>
-                <div className="text-xl font-black text-rose-600">
+                <div className="text-xl font-semibold text-rose-600">
                   {formatCfa(historyClient.total_dette)}
                 </div>
               </div>
@@ -1045,7 +1046,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             <div className="flex border-b border-slate-200/60 dark:border-white/10 gap-2">
               <button
                 onClick={() => setHistoryTab('ventes')}
-                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'ventes'
+                className={`pb-2.5 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'ventes'
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
@@ -1055,7 +1056,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
               </button>
               <button
                 onClick={() => setHistoryTab('reglements')}
-                className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'reglements'
+                className={`pb-2.5 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors ${historyTab === 'reglements'
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
@@ -1069,21 +1070,21 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             {historyTab === 'ventes' && (
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
                 {historySales.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-6">
+                  <p className="text-sm text-slate-500 text-center py-6">
                     Aucun achat enregistré pour ce client.
                   </p>
                 ) : (
                   historySales.map((vente) => (
                     <div
                       key={vente.id}
-                      className="p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30"
+                      className="p-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30"
                     >
                       <div className="flex items-center justify-between gap-3 mb-2">
                         <div>
-                          <div className="font-bold text-slate-900 dark:text-white">
+                          <div className="font-semibold text-slate-900 dark:text-white">
                             {new Date(vente.date).toLocaleString('fr-FR')}
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-500">
                             {vente.methode_paiement.toUpperCase()} · {vente.statut}
                           </div>
                           <div className="text-xs text-blue-600 dark:text-blue-400">
@@ -1092,7 +1093,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-black text-blue-600">{formatCfa(vente.total)}</div>
+                          <div className="font-semibold text-blue-600">{formatCfa(vente.total)}</div>
                           <Button
                             variant="glass"
                             size="sm"
@@ -1128,7 +1129,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             {historyTab === 'reglements' && (
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
                 {historyReglements.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-6">
+                  <p className="text-sm text-slate-500 text-center py-6">
                     Aucun règlement enregistré pour ce client.
                   </p>
                 ) : (
@@ -1137,11 +1138,11 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                     return (
                       <div
                         key={reg.id}
-                        className="p-4 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between gap-4"
+                        className="p-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between gap-4"
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 dark:text-white text-sm">
+                            <span className="font-semibold text-slate-900 dark:text-white text-sm">
                               {new Date(reg.date).toLocaleString('fr-FR')}
                             </span>
                             <Badge variant={isRetour ? 'red' : 'green'} size="sm">
@@ -1156,21 +1157,21 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                             {reg.vendeur_identifiant ? ` (${reg.vendeur_identifiant})` : ''} · Mode : {reg.mode_paiement}
                           </div>
                           {reg.dette_avant !== undefined && reg.dette_apres !== undefined && (
-                            <div className="text-[11px] text-slate-400">
-                              Créance avant : {formatCfa(reg.dette_avant)} ➔ Solde restant :{' '}
+                            <div className="text-xs text-slate-500">
+                              Créance avant : {formatCfa(reg.dette_avant)} → Solde restant :{' '}
                               <strong className="text-slate-700 dark:text-slate-300">
                                 {formatCfa(reg.dette_apres)}
                               </strong>
                             </div>
                           )}
                           {reg.note && (
-                            <div className="text-[11px] italic text-slate-500">Note : {reg.note}</div>
+                            <div className="text-xs italic text-slate-500">Note : {reg.note}</div>
                           )}
                         </div>
 
                         <div className="flex items-center gap-3">
                           <div
-                            className={`text-lg font-black ${isRetour
+                            className={`text-lg font-semibold ${isRetour
                               ? 'text-rose-600 dark:text-rose-400'
                               : 'text-emerald-600 dark:text-emerald-400'
                               }`}
@@ -1206,8 +1207,8 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
         >
           <div className="space-y-4 text-sm">
             {/* Header Badge */}
-            <div className="text-center p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+            <div className="text-center p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                 {selectedReceiptReglement.type === 'remboursement_retour'
                   ? 'Reçu de Remboursement'
                   : 'Reçu de Règlement de Créance'}
@@ -1221,7 +1222,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             </div>
 
             {/* Details Box */}
-            <div className="space-y-2 border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-2xl text-xs">
+            <div className="space-y-2 border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-500">Client :</span>
                 <strong className="text-slate-900 dark:text-white">
@@ -1251,14 +1252,14 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   </span>
                 </div>
               )}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between text-sm font-black">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between text-sm font-semibold">
                 <span>Montant perçu :</span>
                 <span className="text-emerald-600 dark:text-emerald-400">
                   {formatCfa(selectedReceiptReglement.montant)}
                 </span>
               </div>
               {selectedReceiptReglement.dette_apres !== undefined && (
-                <div className="flex justify-between text-xs font-bold text-rose-500">
+                <div className="flex justify-between text-xs font-semibold text-rose-500">
                   <span>Nouveau solde dû :</span>
                   <span>{formatCfa(selectedReceiptReglement.dette_apres)}</span>
                 </div>
@@ -1275,10 +1276,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   {phone ? (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
                       <div className="text-xs">
-                        <div className="font-bold text-emerald-800 dark:text-emerald-300">
+                        <div className="font-semibold text-emerald-800 dark:text-emerald-300">
                           Envoyer le reçu sur WhatsApp
                         </div>
-                        <div className="text-slate-500 font-mono text-[11px]">
+                        <div className="text-slate-500 font-mono text-xs">
                           {phone} • Reçu officiel PDF A4 inclus
                         </div>
                       </div>
@@ -1370,8 +1371,8 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
             } satisfies ReceiptData}
           />
           <div className="space-y-4 text-sm">
-            <div className="text-center p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Reçu de paiement</h3>
+            <div className="text-center p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Reçu de paiement</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Référence : {selectedReceiptSale.id.substring(0, 8)}
               </p>
@@ -1382,7 +1383,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                 Reçu régénéré le : {new Date().toLocaleString('fr-FR')}
               </p>
             </div>
-            <div className="space-y-2 border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-2xl">
+            <div className="space-y-2 border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl">
               <div className="flex justify-between">
                 <span>Client</span>
                 <strong>{selectedReceiptSale.client_nom || historyClient?.nom}</strong>
@@ -1400,12 +1401,12 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                     </div>
                   ))}
               </div>
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between font-black">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between font-semibold">
                 <span>Total payé</span>
                 <span>{formatCfa(selectedReceiptSale.montant_paye)}</span>
               </div>
               {selectedReceiptSale.reste_a_payer > 0 && (
-                <div className="flex justify-between text-rose-500 font-bold">
+                <div className="flex justify-between text-rose-500 font-semibold">
                   <span>Reste à payer</span>
                   <span>{formatCfa(selectedReceiptSale.reste_a_payer)}</span>
                 </div>
@@ -1422,10 +1423,10 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
                   {phone ? (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
                       <div className="text-xs">
-                        <div className="font-bold text-emerald-800 dark:text-emerald-300">
+                        <div className="font-semibold text-emerald-800 dark:text-emerald-300">
                           Envoyer le reçu sur WhatsApp
                         </div>
-                        <div className="text-slate-500 font-mono text-[11px]">
+                        <div className="text-slate-500 font-mono text-xs">
                           {phone} • PDF A4 inclus
                         </div>
                       </div>

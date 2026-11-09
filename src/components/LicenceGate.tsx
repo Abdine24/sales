@@ -97,13 +97,13 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-md glass-card p-8 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-white/10">
+      <div className="w-full max-w-md glass-card p-8 rounded-xl shadow-xl border border-slate-200/80 dark:border-white/10">
         <div className="flex items-center gap-3.5 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Licence expirée</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Licence expirée</h1>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
               L'abonnement de cette boutique est arrivé à échéance{status.expireLe ? ` le ${new Date(status.expireLe).toLocaleDateString('fr-FR')}` : ''}.
             </p>
@@ -128,9 +128,9 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
         ) : (
         <form onSubmit={submitRenewal} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Nouvelle clé de licence</label>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Nouvelle clé de licence</label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+              <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
               <input
                 required
                 autoFocus

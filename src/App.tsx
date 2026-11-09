@@ -5,7 +5,8 @@ import { canAccess, firstAllowedPage } from './services/localAuth';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LicenceGate } from './components/LicenceGate';
 import { OnlineRequiredGate } from './components/OnlineRequiredGate';
-import { Loader2, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { PageSkeleton } from './components/ui/Skeleton';
 
 const OwnerConsole = lazy(() => import('./pages/OwnerConsole').then((m) => ({ default: m.OwnerConsole })));
 
@@ -22,21 +23,17 @@ const Personnel = lazy(() => import('./pages/Personnel').then((m) => ({ default:
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 
 function PageFallback() {
-  return (
-    <div className="flex-1 flex items-center justify-center py-20 text-slate-400">
-      <Loader2 className="w-6 h-6 animate-spin" />
-    </div>
-  );
+  return <PageSkeleton variant="list" />;
 }
 
 function AccessDenied({ onGoHome }: { onGoHome: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 p-10">
-      <div className="p-4 rounded-3xl bg-rose-500/10 text-rose-500">
+      <div className="p-4 rounded-xl bg-rose-500/10 text-rose-500">
         <Lock className="w-8 h-8" />
       </div>
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Accès restreint</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Accès restreint</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
           Votre rôle ne vous permet pas d'ouvrir cette page.
         </p>

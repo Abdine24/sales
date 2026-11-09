@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { MotionConfig } from 'framer-motion';
 import App from './App';
 import './index.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -17,10 +18,14 @@ listenForElectronDeepLinks();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <DialogProvider>
-        <App />
-      </DialogProvider>
-    </ErrorBoundary>
+    {/* reducedMotion="user" : si le système demande moins d'animations, framer-motion
+        supprime déplacements et mises à l'échelle et ne garde que les fondus. */}
+    <MotionConfig reducedMotion="user">
+      <ErrorBoundary>
+        <DialogProvider>
+          <App />
+        </DialogProvider>
+      </ErrorBoundary>
+    </MotionConfig>
   </React.StrictMode>
 );

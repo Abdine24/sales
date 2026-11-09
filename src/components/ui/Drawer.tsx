@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { EASE_DRAWER, useDialogBehavior } from './useDialogBehavior';
 
 interface DrawerProps {
   isOpen: boolean;
@@ -9,64 +11,60 @@ interface DrawerProps {
   children: React.ReactNode;
 }
 
-export const Drawer: React.FC<DrawerProps> = ({
-  isOpen,
-  onClose,
-  title,
-  children,
-}) => {
-  const onCloseRef = React.useRef(onClose);
-  onCloseRef.current = onClose;
+// Panneau latéral droit. Même socle que la modale : portail, rôle dialog, focus piégé, Échap.
+export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogBehavior(isOpen, panelRef, onClose);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/40 backdrop-blur-md transition-opacity"
+            className="fixed inset-0 bg-slate-950/50"
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
             <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              tabIndex={-1}
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="w-screen max-w-md glass-panel border-l border-white/30 dark:border-white/10 shadow-2xl flex flex-col"
+              exit={{ x: '100%', transition: { duration: 0.2, ease: EASE_DRAWER } }}
+              transition={{ duration: 0.28, ease: EASE_DRAWER }}
+              className="w-screen max-w-md bg-surface border-l border-line shadow-xl flex flex-col focus:outline-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
             >
-              {/* Header */}
-              <div className="p-6 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-2">
+                <h2 id={titleId} className="text-lg font-semibold text-ink truncate">
                   {title}
                 </h2>
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="p-2 rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                  aria-label="Fermer"
+                  className="touch-target md:min-w-9 md:min-h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6">{children}</div>
+              <div className="scroll-area flex-1 overflow-y-auto p-5">{children}</div>
             </motion.div>
           </div>
         </div>
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(overlay, document.body);
 };

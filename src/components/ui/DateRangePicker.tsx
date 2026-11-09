@@ -270,7 +270,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 glass-card hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 select-none shadow-sm ${
+        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors duration-200 glass-card hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-white/10 select-none shadow-sm ${
           isOpen ? 'ring-2 ring-blue-500/40 bg-blue-500/5' : ''
         }`}
       >
@@ -282,7 +282,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             ) : (
               <>
                 <span>{formatDisplayDate(startDate)}</span>
-                <span className="mx-1.5 text-slate-400 font-normal">→</span>
+                <span className="mx-1.5 text-slate-500 font-normal">→</span>
                 <span>{formatDisplayDate(endDate)}</span>
               </>
             )
@@ -296,13 +296,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
+            // S'ouvre depuis son bouton (origine du côté où il est aligné), largeur bornée par
+            // l'écran pour ne jamais déborder sur un téléphone.
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
             className={`absolute top-full mt-2 z-50 ${
-              align === 'right' ? 'right-0' : 'left-0'
-            } w-[340px] sm:w-[480px] p-4 rounded-2xl glass-panel shadow-2xl border border-slate-200/80 dark:border-white/15 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-white select-none`}
+              align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
+            } w-[340px] sm:w-[480px] max-w-[calc(100vw-24px)] p-4 rounded-xl bg-surface border border-line shadow-lg text-ink select-none`}
           >
             {/* Header with Title & Close */}
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/60 dark:border-white/10">
@@ -311,10 +313,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   <CalendarIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-900 dark:text-white">
                     Période & Calendrier
                   </h4>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Sélectionnez une date de début et de fin
                   </p>
                 </div>
@@ -322,7 +324,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 text-slate-500 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -335,7 +337,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   key={preset.id}
                   type="button"
                   onClick={() => handleApplyPreset(preset.id)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400 text-slate-600 dark:text-slate-300 transition-colors"
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400 text-slate-600 dark:text-slate-300 transition-colors"
                 >
                   {preset.label}
                 </button>
@@ -357,7 +359,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <select
                   value={viewMonth}
                   onChange={(e) => setViewMonth(Number(e.target.value))}
-                  className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                  className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                 >
                   {MONTH_NAMES.map((name, idx) => (
                     <option key={name} value={idx}>
@@ -369,7 +371,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <select
                   value={viewYear}
                   onChange={(e) => setViewYear(Number(e.target.value))}
-                  className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                  className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                 >
                   {Array.from({ length: 15 }, (_, i) => 2020 + i).map((y) => (
                     <option key={y} value={y}>
@@ -394,8 +396,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               {DAY_NAMES.map((day, idx) => (
                 <div
                   key={day}
-                  className={`text-[10px] font-black uppercase tracking-wider py-1 ${
-                    idx >= 5 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400'
+                  className={`text-xs font-semibold uppercase tracking-wide py-1 ${
+                    idx >= 5 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-500'
                   }`}
                 >
                   {day}
@@ -422,11 +424,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 }
 
                 if (isInRange) {
-                  dayClass = 'bg-blue-500/15 text-blue-600 dark:text-blue-300 font-bold';
+                  dayClass = 'bg-blue-500/15 text-blue-600 dark:text-blue-300 font-semibold';
                 }
 
                 if (isSelectedStart || isSelectedEnd) {
-                  dayClass = 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30';
+                  dayClass = 'bg-blue-600 text-white font-semibold shadow-md';
                 }
 
                 return (
@@ -436,7 +438,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     onClick={() => handleDayClick(item.ymd)}
                     onMouseEnter={() => setHoverDate(item.ymd)}
                     onMouseLeave={() => setHoverDate(null)}
-                    className={`h-8 w-full rounded-lg text-xs flex flex-col items-center justify-center relative transition-all duration-150 ${dayClass} ${
+                    className={`h-8 w-full rounded-lg text-xs flex flex-col items-center justify-center relative transition-colors duration-150 ${dayClass} ${
                       isSelectedStart ? 'rounded-l-lg' : ''
                     } ${isSelectedEnd ? 'rounded-r-lg' : ''}`}
                   >

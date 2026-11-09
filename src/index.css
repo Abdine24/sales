@@ -11,22 +11,85 @@
    server/Dockerfile et server/src/receiptFonts.js).
    ========================================================================== */
 
+
 @layer base {
+  /* ------------------------------------------------------------------------
+     Jetons de couleur (canaux RGB, voir tailwind.config.js). Les thèmes ne
+     redéfinissent QUE ces variables : aucune surcharge de classe, aucun
+     !important. Contrastes visés : texte ≥ 4,5:1 sur sa surface (AA).
+     ------------------------------------------------------------------------ */
   :root {
     /* Valeur par défaut ; remplacée au démarrage par le choix de l'utilisateur (main.tsx) */
     --app-font: Arial, "Liberation Sans", Arimo, Roboto, Helvetica, sans-serif;
 
-    --bg-glass-light: rgba(255, 255, 255, 0.72);
-    --border-glass-light: rgba(255, 255, 255, 0.5);
-    --shadow-glass-light: 0 10px 30px rgba(0, 0, 0, 0.04);
+    --canvas: 241 245 249;        /* slate-100 : fond de l'application */
+    --surface: 255 255 255;       /* cartes, panneaux, modales */
+    --surface-muted: 248 250 252; /* slate-50 : zones secondaires, en-têtes de tableau */
+    --line: 226 232 240;          /* slate-200 : bordures */
+    --line-strong: 203 213 225;   /* slate-300 : bordures de champs */
+    --ink: 15 23 42;              /* slate-900 : texte */
+    --ink-muted: 71 85 105;       /* slate-600 : texte secondaire (7:1 sur blanc) */
+    --accent: 37 99 235;          /* blue-600 : accent unique */
+    --accent-hover: 29 78 216;    /* blue-700 */
+    --focus-ring: 37 99 235;
 
-    --bg-glass-dark: rgba(15, 23, 42, 0.75);
-    --border-glass-dark: rgba(255, 255, 255, 0.1);
-    --shadow-glass-dark: 0 10px 30px rgba(0, 0, 0, 0.35);
+    color-scheme: light;
+  }
+
+  .dark {
+    --canvas: 2 6 23;             /* slate-950 */
+    --surface: 15 23 42;          /* slate-900 */
+    --surface-muted: 30 41 59;    /* slate-800 */
+    --line: 30 41 59;             /* slate-800 */
+    --line-strong: 51 65 85;      /* slate-700 */
+    --ink: 241 245 249;           /* slate-100 */
+    --ink-muted: 148 163 184;     /* slate-400 (6,9:1 sur slate-900) */
+    --accent: 59 130 246;         /* blue-500 */
+    --accent-hover: 96 165 250;   /* blue-400 */
+    --focus-ring: 96 165 250;
+
+    color-scheme: dark;
+  }
+
+  /* Contraste élevé : surfaces blanches, bordures marquées, texte secondaire foncé. */
+  .theme-contrast {
+    --canvas: 226 232 240;        /* slate-200 */
+    --surface: 255 255 255;
+    --surface-muted: 241 245 249;
+    --line: 148 163 184;          /* slate-400 */
+    --line-strong: 71 85 105;     /* slate-600 */
+    --ink: 2 6 23;
+    --ink-muted: 30 41 59;        /* slate-800 */
+    --accent: 29 78 216;          /* blue-700 */
+    --accent-hover: 30 64 175;
+    --focus-ring: 29 78 216;
   }
 
   body {
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
+    /* Chiffres de même largeur partout : montants FCFA, quantités, dates et
+       références s'alignent en colonne et ne « dansent » plus quand ils changent. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Anneau de focus clavier unique pour tout ce qui se clique. N'apparaît qu'à la
+     navigation au clavier (ou douchette + Tab), jamais au clic souris ou au doigt. */
+  :where(button, a, summary, [role='button'], [role='tab'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: 2px solid rgb(var(--focus-ring));
+    outline-offset: 2px;
+  }
+
+  /* Réglage système « réduire les animations » : on garde les fondus, on supprime
+     les déplacements et les mises à l'échelle (framer-motion suit via MotionConfig). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -91,12 +154,11 @@ label {
 
 /* Réaction physique au toucher, en remplacement du highlight supprimé. */
 .tap-scale {
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .tap-scale:active {
-  transform: scale(0.96);
-  opacity: 0.85;
+  transform: scale(0.97);
 }
 
 /* --- Encoches et barres système (viewport-fit=cover est déjà posé dans
@@ -161,7 +223,7 @@ label {
 }
 
 .animate-sheet-up {
-  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: sheet-up 260ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Poignée de préhension en haut d'une feuille — signal visuel universel
@@ -193,7 +255,7 @@ label {
   }
 }
 
-/* Apple-style Custom Scrollbars */
+/* Barres de défilement fines */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -236,238 +298,109 @@ label {
   background: rgba(142, 142, 147, 0.65);
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-  background-color: var(--bg-glass-light);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+
+/* ==========================================================================
+   Surfaces
+   Les noms historiques (.glass-panel, .glass-card, .glass-input) sont gardés
+   pour ne pas réécrire les 200 usages des pages, mais ce ne sont plus des
+   surfaces en verre dépoli : fonds pleins, bordure nette de 1px, ombre fine
+   neutre. Lisibles sous les néons comme en plein soleil, et sans le coût du
+   flou sur les petits Android.
+   ========================================================================== */
+
+/* Dans @layer components : les utilitaires Tailwind posés sur ces éléments (bordure,
+   ombre, anneau) passent toujours devant. */
+@layer components {
+  /* Barres et grands panneaux (header, sidebar, barre d'onglets, modales). */
+  .glass-panel {
+    background-color: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+  }
+
+  /* Cartes et blocs de contenu. */
+  .glass-card {
+    background-color: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  }
+
+  /* :where() garde la spécificité basse : un utilitaire (ring-*, shadow-*) posé sur la
+     carte l'emporte toujours. */
+  :where(.dark) .glass-card {
+    box-shadow: none;
+  }
+
+  /* Champs de saisie et listes déroulantes. */
+  .glass-input {
+    background-color: rgb(var(--surface));
+    border: 1px solid rgb(var(--line-strong));
+    color: rgb(var(--ink));
+    font-family: inherit;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .glass-input::placeholder {
+    color: rgb(var(--ink-muted) / 0.8);
+  }
+
+  .glass-input:focus {
+    outline: none;
+    border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.2);
+  }
+
+  .glass-input:disabled {
+    background-color: rgb(var(--surface-muted));
+    cursor: not-allowed;
+  }
 }
 
-.dark .glass-panel {
-  background-color: var(--bg-glass-dark);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
-}
-
-.dark .glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
-}
-
-.glass-input {
-  background: rgba(241, 245, 249, 0.8);
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.dark .glass-input {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.glass-input:focus {
-  outline: none;
-  background: rgba(255, 255, 255, 0.95);
-  border-color: #007AFF;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
-}
-
-.dark .glass-input:focus {
-  background: rgba(15, 23, 42, 0.9);
-  border-color: #007AFF;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.35);
-}
-
-/* Mode 3: Forêt Émeraude & Jade (Vert Luxueux) */
-.dark.theme-emerald {
-  --bg-glass-dark: rgba(4, 20, 14, 0.88);
-  --border-glass-dark: rgba(16, 185, 129, 0.2);
-  --shadow-glass-dark: 0 10px 35px rgba(0, 0, 0, 0.7);
-}
-
-.dark.theme-emerald,
-.dark.theme-emerald body,
-.dark.theme-emerald .bg-slate-950,
-.dark.theme-emerald .bg-slate-900 {
-  background-color: #03140c !important;
-}
-
-.dark.theme-emerald .glass-panel {
-  background-color: rgba(4, 20, 14, 0.85);
-  border-color: rgba(16, 185, 129, 0.18);
-  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.65);
-}
-
-.dark.theme-emerald .glass-card {
-  background: rgba(8, 30, 22, 0.78);
-  border-color: rgba(16, 185, 129, 0.16);
-  box-shadow: 0 4px 25px -2px rgba(0, 0, 0, 0.45);
-}
-
-.dark.theme-emerald .glass-input {
-  background: rgba(4, 20, 14, 0.8);
-  border-color: rgba(16, 185, 129, 0.25);
-}
-
-.dark.theme-emerald .glass-input:focus {
-  background: rgba(6, 28, 20, 0.95);
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
-}
-
-/* Mode 4: Clair Haute Définition / Solid & Bordures Prononcées (Sans effet Glass) */
-.theme-contrast {
-  --bg-glass-light: #ffffff;
-  --border-glass-light: #cbd5e1;
-  --shadow-glass-light: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.theme-contrast,
-.theme-contrast body,
-.theme-contrast .bg-slate-100 {
-  background-color: #f1f5f9 !important;
-}
-
-.theme-contrast .glass-panel {
-  background-color: #ffffff !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1.5px solid #cbd5e1 !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06) !important;
-}
-
-.theme-contrast .glass-card {
-  background-color: #ffffff !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1.5px solid #cbd5e1 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-}
-
-.theme-contrast .glass-input {
-  background-color: #ffffff !important;
-  border: 1.5px solid #94a3b8 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-}
-
-.theme-contrast .glass-input:focus {
-  background-color: #ffffff !important;
-  border-color: #2563eb !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
-}
-
-/* Apple-like Custom Date Inputs & Calendar Picker Theme */
+/* ==========================================================================
+   Champs date (un seul bloc : l'ancien en contenait deux qui s'écrasaient)
+   ========================================================================== */
 input[type="date"] {
   font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color-scheme: light;
   cursor: pointer;
-}
-
-.dark input[type="date"] {
-  color-scheme: dark;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 2px;
   opacity: 0.7;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 150ms ease;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
-  transform: scale(1.12);
 }
 
 .dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.9) brightness(1.2);
+  filter: invert(0.9);
 }
 
-input[type="date"]::-webkit-datetime-edit {
-  font-family: inherit;
-  padding: 0 2px;
-}
-
+input[type="date"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-datetime-edit-fields-wrapper {
   font-family: inherit;
-}
-
-input[type="date"]::-webkit-datetime-edit-text {
-  color: rgba(148, 163, 184, 0.9);
-  padding: 0 1px;
-}
-
-input[type="date"]::-webkit-datetime-edit-month-field,
-input[type="date"]::-webkit-datetime-edit-day-field,
-input[type="date"]::-webkit-datetime-edit-year-field {
-  font-family: inherit;
-  font-weight: 700;
-  border-radius: 4px;
-  padding: 1px 2px;
 }
 
 input[type="date"]::-webkit-datetime-edit-month-field:focus,
 input[type="date"]::-webkit-datetime-edit-day-field:focus,
 input[type="date"]::-webkit-datetime-edit-year-field:focus {
-  background-color: rgba(0, 122, 255, 0.2);
-  color: #007AFF;
+  background-color: rgb(var(--accent) / 0.15);
+  color: rgb(var(--accent));
   outline: none;
+  border-radius: 2px;
 }
 
-/* Pulsing network badge */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.08); }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s infinite ease-in-out;
-}
-
-/* Toast notifications (see DialogProvider.tsx) */
+/* Toasts (voir DialogProvider.tsx) : entrée courte, sans rebond. */
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-toast-in {
-  animation: toast-in 0.2s ease-out;
-}
-
-/* Date Picker styling */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-  padding: 4px;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-
-.dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  animation: toast-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* ==========================================================================

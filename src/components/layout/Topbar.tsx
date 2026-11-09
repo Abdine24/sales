@@ -1,24 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Wifi,
-  WifiOff,
-  Sun,
-  Moon,
-  Leaf,
-  Contrast,
-  PlusCircle,
-  UserCircle,
-  LogOut,
-  Store,
-  X,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Wifi, WifiOff, Sun, Moon, Contrast, ShoppingBag, UserCircle, LogOut, Store, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { NotificationBell } from '../NotificationBell';
 import { Zone, AppSettings } from '../../db/db';
 
-export type ThemeMode = 'light' | 'dark' | 'emerald' | 'contrast';
+export type ThemeMode = 'light' | 'dark' | 'contrast';
 
 interface TopbarProps {
   isOnline: boolean;
@@ -35,12 +22,29 @@ interface TopbarProps {
   settings?: AppSettings | null;
 }
 
-const THEMES: { mode: ThemeMode; icon: React.ComponentType<{ className?: string }>; label: string; activeClass: string }[] = [
-  { mode: 'light', icon: Sun, label: 'Clair', activeClass: 'bg-white text-amber-500 shadow-xs' },
-  { mode: 'dark', icon: Moon, label: 'Sombre', activeClass: 'bg-slate-800 text-blue-400 shadow-xs' },
-  { mode: 'emerald', icon: Leaf, label: 'Émeraude', activeClass: 'bg-emerald-950 text-emerald-400 border border-emerald-500/40' },
-  { mode: 'contrast', icon: Contrast, label: 'Contraste', activeClass: 'bg-slate-900 text-white ring-2 ring-blue-500' },
+const THEMES: { mode: ThemeMode; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
+  { mode: 'light', icon: Sun, label: 'Clair' },
+  { mode: 'dark', icon: Moon, label: 'Sombre' },
+  { mode: 'contrast', icon: Contrast, label: 'Contraste' },
 ];
+
+/** Heure courante, mise à jour à chaque changement de minute (et non chaque seconde). */
+function useMinuteClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer: number;
+    const schedule = () => {
+      const msToNextMinute = 60_000 - (Date.now() % 60_000);
+      timer = window.setTimeout(() => {
+        setNow(new Date());
+        schedule();
+      }, msToNextMinute + 50);
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+  return now;
+}
 
 export const Topbar: React.FC<TopbarProps> = ({
   isOnline,
@@ -56,37 +60,41 @@ export const Topbar: React.FC<TopbarProps> = ({
   canSelectAll,
   settings,
 }) => {
-  const [currentTime, setCurrentTime] = useState<string>('');
-  const [currentDate, setCurrentDate] = useState<string>('');
-  const [accountOpen, setAccountOpen] = useState(false);
+  const now = useMinuteClock();
+  const currentTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const currentDate = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const shopName = settings?.nom_site || 'iVente Pro';
 
+  // Menu compte (desktop) : se ferme au clic extérieur et à Échap.
   useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
-      setCurrentDate(
-        now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-      );
+    if (!accountMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(e.target as Node)) setAccountMenuOpen(false);
     };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAccountMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [accountMenuOpen]);
 
-  // État de la connexion : icône seule, sans texte — Wi-Fi vert en ligne, Wi-Fi barré rouge hors
-  // ligne. Le libellé reste disponible au survol (title) et pour les lecteurs d'écran.
-  const connectionIcon = (sizeClass: string) => (
+  // État de la connexion : icône seule. Le libellé reste disponible au survol et pour les
+  // lecteurs d'écran. Pas de pulsation : un état se lit, il ne clignote pas.
+  const connectionIcon = (
     <span
       className="flex items-center justify-center"
       title={isOnline ? 'En ligne' : "Hors ligne — l'app a besoin d'internet."}
       role="img"
       aria-label={isOnline ? 'En ligne' : 'Hors ligne'}
     >
-      {isOnline ? (
-        <Wifi className={`${sizeClass} text-emerald-500`} />
-      ) : (
-        <WifiOff className={`${sizeClass} text-rose-500 animate-pulse`} />
-      )}
+      {isOnline ? <Wifi className="w-5 h-5 text-emerald-600" /> : <WifiOff className="w-5 h-5 text-rose-600" />}
     </span>
   );
 
@@ -96,6 +104,7 @@ export const Topbar: React.FC<TopbarProps> = ({
       disabled={!canSelectAll}
       onChange={(event) => onZoneChange(event.target.value ? Number(event.target.value) : null)}
       className={className}
+      aria-label="Magasin"
       title={canSelectAll ? 'Filtrer par magasin' : 'Zone affectée au gérant'}
     >
       {canSelectAll && <option value="">Tous les magasins</option>}
@@ -107,200 +116,150 @@ export const Topbar: React.FC<TopbarProps> = ({
     </select>
   );
 
-  const themeSwitcher = (size: 'sm' | 'lg') => (
-    <div
-      className={`flex items-center rounded-xl glass-card border border-slate-200/60 dark:border-white/10 ${
-        size === 'lg' ? 'p-1.5 gap-1 w-full' : 'p-1 gap-0.5'
-      }`}
-      title="Thème d'affichage"
-    >
-      {THEMES.map(({ mode, icon: Icon, label, activeClass }) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => setThemeMode(mode)}
-          aria-label={`Thème ${label}`}
-          aria-pressed={themeMode === mode}
-          className={`tap-scale rounded-lg transition-all ${
-            size === 'lg' ? 'flex-1 flex flex-col items-center gap-1 py-2.5' : 'p-1.5'
-          } ${
-            themeMode === mode
-              ? `${activeClass} font-bold`
-              : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          }`}
-        >
-          <Icon className={size === 'lg' ? 'w-5 h-5' : 'w-3.5 h-3.5'} />
-          {size === 'lg' && <span className="text-[10px] font-bold">{label}</span>}
-        </button>
-      ))}
+  const themeSwitcher = (
+    <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-surface-muted border border-line" role="group" aria-label="Thème d'affichage">
+      {THEMES.map(({ mode, icon: Icon, label }) => {
+        const active = themeMode === mode;
+        return (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setThemeMode(mode)}
+            aria-pressed={active}
+            className={`flex flex-col items-center gap-1 py-2 rounded-md text-xs transition-colors ${
+              active ? 'bg-surface text-ink font-medium shadow-xs border border-line' : 'text-ink-muted hover:text-ink border border-transparent'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 
-  // Feuille « compte » — sur mobile, tout ce qui n'est pas consulté en
-  // permanence (zone, thème, identité, déconnexion) descend ici plutôt que de
-  // s'entasser dans un header qui déborderait en scroll horizontal.
-  const accountSheet = (
-    <AnimatePresence>
-      {accountOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setAccountOpen(false)}
-            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
-          />
-          <motion.div
-            role="dialog"
-            aria-label="Compte et réglages rapides"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 32, stiffness: 380 }}
-            className="absolute inset-x-0 bottom-0 glass-panel rounded-t-3xl px-4 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl max-h-[85dvh] overflow-y-auto scroll-area"
-          >
-            <div className="sheet-grabber mb-4" />
-
-            <div className="flex items-center gap-3 mb-5">
-              <UserCircle className="w-11 h-11 text-blue-500 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="font-bold text-slate-900 dark:text-white truncate">@{userLabel}</div>
-                {userEmail && (
-                  <div className="text-xs text-slate-400 capitalize truncate">{userEmail}</div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setAccountOpen(false)}
-                aria-label="Fermer"
-                className="touch-target flex items-center justify-center rounded-full text-slate-500 dark:text-slate-400 tap-scale"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Connexion</span>
-              {connectionIcon('w-5 h-5')}
-            </div>
-
-            <div className="mb-5">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 block">
-                Magasin
-              </label>
-              {zoneSelect(
-                'glass-input w-full px-3 py-3 rounded-xl font-semibold text-slate-700 dark:text-slate-200'
-              )}
-            </div>
-
-            <div className="mb-6">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 block">
-                Thème
-              </label>
-              {themeSwitcher('lg')}
-            </div>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-center"
-              icon={<LogOut className="w-4 h-4" />}
-              onClick={onLogout}
-            >
-              Se déconnecter
-            </Button>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+  const identity = (
+    <div className="flex items-center gap-3 min-w-0">
+      <UserCircle className="w-9 h-9 text-ink-muted shrink-0" />
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-ink truncate">@{userLabel}</div>
+        {userEmail && <div className="text-xs text-ink-muted capitalize truncate">{userEmail}</div>}
+      </div>
+    </div>
   );
 
   return (
     <>
-      {typeof document !== 'undefined' && createPortal(accountSheet, document.body)}
+      {/* Feuille « compte » (mobile) : tout ce qui n'est pas consulté en permanence (magasin,
+          thème, identité, déconnexion) descend ici plutôt que de s'entasser dans le header. */}
+      <Modal isOpen={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} title="Compte" maxWidth="sm">
+        <div className="space-y-5 pb-1">
+          {identity}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-ink-muted">Connexion</span>
+            <span className="flex items-center gap-2 text-sm font-medium text-ink">
+              {connectionIcon}
+              {isOnline ? 'En ligne' : 'Hors ligne'}
+            </span>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-ink mb-1.5 block">Magasin</label>
+            {zoneSelect('glass-input w-full px-3 py-3 rounded-lg')}
+          </div>
+          <div>
+            <span className="text-sm font-medium text-ink mb-1.5 block">Thème</span>
+            {themeSwitcher}
+          </div>
+          <Button variant="secondary" className="w-full" icon={<LogOut className="w-4 h-4" />} onClick={onLogout}>
+            Se déconnecter
+          </Button>
+        </div>
+      </Modal>
 
-      <header className="glass-panel border-b border-slate-200/50 dark:border-white/10 sticky top-0 z-30 safe-top">
-        {/* --- Header mobile : identité à gauche, actions essentielles à droite.
-            Rien d'autre : le reste vit dans la feuille « compte ». --- */}
+      <header className="bg-surface border-b border-line sticky top-0 z-30 safe-top">
+        {/* --- Mobile : identité à gauche, actions essentielles à droite. --- */}
         <div className="md:hidden h-14 px-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {settings?.logo_url ? (
-              <img
-                src={settings.logo_url}
-                alt=""
-                className="w-8 h-8 rounded-xl object-cover shrink-0 border border-slate-200/50 dark:border-white/10 bg-white dark:bg-slate-900"
-              />
+              <img src={settings.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0 border border-line bg-white" />
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-slate-900 via-blue-900 to-blue-600 dark:from-blue-600 dark:to-indigo-500 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
                 <Store className="w-4 h-4 text-white" />
               </div>
             )}
             <div className="min-w-0">
-              <div className="font-bold text-sm text-slate-900 dark:text-white truncate leading-tight">
-                {settings?.nom_site || 'iVente Pro'}
-              </div>
-              <div className="text-[10px] text-slate-400 leading-tight truncate">
-                {isOnline ? currentTime : 'Hors ligne'}
-              </div>
+              <div className="font-semibold text-sm text-ink truncate leading-tight">{shopName}</div>
+              <div className="text-xs text-ink-muted leading-tight truncate">{isOnline ? currentTime : 'Hors ligne'}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 shrink-0">
-            <span className="touch-target flex items-center justify-center">{connectionIcon('w-5 h-5')}</span>
+          <div className="flex items-center shrink-0">
+            <span className="touch-target flex items-center justify-center">{connectionIcon}</span>
             <NotificationBell />
             <button
               type="button"
-              onClick={() => setAccountOpen(true)}
+              onClick={() => setAccountSheetOpen(true)}
               aria-label="Compte et réglages"
-              className="touch-target flex items-center justify-center rounded-full tap-scale"
+              className="touch-target flex items-center justify-center rounded-lg tap-scale text-ink-muted"
             >
-              <UserCircle className="w-7 h-7 text-blue-500" />
+              <UserCircle className="w-7 h-7" />
             </button>
           </div>
         </div>
 
-        {/* --- Header desktop : inchangé. --- */}
-        <div className="hidden md:flex h-16 px-6 items-center justify-between">
-          <div className="flex-1" />
-
+        {/* --- Desktop : magasin et caisse à gauche ; état, notifications, compte à droite. --- */}
+        <div className="hidden md:flex h-14 px-6 items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            {connectionIcon('w-5 h-5')}
-
-            <Button variant="primary" size="sm" icon={<PlusCircle className="w-4 h-4" />} onClick={onQuickSale}>
-              Caisse
+            {zoneSelect('glass-input h-9 px-2.5 rounded-lg text-sm font-medium max-w-56 disabled:opacity-100')}
+            <Button variant="primary" size="sm" icon={<ShoppingBag className="w-4 h-4" />} onClick={onQuickSale}>
+              Nouvelle vente
             </Button>
+          </div>
 
-            {zoneSelect(
-              'glass-input px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-40'
-            )}
-
-            <NotificationBell />
-
-            <div className="flex items-center gap-2 border-l border-slate-200/50 dark:border-white/10 pl-4">
-              <UserCircle className="w-7 h-7 text-blue-500" />
-              <div className="max-w-36">
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">@{userLabel}</div>
-                {userEmail && (
-                  <div className="text-[10px] text-slate-400 capitalize truncate">{userEmail}</div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<LogOut className="w-4 h-4" />}
-                onClick={onLogout}
-                title="Se déconnecter"
-              >
-                Déconnexion
-              </Button>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-right pr-2 hidden lg:block">
+              <div className="text-sm font-semibold text-ink leading-tight">{currentTime}</div>
+              <div className="text-xs capitalize text-ink-muted leading-tight">{currentDate}</div>
             </div>
 
-            {themeSwitcher('sm')}
+            <span className="w-9 h-9 flex items-center justify-center">{connectionIcon}</span>
+            <NotificationBell />
 
-            <div className="text-right border-l border-slate-200/50 dark:border-white/10 pl-4 text-slate-600 dark:text-slate-300">
-              <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-                {currentTime}
-              </div>
-              <div className="text-[11px] capitalize text-slate-400">{currentDate}</div>
+            <div className="relative" ref={accountMenuRef}>
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                className="flex items-center gap-2 h-9 pl-1.5 pr-2 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors max-w-56"
+              >
+                <UserCircle className="w-6 h-6 text-ink-muted shrink-0" />
+                <span className="text-sm font-medium text-ink truncate">@{userLabel}</span>
+                <ChevronDown className="w-4 h-4 text-ink-muted shrink-0" />
+              </button>
+
+              {accountMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-2 w-72 origin-top-right rounded-xl bg-surface border border-line shadow-lg p-3 space-y-3 z-40"
+                >
+                  {identity}
+                  <div>
+                    <span className="text-xs font-medium text-ink-muted mb-1.5 block">Thème</span>
+                    {themeSwitcher}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    icon={<LogOut className="w-4 h-4" />}
+                    onClick={onLogout}
+                    role="menuitem"
+                  >
+                    Se déconnecter
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
