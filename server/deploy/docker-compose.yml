@@ -10,7 +10,11 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Version épinglée — même version que le client pg_dump/pg_restore de l'image de l'API
+    # (postgresql16-client~16.15, server/Dockerfile). Une montée de version mineure (16.x)
+    # est sans risque pour les données ; une montée MAJEURE (17...) exige une migration
+    # (pg_dump/pg_restore ou pg_upgrade), jamais un simple changement de tag.
+    image: postgres:16.15-alpine3.23
     restart: unless-stopped
     environment:
       POSTGRES_DB: vente
@@ -59,5 +63,45 @@ services:
       PLATFORM_OWNER_PASSWORD: ${PLATFORM_OWNER_PASSWORD}
       PLATFORM_OWNER_SECRET: ${PLATFORM_OWNER_SECRET}
 
+  # Sauvegarde quotidienne de toutes les bases (control_plane + une base par boutique), au format
+  # pg_dump custom compressé, dans le volume pg_backups, avec rotation. Copie hors du VPS
+  # optionnelle via rclone (BACKUP_REMOTE). Activation, emplacement des fichiers et procédure de
+  # RESTAURATION : voir server/deploy/README-backups.md.
+  backup:
+    # Même image que l'API : elle embarque le script (server/backup/) et le client Postgres 16.
+    image: ghcr.io/abdine24/sales-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "/app/backup/scheduler.sh"]
+    # Laisse un dump en cours se terminer si le conteneur est arrêté pendant la sauvegarde.
+    stop_grace_period: 5m
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: vente
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DIR: /backups
+      # Heure UTC de la sauvegarde quotidienne, et nombre de jours gardés sur le VPS.
+      BACKUP_TIME: ${BACKUP_TIME:-02:30}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # Copie hors VPS — désactivée tant que BACKUP_REMOTE est vide. Ex. "offsite:mon-bucket/ivente"
+      # avec les RCLONE_CONFIG_OFFSITE_* d'un stockage compatible S3 (Backblaze B2, Wasabi,
+      # Scaleway, AWS...). Aucune destination par défaut.
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_REMOTE_RETENTION_DAYS: ${BACKUP_REMOTE_RETENTION_DAYS:-}
+      RCLONE_CONFIG_OFFSITE_TYPE: ${RCLONE_CONFIG_OFFSITE_TYPE:-s3}
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${RCLONE_CONFIG_OFFSITE_PROVIDER:-}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY:-}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${RCLONE_CONFIG_OFFSITE_ENDPOINT:-}
+      RCLONE_CONFIG_OFFSITE_REGION: ${RCLONE_CONFIG_OFFSITE_REGION:-}
+      # Le bucket est créé à la main : une clé limitée à ce bucket n'a pas le droit de le créer.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: "true"
+    volumes:
+      - pg_backups:/backups
+
 volumes:
   pg_data:
+  pg_backups:
