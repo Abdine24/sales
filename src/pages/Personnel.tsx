@@ -7,6 +7,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 interface PersonnelProps {
   currentUser: PersonnelRecord;
@@ -190,7 +191,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="list" />;
   }
 
   return (

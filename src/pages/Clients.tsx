@@ -30,6 +30,7 @@ import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptP
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt, openWhatsAppDebtReceipt } from '../utils/whatsapp';
 import { generateReceiptPdf, generateDebtReceiptA4Pdf, printReceiptA4 } from '../utils/pdfInvoice';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 interface ClientsProps {
   activeZoneId?: number | null;
@@ -289,7 +290,7 @@ export const Clients: React.FC<ClientsProps> = ({ activeZoneId, vendeur }) => {
     : [];
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="list" />;
   }
 
   return (

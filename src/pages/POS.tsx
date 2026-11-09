@@ -38,6 +38,7 @@ import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { formatCfa, parseAmount } from '../utils/currency';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
 import { generateReceiptPdf, printReceiptA4 } from '../utils/pdfInvoice';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 type CartItem = PanierLigne;
 
@@ -630,7 +631,7 @@ export const POS: React.FC<POSProps> = ({ activeZoneId, vendeur }) => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="pos" />;
   }
 
   return (

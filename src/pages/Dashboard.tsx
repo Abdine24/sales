@@ -51,6 +51,7 @@ import { formatCfa, formatCfaCompact } from '../utils/currency';
 import { Modal } from '../components/ui/Modal';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
 import { useAuth } from '../hooks/useAuth';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 interface DashboardProps {
   onNavigate: (page: NavPage) => void;
@@ -596,7 +597,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="dashboard" />;
   }
   if (loadError) {
     return <div className="p-8 text-center text-sm text-rose-500">{loadError}</div>;

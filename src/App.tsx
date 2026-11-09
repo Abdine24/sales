@@ -5,7 +5,8 @@ import { canAccess, firstAllowedPage } from './services/localAuth';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LicenceGate } from './components/LicenceGate';
 import { OnlineRequiredGate } from './components/OnlineRequiredGate';
-import { Loader2, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { PageSkeleton } from './components/ui/Skeleton';
 
 const OwnerConsole = lazy(() => import('./pages/OwnerConsole').then((m) => ({ default: m.OwnerConsole })));
 
@@ -22,11 +23,7 @@ const Personnel = lazy(() => import('./pages/Personnel').then((m) => ({ default:
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 
 function PageFallback() {
-  return (
-    <div className="flex-1 flex items-center justify-center py-20 text-slate-500">
-      <Loader2 className="w-6 h-6 animate-spin" />
-    </div>
-  );
+  return <PageSkeleton variant="list" />;
 }
 
 function AccessDenied({ onGoHome }: { onGoHome: () => void }) {

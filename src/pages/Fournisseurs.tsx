@@ -17,6 +17,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { useDialog } from '../components/ui/DialogProvider';
 import { formatCfa } from '../utils/currency';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Fournisseurs: React.FC = () => {
   const { confirm, alert } = useDialog();
@@ -106,7 +107,7 @@ export const Fournisseurs: React.FC = () => {
   );
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="cards" />;
   }
 
   return (

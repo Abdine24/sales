@@ -32,6 +32,7 @@ import { useDialog } from '../components/ui/DialogProvider';
 import { LicenceSection } from '../components/LicenceSection';
 import { playScanBeep } from '../utils/barcode';
 import { apiGetPublic } from '../services/api';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 // Un modèle de reçu tel que renvoyé par GET /plateforme/templates/public — fusion des modèles
 // embarqués au serveur et de ceux ajoutés dynamiquement par le propriétaire (voir
@@ -344,7 +345,7 @@ export const Settings: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="form" />;
   }
 
   return (

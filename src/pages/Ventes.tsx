@@ -29,6 +29,7 @@ import { formatCfa } from '../utils/currency';
 import { ReceiptPrint, ReceiptData, ReceiptFormat } from '../components/ReceiptPrint';
 import { openWhatsAppReceipt } from '../utils/whatsapp';
 import { generateReceiptPdf, printReceiptA4 } from '../utils/pdfInvoice';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 interface VentesProps {
   activeZoneId: number | null;
@@ -161,7 +162,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
     retoursParVente(venteId).reduce((sum, r) => sum + r.montant_total, 0);
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
+    return <PageSkeleton variant="list" />;
   }
 
   return (
