@@ -10,7 +10,11 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Version épinglée — même version que le client pg_dump/pg_restore de l'image de l'API
+    # (postgresql16-client~16.15, server/Dockerfile). Une montée de version mineure (16.x)
+    # est sans risque pour les données ; une montée MAJEURE (17...) exige une migration
+    # (pg_dump/pg_restore ou pg_upgrade), jamais un simple changement de tag.
+    image: postgres:16.15-alpine3.23
     restart: unless-stopped
     environment:
       POSTGRES_DB: vente

@@ -1,4 +1,8 @@
-FROM node:20-alpine
+# Versions épinglées (pas de tag flottant) : une reconstruction de l'image donne la même base.
+# node:20.20.2-alpine3.23 = l'image que désignait `node:20-alpine` au moment de l'épinglage
+# (même digest). Pour monter de version : changer ce tag ET la branche Alpine des paquets
+# ci-dessous (postgresql16-client, rclone), qui dépendent de alpine3.23.
+FROM node:20.20.2-alpine3.23
 WORKDIR /app
 
 # node:20-alpine n'a pas Chromium, et le Chromium que Puppeteer télécharge par défaut n'est pas
@@ -20,8 +24,10 @@ RUN CHROMIUM_BIN="$(command -v chromium || command -v chromium-browser)" \
     && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium-for-puppeteer
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chromium-for-puppeteer
 
-COPY package.json ./
-RUN npm install --omit=dev
+# `npm ci` + package-lock.json : installe exactement les versions du lockfile (express, pg,
+# puppeteer...), au lieu de résoudre les plages `^` de package.json au moment du build.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY src ./src
 
@@ -29,9 +35,13 @@ COPY src ./src
 # la CI et tirée par le VPS) au lieu d'une image à part — le projet Compose du VPS est créé à
 # partir du seul docker-compose.yml, sans les autres fichiers du dépôt, donc le script ne peut
 # pas y être monté depuis le disque. Client Postgres 16 = même version majeure que le serveur
-# (postgres:16-alpine) ; rclone sert uniquement à la copie hors VPS, optionnelle.
+# (postgres:16.15-alpine3.23) ; rclone sert uniquement à la copie hors VPS, optionnelle.
 # Voir deploy/README-backups.md.
-RUN apk add --no-cache postgresql16-client rclone
+# `~16.15` / `~1.72` : version figée, seule la révision Alpine (-rN, correctifs de
+# sécurité) peut bouger. Si Alpine 3.23 publie une nouvelle version mineure, le build CI
+# échoue ici : mettre à jour le numéro (et garder le client = la version du serveur
+# postgres du compose).
+RUN apk add --no-cache postgresql16-client~16.15 rclone~1.72
 COPY backup ./backup
 
 ENV NODE_ENV=production

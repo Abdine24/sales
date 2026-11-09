@@ -228,6 +228,29 @@ Une sauvegarde jamais restaurée n'est pas une sauvegarde. Une fois par mois, fa
 1 à 3 du § 4 sur une boutique (sans l'échange), comparer quelques chiffres avec l'app, puis
 supprimer la base `_restore`.
 
+## Versions
+
+Toutes épinglées (aucun tag flottant `:16-alpine`, `:20-alpine`) :
+
+| Composant | Version | Où |
+|---|---|---|
+| Serveur Postgres | `postgres:16.15-alpine3.23` | `deploy/docker-compose.yml` |
+| Node.js (image API + backup) | `node:20.20.2-alpine3.23` | `server/Dockerfile` |
+| Client `pg_dump` / `pg_restore` / `psql` | `postgresql16-client~16.15` (Alpine 3.23) | `server/Dockerfile` |
+| rclone | `rclone~1.72` (Alpine 3.23) | `server/Dockerfile` |
+| Dépendances npm de l'API | celles de `server/package-lock.json` (`npm ci`) | `server/Dockerfile` |
+
+Règles :
+- **Client = serveur** : `postgresql16-client` doit rester sur la même version que l'image
+  `postgres`. Les changer ensemble.
+- **Version mineure** (16.15 → 16.16) : simple changement de tag, sans risque pour les données.
+- **Version majeure** (16 → 17) : **jamais** un simple changement de tag, le serveur ne
+  démarrerait plus sur l'ancien volume. Il faut une migration (sauvegarde puis restauration
+  dans un nouveau serveur, ou `pg_upgrade`), à préparer à part.
+- Si le build CI échoue sur `apk add` (`postgresql16-client~16.15` ou `rclone~1.72`
+  introuvable), c'est qu'Alpine a publié une version plus récente : mettre à jour le numéro
+  dans le `Dockerfile` (et l'image `postgres` du compose pour le client Postgres).
+
 ## Notes techniques
 
 - Un `pg_restore` plus récent que le serveur (ex. client Postgres 17/18 installé sur un autre
