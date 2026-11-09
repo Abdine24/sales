@@ -118,6 +118,12 @@ async function backfillLicenceBoutiques() {
         "select cle, activee_le from licence where id='principale'"
       );
       if (!rows[0]?.cle) continue;
+      // La clé en cours est consommée : elle ne doit plus pouvoir servir à une autre boutique
+      // (registre des clés à usage unique, voir routes/licenceStatus.js).
+      await controlPlanePool.query(
+        'insert into licences_utilisees (cle, boutique_id, utilisee_le) values ($1,$2,$3) on conflict (cle) do nothing',
+        [rows[0].cle.trim().toUpperCase(), b.id, rows[0].activee_le]
+      );
       const result = await controlPlanePool.query(
         `update licences_catalogue
          set status = case when status = 'unused' then 'active' else status end,
