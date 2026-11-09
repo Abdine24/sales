@@ -119,6 +119,13 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
             d'une boutique (voir AuthGate.tsx) — un compte qui arrive jusqu'à cet écran en a
             forcément déjà eu un (ou n'y a jamais eu droit), donc seule une clé payante a du
             sens pour renouveler. */}
+        {/* Seul un administrateur peut activer une clé (vérifié aussi par le serveur, voir
+            server/src/index.js) : les autres rôles sont invités à le prévenir. */}
+        {personnel?.role !== 'admin' ? (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm font-semibold">
+            Préviens l'administrateur de la boutique : lui seul peut saisir la nouvelle clé de licence.
+          </div>
+        ) : (
         <form onSubmit={submitRenewal} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Nouvelle clé de licence</label>
@@ -145,6 +152,7 @@ export const LicenceGate: React.FC<{ children: React.ReactNode }> = ({ children 
             {submitting ? 'Vérification...' : 'Activer cette clé'}
           </Button>
         </form>
+        )}
       </div>
     </div>
   );

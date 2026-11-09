@@ -35,8 +35,9 @@ personnelRouter.get('/', async (req, res) => {
 
 // Résout le profil métier (rôle, zone...) de l'utilisateur Supabase actuellement authentifié.
 // Renvoie 404 si le jeton Supabase est valide mais qu'aucun profil local n'a encore été créé
-// pour cet utilisateur (ex: compte tout juste activé).
-personnelRouter.get('/me', async (req, res) => {
+// pour cet utilisateur (ex: compte tout juste activé). Monté à part dans index.js (GET
+// /personnel/me), AVANT le contrôle d'accès du reste de /personnel, réservé aux admins.
+export async function personnelMeHandler(req, res) {
   const { rows } = await req.tenantPool.query(
     'select * from personnel where supabase_user_id=$1 or (lower(email)=lower($2) and supabase_user_id is null)',
     [req.user.id, req.user.email]
@@ -49,7 +50,7 @@ personnelRouter.get('/me', async (req, res) => {
     await recordUtilisateurBoutique(req.user.id, req.boutique.id, rows[0].email);
   }
   res.json(rows[0]);
-});
+}
 
 // Crée un profil personnel. Deux cas :
 //  1. Bootstrap (principal=true) : le tout premier admin de la boutique, qui vient de créer
@@ -70,14 +71,14 @@ personnelRouter.post('/', async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Un administrateur principal existe déjà pour cette boutique.' });
     }
-  } else {
-    const { rows: caller } = await req.tenantPool.query('select role from personnel where supabase_user_id=$1', [req.user.id]);
-    if (caller.length === 0 || caller[0].role !== 'admin') {
-      return res.status(403).json({ error: 'Réservé aux administrateurs.' });
-    }
+  } else if (req.callerPersonnel?.role !== 'admin') {
+    // Normalement déjà refusé par access() (index.js) — gardé ici par sécurité.
+    return res.status(403).json({ error: 'Réservé aux administrateurs.' });
   }
 
-  let supabaseUserId = body.supabase_user_id || null;
+  // Bootstrap : le principal est TOUJOURS le compte qui fait la requête — jamais un identifiant
+  // Supabase choisi par le client, qui permettrait de rattacher le compte de quelqu'un d'autre.
+  let supabaseUserId = isBootstrap ? req.user.id : body.supabase_user_id || null;
   let createdSupabaseUser = false;
   if (!supabaseUserId) {
     if (!body.email || !body.password) {

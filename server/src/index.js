@@ -5,6 +5,7 @@ import cors from 'cors';
 import { maintenancePool } from './db.js';
 import { controlPlanePool, applyControlPlaneSchema } from './controlPlaneDb.js';
 import { requireAuth } from './auth.js';
+import { access, boutiqueHasPrincipal, ALL, STAFF, ADMIN } from './access.js';
 import { resolveTenant, resolveTenantPublic } from './tenantResolver.js';
 import { boutiquesRouter } from './routes/boutiques.js';
 import { produitsRouter } from './routes/produits.js';
@@ -14,7 +15,7 @@ import { zonesRouter } from './routes/zones.js';
 import { fournisseursRouter } from './routes/fournisseurs.js';
 import { clientsRouter } from './routes/clients.js';
 import { paniersRouter } from './routes/paniers.js';
-import { personnelRouter } from './routes/personnel.js';
+import { personnelRouter, personnelMeHandler } from './routes/personnel.js';
 import { settingsRouter } from './routes/settings.js';
 import { licenceStatusRouter } from './routes/licenceStatus.js';
 import { ventesRouter } from './routes/ventes.js';
@@ -65,25 +66,43 @@ app.use('/logo', logoRouter);
 app.use('/licences', resolveTenantPublic, licencesRouter);
 app.use('/mot-de-passe-oublie', resolveTenantPublic, motDePasseOublieRouter);
 
-// Toutes les autres routes métier exigent un utilisateur Supabase authentifié ET un tenant
-// résolu (dans cet ordre : resolveTenant vérifie que le compte appartient bien à cette
-// boutique, donc a besoin de req.user déjà posé par requireAuth).
-app.use('/produits', requireAuth, resolveTenant, produitsRouter);
-app.use('/categories', requireAuth, resolveTenant, categoriesRouter);
-app.use('/zones', requireAuth, resolveTenant, zonesRouter);
-app.use('/fournisseurs', requireAuth, resolveTenant, fournisseursRouter);
-app.use('/clients', requireAuth, resolveTenant, clientsRouter);
-app.use('/paniers-en-attente', requireAuth, resolveTenant, paniersRouter);
-app.use('/personnel', requireAuth, resolveTenant, personnelRouter);
-app.use('/settings', requireAuth, resolveTenant, settingsRouter);
-app.use('/licence', requireAuth, resolveTenant, licenceStatusRouter);
-app.use('/ventes', requireAuth, resolveTenant, ventesRouter);
-app.use('/achats-stock', requireAuth, resolveTenant, achatsStockRouter);
-app.use('/ajustements-stock', requireAuth, resolveTenant, ajustementsStockRouter);
-app.use('/retours', requireAuth, resolveTenant, retoursRouter);
-app.use('/reglements', requireAuth, resolveTenant, reglementsRouter);
-app.use('/notifications', requireAuth, resolveTenant, notificationsRouter);
-app.use('/factures', requireAuth, resolveTenant, facturesRouter);
+// Toutes les autres routes métier exigent, dans cet ordre : un utilisateur Supabase authentifié
+// (requireAuth), un tenant résolu dont il n'est pas membre d'une AUTRE boutique (resolveTenant),
+// puis une fiche personnel ACTIVE dans cette boutique avec le bon rôle — et, pour les écritures
+// métier, une licence non expirée (access, voir access.js). Les rôles reprennent les pages
+// autorisées côté client (src/services/localAuth.ts, canAccess) :
+//   caissier : caisse, ventes, clients — gérant : + tableau de bord et stock — admin : tout.
+const auth = [requireAuth, resolveTenant];
+
+// Rattachement du compte connecté à sa fiche personnel : appelé juste après la connexion, avant
+// que la fiche soit forcément liée (voir routes/personnel.js) — ne renvoie que la fiche de
+// l'appelant, donc pas de contrôle de rôle ici.
+app.get('/personnel/me', ...auth, personnelMeHandler);
+
+// Activation d'une boutique neuve : son créateur n'a pas encore de fiche personnel quand il
+// active la licence puis crée l'administrateur principal (src/services/localAuth.ts). Ces deux
+// seules requêtes restent permises sans fiche, et uniquement tant qu'aucun principal n'existe.
+const activationLicence = async (req) =>
+  req.method === 'POST' && req.path === '/activer' && !(await boutiqueHasPrincipal(req));
+const creationPrincipal = async (req) =>
+  req.method === 'POST' && req.path === '/' && req.body?.principal === true && !(await boutiqueHasPrincipal(req));
+
+app.use('/produits', ...auth, access({ read: ALL, write: STAFF, licence: true }), produitsRouter);
+app.use('/categories', ...auth, access({ read: ALL, write: ADMIN, licence: true }), categoriesRouter);
+app.use('/zones', ...auth, access({ read: ALL, write: ADMIN, licence: true }), zonesRouter);
+app.use('/fournisseurs', ...auth, access({ read: ALL, write: ADMIN, licence: true }), fournisseursRouter);
+app.use('/clients', ...auth, access({ read: ALL, write: ALL, licence: true }), clientsRouter);
+app.use('/paniers-en-attente', ...auth, access({ read: ALL, write: ALL, licence: true }), paniersRouter);
+app.use('/personnel', ...auth, access({ read: ADMIN, write: ADMIN, allowWithoutProfile: creationPrincipal }), personnelRouter);
+app.use('/settings', ...auth, access({ read: ALL, write: ADMIN }), settingsRouter);
+app.use('/licence', ...auth, access({ read: ALL, write: ADMIN, allowWithoutProfile: activationLicence }), licenceStatusRouter);
+app.use('/ventes', ...auth, access({ read: ALL, write: ALL, licence: true }), ventesRouter);
+app.use('/achats-stock', ...auth, access({ read: STAFF, write: STAFF, licence: true }), achatsStockRouter);
+app.use('/ajustements-stock', ...auth, access({ read: STAFF, write: STAFF, licence: true }), ajustementsStockRouter);
+app.use('/retours', ...auth, access({ read: ALL, write: ALL, licence: true }), retoursRouter);
+app.use('/reglements', ...auth, access({ read: ALL, write: ALL, licence: true }), reglementsRouter);
+app.use('/notifications', ...auth, access({ read: ALL, write: ALL }), notificationsRouter);
+app.use('/factures', ...auth, access({ read: ALL, write: ALL }), facturesRouter);
 
 // Toujours en dernier : transforme toute erreur (y compris celles des routes async) en réponse
 // JSON propre au lieu d'arrêter le process (voir asyncErrors.js).
