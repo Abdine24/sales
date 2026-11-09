@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
@@ -47,10 +47,58 @@ const TOAST_ICON: Record<ToastType, React.ElementType> = {
   info: Info,
 };
 
-const TOAST_STYLE: Record<ToastType, string> = {
-  success: 'bg-emerald-600 border-emerald-400/40',
-  error: 'bg-rose-600 border-rose-400/40',
-  info: 'bg-blue-600 border-blue-400/40',
+const TOAST_ICON_STYLE: Record<ToastType, string> = {
+  success: 'text-emerald-600 dark:text-emerald-400',
+  error: 'text-rose-600 dark:text-rose-400',
+  info: 'text-blue-600 dark:text-blue-400',
+};
+
+const TOAST_DURATION = 4000;
+
+// Un toast : surface neutre, icône colorée selon le type. Le minuteur se met en pause tant
+// que la souris est dessus ou que l'onglet est masqué — un message ne disparaît jamais
+// pendant qu'on le lit ou qu'on n'est pas devant l'écran.
+const ToastView: React.FC<{ item: ToastItem; onDismiss: (id: number) => void }> = ({ item, onDismiss }) => {
+  const [hovered, setHovered] = useState(false);
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  const remainingRef = useRef(TOAST_DURATION);
+
+  useEffect(() => {
+    const onVisibility = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (hovered || hidden) return;
+    const startedAt = Date.now();
+    const timer = window.setTimeout(() => onDismiss(item.id), remainingRef.current);
+    return () => {
+      window.clearTimeout(timer);
+      remainingRef.current = Math.max(800, remainingRef.current - (Date.now() - startedAt));
+    };
+  }, [hovered, hidden, item.id, onDismiss]);
+
+  const Icon = TOAST_ICON[item.type];
+  return (
+    <div
+      role={item.type === 'error' ? 'alert' : 'status'}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="animate-toast-in pointer-events-auto w-full flex items-start gap-3 pl-4 pr-1 py-1 rounded-xl shadow-lg border border-line bg-surface text-ink text-sm"
+    >
+      <Icon className={`w-5 h-5 shrink-0 mt-3 ${TOAST_ICON_STYLE[item.type]}`} />
+      <div className="flex-1 leading-snug py-3 font-medium">{item.message}</div>
+      <button
+        type="button"
+        onClick={() => onDismiss(item.id)}
+        className="touch-target md:min-w-9 md:min-h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink shrink-0"
+        aria-label="Fermer la notification"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
 };
 
 export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,11 +112,12 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // La fermeture automatique est gérée par chaque toast (ToastView), qui met son minuteur en
+  // pause au survol et quand l'onglet est masqué.
   const toast = useCallback<DialogApi['toast']>((message, type = 'success') => {
     const id = ++toastIdRef.current;
-    setToasts((prev) => [...prev, { id, message, type }]);
-    window.setTimeout(() => dismissToast(id), 4000);
-  }, [dismissToast]);
+    setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
+  }, []);
 
   const settle = useCallback((result: boolean) => {
     resolverRef.current?.(result);
@@ -102,27 +151,17 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <DialogContext.Provider value={{ confirm, alert, toast }}>
       {children}
       {createPortal(
-        <div className="fixed top-4 right-4 z-[100] flex flex-col items-end gap-2 w-full max-w-sm pointer-events-none">
-          {toasts.map((item) => {
-            const Icon = TOAST_ICON[item.type];
-            return (
-              <div
-                key={item.id}
-                className={`animate-toast-in pointer-events-auto w-full flex items-start gap-2.5 p-3.5 rounded-2xl shadow-xl border text-white text-sm font-semibold ${TOAST_STYLE[item.type]}`}
-              >
-                <Icon className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                <div className="flex-1 leading-snug">{item.message}</div>
-                <button
-                  type="button"
-                  onClick={() => dismissToast(item.id)}
-                  className="text-white/80 hover:text-white shrink-0"
-                  title="Fermer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            );
-          })}
+        // Mobile : en bas, au-dessus de la barre d'onglets (à portée du regard et du pouce,
+        // sans masquer le header). Desktop : en haut à droite. Zone annoncée aux lecteurs
+        // d'écran (aria-live), sans voler le focus.
+        <div
+          aria-live="polite"
+          aria-relevant="additions"
+          className="fixed z-[100] flex flex-col gap-2 pointer-events-none inset-x-3 bottom-[calc(var(--bottom-nav-h)+12px)] md:inset-x-auto md:bottom-auto md:top-4 md:right-4 md:w-full md:max-w-sm"
+        >
+          {toasts.map((item) => (
+            <ToastView key={item.id} item={item} onDismiss={dismissToast} />
+          ))}
         </div>,
         document.body
       )}

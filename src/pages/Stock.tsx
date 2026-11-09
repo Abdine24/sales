@@ -9,7 +9,6 @@ import {
   Truck,
   AlertTriangle,
   Layers,
-  Sparkles,
   X,
   Lock,
   Scale,
@@ -36,6 +35,8 @@ import {
   Save,
   Camera,
   Printer,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 import type {
   Produit,
@@ -84,7 +85,7 @@ const MOTIF_AJUSTEMENT_INFOS: Record<MotifAjustement, { label: string; color: st
   },
   don_promo: {
     label: 'Échantillon / Don',
-    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+    color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
     icon: <Gift className="w-3.5 h-3.5" />,
   },
   autre: {
@@ -1033,7 +1034,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
   };
 
   if (dataLoading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
   }
 
   return (
@@ -1041,27 +1042,27 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             Gestion du Stock & Produits
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Catalogue général, réapprovisionnements et historique des achats fournisseurs.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button
             variant="glass"
-            icon={<Truck className="w-4 h-4 text-emerald-500" />}
+            icon={<Truck className="w-4 h-4" />}
             onClick={() => handleOpenRestockModal()}
           >
-            Nouveau Réapprovisionnement
+            Réapprovisionner
           </Button>
           <Button
             variant="primary"
             icon={<Plus className="w-4 h-4" />}
             onClick={handleOpenAddModal}
           >
-            Nouveau Produit
+            Nouveau produit
           </Button>
         </div>
       </div>
@@ -1070,9 +1071,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-white/10 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('produits')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap ${
             activeTab === 'produits'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              ? 'bg-blue-600 text-white shadow-md'
               : 'glass-card text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
@@ -1080,9 +1081,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
         </button>
         <button
           onClick={() => setActiveTab('achats')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap ${
             activeTab === 'achats'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              ? 'bg-blue-600 text-white shadow-md'
               : 'glass-card text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
@@ -1090,9 +1091,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
         </button>
         <button
           onClick={() => setActiveTab('ajustements')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'ajustements'
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+              ? 'bg-slate-600 text-white shadow-md'
               : 'glass-card text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
@@ -1105,12 +1106,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
         <div className="space-y-4">
           {/* Quick Filter Pills (Status Badges) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1 shrink-0 mr-1">
               <Filter className="w-3.5 h-3.5" /> Filtres Rapides :
             </span>
             <button
               onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'all'
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -1118,13 +1119,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <Boxes className="w-3.5 h-3.5" />
               <span>Tous</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-semibold">
                 {countAll}
               </span>
             </button>
             <button
               onClick={() => { setStatusFilter('rupture'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'rupture'
                   ? 'bg-rose-600 text-white shadow-sm'
                   : 'glass-card text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
@@ -1132,13 +1133,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <AlertOctagon className="w-3.5 h-3.5 text-rose-500" />
               <span>Ruptures</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-rose-500/20 font-semibold">
                 {countRupture}
               </span>
             </button>
             <button
               onClick={() => { setStatusFilter('low'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'low'
                   ? 'bg-amber-500 text-white shadow-sm'
                   : 'glass-card text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
@@ -1146,13 +1147,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
               <span>Stock Bas</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-amber-500/20 font-semibold">
                 {countLow}
               </span>
             </button>
             <button
               onClick={() => { setStatusFilter('normal'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'normal'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'glass-card text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
@@ -1160,27 +1161,27 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               <span>En Stock</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-emerald-500/20 font-semibold">
                 {countNormal}
               </span>
             </button>
             <button
               onClick={() => { setStatusFilter('variable'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'variable'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'glass-card text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                  ? 'bg-slate-600 text-white shadow-sm'
+                  : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-950/30'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 text-purple-500" />
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
               <span>Variables</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-slate-500/20 font-semibold">
                 {countVariable}
               </span>
             </button>
             <button
               onClick={() => { setStatusFilter('simple'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'simple'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -1188,7 +1189,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <Box className="w-3.5 h-3.5 text-blue-500" />
               <span>Simples</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-blue-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-blue-500/20 font-semibold">
                 {countSimple}
               </span>
             </button>
@@ -1197,18 +1198,18 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
           {/* Controls & Search Bar */}
           <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Rechercher par nom, code-barres, catégorie..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1217,7 +1218,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400">Catégorie:</span>
+                <span className="text-xs font-semibold text-slate-500">Catégorie:</span>
                 <select
                   value={categoryFilter}
                   onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
@@ -1233,7 +1234,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400">Fournisseur:</span>
+                <span className="text-xs font-semibold text-slate-500">Fournisseur:</span>
                 <select
                   value={supplierFilter}
                   onChange={(e) => { setSupplierFilter(e.target.value === 'Tous' ? 'Tous' : Number(e.target.value)); setCurrentPage(1); }}
@@ -1249,7 +1250,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <ArrowUpDown className="w-3.5 h-3.5" /> Tri:
                 </span>
                 <select
@@ -1269,7 +1270,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {isFiltered && (
                 <button
                   onClick={resetAllFilters}
-                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1 transition-colors"
+                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-1 transition-colors"
                   title="Réinitialiser tous les filtres"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1289,10 +1290,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {totalFiltered === 0 ? (
                 <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
                   <Package className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                  <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                     Aucun produit ne correspond à vos filtres
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Essayez de modifier votre recherche ou de réinitialiser les filtres appliqués.
                   </p>
                   {isFiltered && (
@@ -1309,13 +1310,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     <div key={p.id} className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-900 dark:text-white truncate">{p.nom}</div>
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5 flex items-center gap-1.5">
+                          <div className="font-semibold text-slate-900 dark:text-white truncate">{p.nom}</div>
+                          <div className="text-xs font-mono text-slate-500 mt-0.5 flex items-center gap-1.5">
                             <Barcode className="w-3.5 h-3.5 shrink-0" />
                             <span className="truncate selectable">{p.code_barres}</span>
                           </div>
                         </div>
-                        <div className="font-extrabold text-blue-600 dark:text-blue-400 shrink-0 whitespace-nowrap selectable">
+                        <div className="font-semibold text-blue-600 dark:text-blue-400 shrink-0 whitespace-nowrap selectable">
                           {p.is_variable && p.variantes_detaillees && p.variantes_detaillees.length > 0
                             ? (Math.min(...p.variantes_detaillees.map((v) => v.prix)) > 0
                                 ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}`
@@ -1329,12 +1330,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                           {p.categorie}
                         </Badge>
                         {p.is_variable ? (
-                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
                             <Layers className="w-3 h-3" />
                             {p.variantes_detaillees?.length || (p.variantes?.length ?? 0)} variante(s)
                           </span>
                         ) : (
-                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-medium">
+                          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-medium">
                             Simple
                           </span>
                         )}
@@ -1374,7 +1375,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         <button
                           onClick={() => handleOpenAjustementModal(p)}
                           aria-label="Ajuster le stock"
-                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-purple-600 dark:text-purple-400 tap-scale"
+                          className="touch-target flex-1 flex items-center justify-center rounded-xl glass-card text-slate-600 dark:text-slate-400 tap-scale"
                         >
                           <Scale className="w-4 h-4" />
                         </button>
@@ -1402,7 +1403,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                     <th className="p-4 font-semibold">Produit</th>
                     <th className="p-4 font-semibold">Code-Barres</th>
                     <th className="p-4 font-semibold">Catégorie</th>
@@ -1417,10 +1418,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <td colSpan={6} className="p-12 text-center">
                         <div className="flex flex-col items-center justify-center space-y-2">
                           <Package className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                          <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                          <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                             Aucun produit ne correspond à vos filtres
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             Essayez de modifier votre recherche ou de réinitialiser les filtres appliqués.
                           </p>
                           {isFiltered && (
@@ -1441,11 +1442,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                           key={p.id}
                           className="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition-colors"
                         >
-                          <td className="p-4 font-bold text-slate-900 dark:text-white">
+                          <td className="p-4 font-semibold text-slate-900 dark:text-white">
                             {p.nom}
                           </td>
                           <td className="p-4 font-mono text-xs text-slate-500 flex items-center gap-1.5">
-                            <Barcode className="w-4 h-4 text-slate-400" />
+                            <Barcode className="w-4 h-4 text-slate-500" />
                             {p.code_barres}
                           </td>
                           <td className="p-4">
@@ -1454,18 +1455,18 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                             </Badge>
                             <div className="flex items-center gap-1 mt-1">
                               {p.is_variable ? (
-                                <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
                                   <Layers className="w-3 h-3" />
                                   {p.variantes_detaillees?.length || (p.variantes?.length ?? 0)} variante(s)
                                 </span>
                               ) : (
-                                <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-medium">
+                                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-medium">
                                   Simple
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="p-4 font-extrabold text-blue-600 dark:text-blue-400">
+                          <td className="p-4 font-semibold text-blue-600 dark:text-blue-400">
                             {p.is_variable && p.variantes_detaillees && p.variantes_detaillees.length > 0 ? (
                               <span>{Math.min(...p.variantes_detaillees.map((v) => v.prix)) > 0 ? `Dès ${formatCfa(Math.min(...p.variantes_detaillees.map((v) => v.prix)))}` : 'Saisie à la vente'}</span>
                             ) : (
@@ -1508,7 +1509,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                               </button>
                               <button
                                 onClick={() => handleOpenAjustementModal(p)}
-                                className="p-2 rounded-xl glass-card hover:bg-purple-500/20 text-purple-600 dark:text-purple-400"
+                                className="p-2 rounded-xl glass-card hover:bg-slate-500/20 text-slate-600 dark:text-slate-400"
                                 title="Ajuster le stock (Inventaire / Casse / Perte)"
                               >
                                 <Scale className="w-4 h-4" />
@@ -1555,7 +1556,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="glass-input px-2 py-1 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                      className="glass-input px-2 py-1 rounded-lg text-xs font-semibold text-slate-900 dark:text-white"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -1572,7 +1573,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     {pageSize < 100 && endIndex < totalFiltered && (
                       <button
                         onClick={() => setPageSize((prev) => prev + 25)}
-                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-blue-600 dark:text-blue-400 mr-2"
+                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-blue-600 dark:text-blue-400 mr-2"
                       >
                         + Voir 25 de plus
                       </button>
@@ -1587,7 +1588,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <ChevronLeft className="w-4 h-4" />
                     </button>
 
-                    <div className="flex items-center gap-1 text-xs font-bold">
+                    <div className="flex items-center gap-1 text-xs font-semibold">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum = i + 1;
                         if (totalPages > 5 && validCurrentPage > 3) {
@@ -1598,7 +1599,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                            className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
                               validCurrentPage === pageNum
                                 ? 'bg-blue-600 text-white shadow-sm'
                                 : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -1634,7 +1635,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Total Réapprovisionnements</span>
-                <span className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                <span className="text-xl font-semibold text-slate-900 dark:text-white mt-0.5 block">
                   {totalFilteredAchats} réception(s)
                 </span>
               </div>
@@ -1646,7 +1647,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Volume Total Réceptionné</span>
-                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                <span className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
                   +{totalQuantiteAchats} unités
                 </span>
               </div>
@@ -1658,11 +1659,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Total Dépenses d'Achat</span>
-                <span className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                <span className="text-xl font-semibold text-slate-900 dark:text-white mt-0.5 block">
                   {formatCfa(totalDepensesAchats)}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <div className="p-2.5 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
                 <DollarSign className="w-5 h-5" />
               </div>
             </GlassCard>
@@ -1671,18 +1672,18 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
           {/* Filter & Search Bar for Achats */}
           <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Rechercher par produit, fournisseur, variante..."
                 value={searchAchats}
                 onChange={(e) => { setSearchAchats(e.target.value); setCurrentPageAchats(1); }}
-                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
               />
               {searchAchats && (
                 <button
                   onClick={() => setSearchAchats('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1691,7 +1692,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400">Fournisseur:</span>
+                <span className="text-xs font-semibold text-slate-500">Fournisseur:</span>
                 <select
                   value={supplierFilterAchats}
                   onChange={(e) => { setSupplierFilterAchats(e.target.value === 'Tous' ? 'Tous' : Number(e.target.value)); setCurrentPageAchats(1); }}
@@ -1707,7 +1708,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> Période:
                 </span>
                 <select
@@ -1737,7 +1738,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <ArrowUpDown className="w-3.5 h-3.5" /> Tri:
                 </span>
                 <select
@@ -1757,7 +1758,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {isFilteredAchats && (
                 <button
                   onClick={resetAllFiltersAchats}
-                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1 transition-colors"
+                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-1 transition-colors"
                   title="Réinitialiser les filtres"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1776,10 +1777,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {totalFilteredAchats === 0 ? (
                 <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
                   <Truck className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                  <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                     Aucun réapprovisionnement ne correspond à vos critères
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Modifiez votre recherche ou réinitialisez les filtres.
                   </p>
                   {isFilteredAchats && (
@@ -1793,20 +1794,20 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   <div key={a.id} className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                        <div className="font-semibold text-slate-900 dark:text-white truncate">
                           {a.produit_nom}
                         </div>
                         {a.variante && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[11px] font-semibold">
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 text-xs font-semibold">
                             {a.variante}
                           </span>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-extrabold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        <div className="font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           +{a.quantite}
                         </div>
-                        <div className="text-[10px] text-slate-400">unités</div>
+                        <div className="text-xs text-slate-500">unités</div>
                       </div>
                     </div>
 
@@ -1814,12 +1815,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <span className="text-slate-500 dark:text-slate-400 truncate">
                         {a.fournisseur_nom}
                       </span>
-                      <span className="font-extrabold text-slate-900 dark:text-white whitespace-nowrap selectable">
+                      <span className="font-semibold text-slate-900 dark:text-white whitespace-nowrap selectable">
                         {formatCfa(a.cout_total)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
                       <span>{new Date(a.date).toLocaleString('fr-FR')}</span>
                       <span className="whitespace-nowrap">
                         {formatCfa(a.cout_unitaire ?? a.cout_total / (a.quantite || 1))} / u.
@@ -1833,7 +1834,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                     <th className="p-4 font-semibold">Date & Heure</th>
                     <th className="p-4 font-semibold">Fournisseur</th>
                     <th className="p-4 font-semibold">Produit</th>
@@ -1849,10 +1850,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <td colSpan={7} className="p-12 text-center">
                         <div className="flex flex-col items-center justify-center space-y-2">
                           <Truck className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                          <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                          <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                             Aucun réapprovisionnement ne correspond à vos critères
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             Modifiez votre recherche ou réinitialisez les filtres.
                           </p>
                           {isFilteredAchats && (
@@ -1869,7 +1870,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         <td className="p-4 text-xs text-slate-500 whitespace-nowrap">
                           {new Date(a.date).toLocaleString('fr-FR')}
                         </td>
-                        <td className="p-4 font-bold text-slate-900 dark:text-white">
+                        <td className="p-4 font-semibold text-slate-900 dark:text-white">
                           {a.fournisseur_nom}
                         </td>
                         <td className="p-4 font-semibold text-slate-700 dark:text-slate-300">
@@ -1877,20 +1878,20 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         </td>
                         <td className="p-4 text-xs text-slate-500">
                           {a.variante ? (
-                            <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-semibold">
                               {a.variante}
                             </span>
                           ) : (
-                            <span className="text-slate-400 italic">—</span>
+                            <span className="text-slate-500 italic">—</span>
                           )}
                         </td>
-                        <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
+                        <td className="p-4 font-semibold text-emerald-600 dark:text-emerald-400">
                           +{a.quantite} unités
                         </td>
                         <td className="p-4 font-semibold text-slate-600 dark:text-slate-300">
                           {formatCfa(a.cout_unitaire ?? (a.cout_total / (a.quantite || 1)))}
                         </td>
-                        <td className="p-4 font-extrabold text-slate-900 dark:text-white">
+                        <td className="p-4 font-semibold text-slate-900 dark:text-white">
                           {formatCfa(a.cout_total)}
                         </td>
                       </tr>
@@ -1918,7 +1919,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         setPageSizeAchats(Number(e.target.value));
                         setCurrentPageAchats(1);
                       }}
-                      className="glass-input px-2 py-1 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                      className="glass-input px-2 py-1 rounded-lg text-xs font-semibold text-slate-900 dark:text-white"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -1934,7 +1935,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     {pageSizeAchats < 100 && endIndexAchats < totalFilteredAchats && (
                       <button
                         onClick={() => setPageSizeAchats((prev) => prev + 25)}
-                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-blue-600 dark:text-blue-400 mr-2"
+                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-blue-600 dark:text-blue-400 mr-2"
                       >
                         + Voir 25 de plus
                       </button>
@@ -1949,7 +1950,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <ChevronLeft className="w-4 h-4" />
                     </button>
 
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-2">
                       Page {validCurrentPageAchats} / {totalPagesAchats}
                     </span>
 
@@ -1977,11 +1978,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Total Événements Audit</span>
-                <span className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5 block">
+                <span className="text-xl font-semibold text-slate-900 dark:text-white mt-0.5 block">
                   {totalFilteredAjustements} ajustement(s)
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <div className="p-2.5 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
                 <Scale className="w-5 h-5" />
               </div>
             </GlassCard>
@@ -1989,7 +1990,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Régularisations Positives (+)</span>
-                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                <span className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
                   +{totalDeltaPositif} unités
                 </span>
               </div>
@@ -2001,7 +2002,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <GlassCard className="p-3.5 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Pertes / Casses Constatées (-)</span>
-                <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block">
+                <span className="text-xl font-semibold text-rose-600 dark:text-rose-400 mt-0.5 block">
                   {totalDeltaNegatif} unités
                 </span>
               </div>
@@ -2013,12 +2014,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
           {/* Quick Motif Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1 shrink-0 mr-1">
               <Filter className="w-3.5 h-3.5" /> Motifs :
             </span>
             <button
               onClick={() => { setMotifFilterAjustements('all'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'all'
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -2026,13 +2027,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <Boxes className="w-3.5 h-3.5" />
               <span>Tous</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-semibold">
                 {countAjustementsAll}
               </span>
             </button>
             <button
               onClick={() => { setMotifFilterAjustements('inventaire'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'inventaire'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'glass-card text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'
@@ -2040,13 +2041,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <ClipboardCheck className="w-3.5 h-3.5 text-blue-500" />
               <span>Inventaire</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-blue-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-blue-500/20 font-semibold">
                 {countAjustementsInventaire}
               </span>
             </button>
             <button
               onClick={() => { setMotifFilterAjustements('casse'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'casse'
                   ? 'bg-amber-500 text-white shadow-sm'
                   : 'glass-card text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
@@ -2054,13 +2055,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <Flame className="w-3.5 h-3.5 text-amber-500" />
               <span>Casse / Avarié</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-amber-500/20 font-semibold">
                 {countAjustementsCasse}
               </span>
             </button>
             <button
               onClick={() => { setMotifFilterAjustements('perte_vol'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'perte_vol'
                   ? 'bg-rose-600 text-white shadow-sm'
                   : 'glass-card text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
@@ -2068,27 +2069,27 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
               <span>Perte / Vol</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-rose-500/20 font-semibold">
                 {countAjustementsPerte}
               </span>
             </button>
             <button
               onClick={() => { setMotifFilterAjustements('don_promo'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'don_promo'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'glass-card text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                  ? 'bg-slate-600 text-white shadow-sm'
+                  : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-950/30'
               }`}
             >
-              <Gift className="w-3.5 h-3.5 text-purple-500" />
+              <Gift className="w-3.5 h-3.5 text-slate-500" />
               <span>Don / Démo</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-slate-500/20 font-semibold">
                 {countAjustementsDon}
               </span>
             </button>
             <button
               onClick={() => { setMotifFilterAjustements('autre'); setCurrentPageAjustements(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1.5 ${
                 motifFilterAjustements === 'autre'
                   ? 'bg-slate-600 text-white shadow-sm'
                   : 'glass-card text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -2096,7 +2097,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Autre</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-500/20 font-bold">
+              <span className="text-xs px-1.5 py-0.2 rounded-md bg-slate-500/20 font-semibold">
                 {countAjustementsAutre}
               </span>
             </button>
@@ -2105,18 +2106,18 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
           {/* Filter & Search Bar for Ajustements */}
           <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Rechercher par produit, variante, commentaire..."
                 value={searchAjustements}
                 onChange={(e) => { setSearchAjustements(e.target.value); setCurrentPageAjustements(1); }}
-                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+                className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
               />
               {searchAjustements && (
                 <button
                   onClick={() => setSearchAjustements('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -2125,7 +2126,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> Période:
                 </span>
                 <select
@@ -2155,7 +2156,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400">Sens variation:</span>
+                <span className="text-xs font-semibold text-slate-500">Sens variation:</span>
                 <select
                   value={directionFilterAjustements}
                   onChange={(e) => { setDirectionFilterAjustements(e.target.value as typeof directionFilterAjustements); setCurrentPageAjustements(1); }}
@@ -2168,7 +2169,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <ArrowUpDown className="w-3.5 h-3.5" /> Tri:
                 </span>
                 <select
@@ -2186,7 +2187,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {isFilteredAjustements && (
                 <button
                   onClick={resetAllFiltersAjustements}
-                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1 transition-colors"
+                  className="px-3 py-2 rounded-xl glass-card hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-1 transition-colors"
                   title="Réinitialiser les filtres"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -2205,10 +2206,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {totalFilteredAjustements === 0 ? (
                 <div className="p-10 flex flex-col items-center justify-center space-y-2 text-center">
                   <Scale className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                  <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                     Aucun ajustement ne correspond à vos filtres
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Modifiez vos critères de recherche ou réinitialisez les filtres.
                   </p>
                   {isFilteredAjustements && (
@@ -2225,17 +2226,17 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     <div key={aj.id} className="p-4 space-y-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-900 dark:text-white truncate">
+                          <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {aj.produit_nom}
                           </div>
                           {aj.variante && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[11px] font-semibold">
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 text-xs font-semibold">
                               {aj.variante}
                             </span>
                           )}
                         </div>
                         <span
-                          className={`shrink-0 px-2.5 py-1 rounded-lg text-sm font-black whitespace-nowrap ${
+                          className={`shrink-0 px-2.5 py-1 rounded-lg text-sm font-semibold whitespace-nowrap ${
                             isPositive
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                               : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -2247,12 +2248,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 ${motifInfo.color}`}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${motifInfo.color}`}
                         >
                           {motifInfo.icon}
                           <span>{motifInfo.label}</span>
                         </span>
-                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-300">
                           {aj.ancien_stock} → {aj.nouveau_stock}
                         </span>
                       </div>
@@ -2261,7 +2262,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 italic">{aj.commentaire}</p>
                       )}
 
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-xs text-slate-500">
                         {new Date(aj.date).toLocaleString('fr-FR')}
                       </div>
                     </div>
@@ -2273,7 +2274,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                     <th className="p-4 font-semibold">Date & Heure</th>
                     <th className="p-4 font-semibold">Produit</th>
                     <th className="p-4 font-semibold">Variante</th>
@@ -2290,10 +2291,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <td colSpan={8} className="p-12 text-center">
                         <div className="flex flex-col items-center justify-center space-y-2">
                           <Scale className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                          <p className="text-base font-bold text-slate-700 dark:text-slate-300">
+                          <p className="text-base font-semibold text-slate-700 dark:text-slate-300">
                             Aucun ajustement ne correspond à vos filtres
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             Modifiez vos critères de recherche ou réinitialisez les filtres.
                           </p>
                           {isFilteredAjustements && (
@@ -2311,30 +2312,30 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
 
                       return (
                         <tr key={aj.id} className="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="p-4 text-xs text-slate-400 whitespace-nowrap">
+                          <td className="p-4 text-xs text-slate-500 whitespace-nowrap">
                             {new Date(aj.date).toLocaleString('fr-FR')}
                           </td>
-                          <td className="p-4 font-bold text-slate-900 dark:text-white">
+                          <td className="p-4 font-semibold text-slate-900 dark:text-white">
                             {aj.produit_nom}
                           </td>
                           <td className="p-4 text-xs text-slate-500">
                             {aj.variante ? (
-                              <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 font-semibold">
                                 {aj.variante}
                               </span>
                             ) : (
-                              <span className="text-slate-400 italic">—</span>
+                              <span className="text-slate-500 italic">—</span>
                             )}
                           </td>
                           <td className="p-4 text-slate-500 font-medium">
                             {aj.ancien_stock}
                           </td>
-                          <td className="p-4 font-bold text-slate-900 dark:text-white">
+                          <td className="p-4 font-semibold text-slate-900 dark:text-white">
                             {aj.nouveau_stock}
                           </td>
-                          <td className="p-4 font-extrabold whitespace-nowrap">
+                          <td className="p-4 font-semibold whitespace-nowrap">
                             <span
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black ${
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
                                 isPositive
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -2378,7 +2379,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         setPageSizeAjustements(Number(e.target.value));
                         setCurrentPageAjustements(1);
                       }}
-                      className="glass-input px-2 py-1 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                      className="glass-input px-2 py-1 rounded-lg text-xs font-semibold text-slate-900 dark:text-white"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -2394,7 +2395,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     {pageSizeAjustements < 100 && endIndexAjustements < totalFilteredAjustements && (
                       <button
                         onClick={() => setPageSizeAjustements((prev) => prev + 25)}
-                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-blue-600 dark:text-blue-400 mr-2"
+                        className="px-3 py-1.5 rounded-xl glass-card hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-blue-600 dark:text-blue-400 mr-2"
                       >
                         + Voir 25 de plus
                       </button>
@@ -2409,7 +2410,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       <ChevronLeft className="w-4 h-4" />
                     </button>
 
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-2">
                       Page {validCurrentPageAjustements} / {totalPagesAjustements}
                     </span>
 
@@ -2438,17 +2439,17 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
       >
         <form onSubmit={handleSaveProduit} className="space-y-5 max-h-[78vh] overflow-y-auto pr-1">
           {/* 01 : Informations Générales du Produit */}
-          <div className="p-4 rounded-2xl bg-slate-500/5 border border-slate-200/50 dark:border-white/10 space-y-3.5">
+          <div className="p-4 rounded-xl bg-slate-500/5 border border-slate-200/50 dark:border-white/10 space-y-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Informations Principales
               </span>
               {/* Sélecteur de type de produit (Simple vs Variable) */}
-              <div className="inline-flex p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-white/5 text-xs font-bold">
+              <div className="inline-flex p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-white/5 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setIsVariable(false)}
-                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors ${
                     !isVariable
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -2460,9 +2461,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 <button
                   type="button"
                   onClick={() => setIsVariable(true)}
-                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors ${
                     isVariable
-                      ? 'bg-purple-600 text-white shadow-xs'
+                      ? 'bg-slate-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -2554,7 +2555,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   value={minStock}
                   onChange={(e) => setMinStock(e.target.value)}
                   placeholder="5"
-                  className="w-full glass-input px-3 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
+                  className="w-full glass-input px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -2567,10 +2568,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     <button
                       type="button"
                       onClick={() => setCodeBarres(generateRandomBarcode())}
-                      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
                       title="Générer un code-barres aléatoire unique"
                     >
-                      <Sparkles className="w-2.5 h-2.5" /> Auto
+                      <RefreshCw className="w-3 h-3" /> Générer
                     </button>
                     <span className="text-slate-300 dark:text-slate-700">·</span>
                     <button
@@ -2579,7 +2580,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         setScanningVariantTarget('main');
                         setIsStockScannerOpen(true);
                       }}
-                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                      className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
                       title="Scanner avec la caméra"
                     >
                       <Camera className="w-2.5 h-2.5" /> Caméra
@@ -2593,9 +2594,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     value={codeBarres}
                     onChange={(e) => setCodeBarres(e.target.value)}
                     placeholder="200XXXXXXXXXX"
-                    className="w-full glass-input pl-8 pr-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white"
+                    className="w-full glass-input pl-8 pr-3 py-2 rounded-xl text-xs font-mono font-semibold text-slate-900 dark:text-white"
                   />
-                  <Barcode className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Barcode className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 </div>
               </div>
             </div>
@@ -2604,9 +2605,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
           {/* 02 : Champs Produit Simple */}
           {!isVariable ? (
             <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
               <div>
-                <label className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 block">
+                <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1 block">
                   {settings?.saisie_prix_a_la_vente ? "Prix de Vente Conseillé (F, Optionnel)" : "Prix de Vente Client (F) *"}
                 </label>
                 <input
@@ -2617,9 +2618,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   value={prix}
                   onChange={(e) => setPrix(e.target.value)}
                   placeholder={settings?.saisie_prix_a_la_vente ? "Optionnel (saisi à la vente)" : "ex: 150000"}
-                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-black text-blue-600 dark:text-blue-400"
+                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-xs text-slate-500 mt-1 block">
                   {settings?.saisie_prix_a_la_vente
                     ? "Optionnel — Le prix de vente sera saisi par le caissier lors de la vente."
                     : "Prix de vente appliqué automatiquement en caisse."}
@@ -2627,7 +2628,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1 block">
+                <label className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1 block">
                   Prix d'Achat / Coût (F)
                 </label>
                 <input
@@ -2637,9 +2638,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   value={coutAchat}
                   onChange={(e) => setCoutAchat(e.target.value)}
                   placeholder="ex: 100000"
-                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-emerald-600 dark:text-emerald-400"
+                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-emerald-600 dark:text-emerald-400"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-xs text-slate-500 mt-1 block">
                   {coutAchat
                     ? 'Sert à calculer le bénéfice réel des ventes.'
                     : 'Vide = bénéfice affiché à 100% du prix de vente sur ce produit.'}
@@ -2650,7 +2651,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center justify-between">
                   <span>{editingProduit ? 'Stock Actuel en Magasin' : 'Stock Initial de Départ'}</span>
                   {editingProduit && (
-                    <span className="text-[10px] text-amber-500 font-bold flex items-center gap-1">
+                    <span className="text-xs text-amber-500 font-semibold flex items-center gap-1">
                       <Lock className="w-3 h-3" /> Verrouillé
                     </span>
                   )}
@@ -2661,9 +2662,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       type="number"
                       disabled
                       value={stock}
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold bg-slate-200/50 dark:bg-slate-800/60 cursor-not-allowed opacity-80 text-slate-700 dark:text-slate-300"
+                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-slate-200/50 dark:bg-slate-800/60 cursor-not-allowed opacity-80 text-slate-700 dark:text-slate-300"
                     />
-                    <span className="text-[10px] text-slate-400 mt-1 block">
+                    <span className="text-xs text-slate-500 mt-1 block">
                       Modifiable via l'onglet <strong>Réapprovisionnement</strong> ou <strong>Ajustement</strong>.
                     </span>
                   </div>
@@ -2675,9 +2676,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       value={stock}
                       onChange={(e) => setStock(e.target.value)}
                       placeholder="10"
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white"
                     />
-                    <span className="text-[10px] text-slate-400 mt-1 block">Unités disponibles dès la création</span>
+                    <span className="text-xs text-slate-500 mt-1 block">Unités disponibles dès la création</span>
                   </div>
                 )}
               </div>
@@ -2696,14 +2697,14 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             </>
           ) : (
             /* 03 : Configuration Produit Variable (Attributs & Variantes) */
-            <div className="space-y-4 p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20">
+            <div className="space-y-4 p-4 rounded-xl bg-slate-500/5 border border-slate-500/20">
               {/* Header avec résumé */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-500/20">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-500/20">
                 <div>
-                  <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
-                    <Sparkles className="w-4 h-4" /> Attributs & Déclinaisons de Variantes
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                    <Layers className="w-4 h-4" /> Attributs et déclinaisons de variantes
                   </span>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Configurez vos attributs (RAM, Stockage, Couleur...), saisissez leurs spécificités séparées par des virgules et gérez vos déclinaisons.
                   </p>
                 </div>
@@ -2718,10 +2719,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                       1. Types d'attributs du produit
                     </label>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-500">
                       Saisissez les spécificités séparées par des virgules (ex: 12Go, 4Go, 16Go, 32Go).
                     </span>
                   </div>
@@ -2735,7 +2736,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       ]);
                       setAttrRawInputs((prev) => ({ ...prev, [newIdx]: '' }));
                     }}
-                    className="text-xs text-purple-600 dark:text-purple-400 font-bold hover:underline shrink-0 flex items-center gap-1"
+                    className="text-xs text-slate-600 dark:text-slate-400 font-semibold hover:underline shrink-0 flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" /> Ajouter un attribut
                   </button>
@@ -2757,7 +2758,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                             updated[idx].nom = e.target.value;
                             setAttributs(updated);
                           }}
-                          className="flex-1 glass-input px-2.5 py-1.5 rounded-lg text-xs font-black text-purple-700 dark:text-purple-300"
+                          className="flex-1 glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300"
                         />
                         <button
                           type="button"
@@ -2771,7 +2772,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                               });
                             setAttrRawInputs(updatedRaw);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
                           title="Supprimer cet attribut"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2803,7 +2804,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                             {attr.valeurs.map((val, valIdx) => (
                               <span
                                 key={valIdx}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-700 dark:text-purple-300 text-[11px] font-bold border border-purple-500/20"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-500/20"
                               >
                                 {val}
                                 <button
@@ -2842,30 +2843,30 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     {/* Bannière explicative si un attribut a été ajouté et est manquant sur les variantes existantes */}
                     {missingAttrVariants.length > 0 && (
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
-                        <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <Info className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                         <div>
-                          <strong className="font-bold block text-amber-900 dark:text-amber-200">
+                          <strong className="font-semibold block text-amber-900 dark:text-amber-200">
                             Attribut(s) nouvellement ajouté(s) détecté(s) !
                           </strong>
                           <span>
                             {missingAttrVariants.length} variante(s) existante(s) n'ont pas encore de valeur pour les nouveaux attributs.
-                            Vous pouvez soit <strong>choisir leur valeur directement dans le tableau ci-dessous</strong>, soit cliquer sur <strong>« ⚡ Générer toutes les combinaisons »</strong> pour combiner automatiquement toutes les options.
+                            Vous pouvez soit <strong>choisir leur valeur directement dans le tableau ci-dessous</strong>, soit cliquer sur <strong>« Générer les combinaisons »</strong> pour combiner automatiquement toutes les options.
                           </span>
                         </div>
                       </div>
                     )}
 
                     {/* Barre d'outils et actions rapides */}
-                    <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-purple-500/20">
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-500/20">
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
                           variant="primary"
                           size="sm"
                           onClick={handleGenerateCombinations}
-                          icon={<Sparkles className="w-3.5 h-3.5" />}
+                          icon={<Layers className="w-3.5 h-3.5" />}
                         >
-                          ⚡ Générer toutes les combinaisons
+                          Générer les combinaisons
                         </Button>
                       </div>
 
@@ -2877,7 +2878,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                             placeholder="Prix (F)"
                             value={bulkPriceValue}
                             onChange={(e) => setBulkPriceValue(e.target.value)}
-                            className="glass-input px-2 py-1 rounded-lg text-xs font-bold w-24"
+                            className="glass-input px-2 py-1 rounded-lg text-xs font-semibold w-24"
                           />
                           <Button
                             type="button"
@@ -2896,16 +2897,16 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               })()}
 
               {/* 3. Formulaire d'Ajout d'une Variante Spécifique */}
-              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/80 border border-purple-500/30 space-y-2.5 shadow-xs">
-                <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-500/30 space-y-2.5 shadow-xs">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   Ajouter manuellement une variante précise
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
                   {attributs.filter((a) => a.nom.trim()).map((attr) => (
                     <div key={attr.nom}>
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5 block truncate">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5 block truncate">
                         {attr.nom}
                       </label>
                       <input
@@ -2929,7 +2930,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   ))}
 
                   <div>
-                    <label className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5 block">
+                    <label className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-0.5 block">
                       Prix Client (F) *
                     </label>
                     <input
@@ -2938,12 +2939,12 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       placeholder="Ex: 350000"
                       value={newVariantPrix}
                       onChange={(e) => setNewVariantPrix(e.target.value)}
-                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-black text-blue-600 dark:text-blue-400"
+                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mb-0.5 block">
+                    <label className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 block">
                       Coût d'Achat (F)
                     </label>
                     <input
@@ -2952,23 +2953,23 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       placeholder="Ex: 250000"
                       value={newVariantCoutAchat}
                       onChange={(e) => setNewVariantCoutAchat(e.target.value)}
-                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-0.5">
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
                         Code-Barres
                       </label>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setNewVariantCodeBarres(generateRandomBarcode())}
-                          className="text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                          className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                           title="Générer automatiquement"
                         >
-                          ⚡ Auto
+                          Auto
                         </button>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
                         <button
@@ -2977,7 +2978,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                             setScanningVariantTarget('newVariant');
                             setIsStockScannerOpen(true);
                           }}
-                          className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                          className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
                           title="Scanner avec la caméra du téléphone"
                         >
                           <Camera className="w-2.5 h-2.5" /> Scan
@@ -2989,13 +2990,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       placeholder="Optionnel (ou Auto)"
                       value={newVariantCodeBarres}
                       onChange={(e) => setNewVariantCodeBarres(e.target.value)}
-                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-white"
+                      className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-slate-900 dark:text-white"
                     />
                   </div>
 
                   {!editingProduit && (
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
+                      <label className="text-xs font-semibold text-slate-500 mb-0.5 block">
                         Stock Initial
                       </label>
                       <input
@@ -3004,7 +3005,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                         placeholder="5"
                         value={newVariantStock}
                         onChange={(e) => setNewVariantStock(e.target.value)}
-                        className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                        className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-900 dark:text-white"
                       />
                     </div>
                   )}
@@ -3023,7 +3024,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   </div>
                 </div>
                 {newVariantCoutAchat && newVariantPrix && parseFloat(newVariantPrix) < parseFloat(newVariantCoutAchat) && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
+                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>
                       Prix de vente ({formatCfa(parseFloat(newVariantPrix))}) inférieur au coût d'achat ({formatCfa(parseFloat(newVariantCoutAchat))}) —
@@ -3036,19 +3037,19 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               {/* 4. TABLEAU DES VARIANTES AVEC GESTION DIRECTE DES ATTRIBUTS & PRIX */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Déclinaisons configurées ({variantesDetaillees.length})
                   </span>
                 </div>
 
                 {variantesDetaillees.length === 0 ? (
-                  <div className="py-7 text-center rounded-xl border border-dashed border-purple-300 dark:border-purple-800/50 bg-white/40 dark:bg-slate-900/30">
-                    <Layers className="w-8 h-8 mx-auto text-purple-400 mb-1.5 opacity-60" />
+                  <div className="py-7 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-800/50 bg-white/40 dark:bg-slate-900/30">
+                    <Layers className="w-8 h-8 mx-auto text-slate-400 mb-1.5 opacity-60" />
                     <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Aucune variante créée pour le moment
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Cliquez sur « ⚡ Générer toutes les combinaisons » ci-dessus ou ajoutez une déclinaison manuellement.
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Cliquez sur « Générer les combinaisons » ci-dessus ou ajoutez une déclinaison manuellement.
                     </p>
                   </div>
                 ) : (
@@ -3056,11 +3057,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     <table className="w-full text-left text-xs min-w-[700px]">
                       <thead className="bg-slate-100/90 dark:bg-slate-800 text-slate-500 uppercase sticky top-0 border-b border-slate-200/60 dark:border-white/10">
                         <tr>
-                          <th className="p-2.5 font-bold">Attributs / Spécificités</th>
-                          <th className="p-2.5 w-44 font-bold">Code-Barres</th>
-                          <th className="p-2.5 w-32 font-bold">Prix Client (F)</th>
-                          <th className="p-2.5 w-32 font-bold">Coût d'Achat (F)</th>
-                          <th className="p-2.5 w-24 font-bold">
+                          <th className="p-2.5 font-semibold">Attributs / Spécificités</th>
+                          <th className="p-2.5 w-44 font-semibold">Code-Barres</th>
+                          <th className="p-2.5 w-32 font-semibold">Prix Client (F)</th>
+                          <th className="p-2.5 w-32 font-semibold">Coût d'Achat (F)</th>
+                          <th className="p-2.5 w-24 font-semibold">
                             {editingProduit ? (
                               <span className="flex items-center gap-1">
                                 Stock <Lock className="w-3 h-3 text-amber-500" />
@@ -3077,7 +3078,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                           const activeAttrs = attributs.filter((a) => a.nom.trim());
 
                           return (
-                            <tr key={v.id} className="hover:bg-purple-50/40 dark:hover:bg-slate-800/40 transition-colors">
+                            <tr key={v.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors">
                               <td className="p-2.5">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   {activeAttrs.map((attr) => {
@@ -3087,9 +3088,9 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                       return (
                                         <span
                                           key={attr.nom}
-                                          className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold border border-purple-500/20 text-[11px]"
+                                          className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-700 dark:text-slate-300 font-semibold border border-slate-500/20 text-xs"
                                         >
-                                          <span className="text-slate-400 font-normal mr-1">{attr.nom}:</span>
+                                          <span className="text-slate-500 font-normal mr-1">{attr.nom}:</span>
                                           {val}
                                         </span>
                                       );
@@ -3098,13 +3099,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                     // Si l'attribut est nouveau et manquant sur cette variante, afficher un sélecteur en 1 clic
                                     return (
                                       <div key={attr.nom} className="inline-flex items-center gap-1">
-                                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
                                           {attr.nom} :
                                         </span>
                                         <select
                                           value=""
                                           onChange={(e) => handleUpdateVariantAttr(v.id, attr.nom, e.target.value)}
-                                          className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 focus:ring-1 focus:ring-amber-500"
+                                          className="text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 focus:ring-1 focus:ring-amber-500"
                                         >
                                           <option value="">Sélectionner {attr.nom}...</option>
                                           {attr.valeurs.map((optionVal) => (
@@ -3129,7 +3130,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                       setVariantesDetaillees(updated);
                                     }}
                                     placeholder="200..."
-                                    className="w-full glass-input pr-12 pl-2 py-1.5 rounded-lg text-xs font-mono font-bold"
+                                    className="w-full glass-input pr-12 pl-2 py-1.5 rounded-lg text-xs font-mono font-semibold"
                                   />
                                   <div className="absolute right-1 flex items-center gap-0.5">
                                     <button
@@ -3139,10 +3140,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                         updated[i].code_barres = generateRandomBarcode();
                                         setVariantesDetaillees(updated);
                                       }}
-                                      className="p-1 text-slate-400 hover:text-blue-500 rounded transition-colors"
+                                      className="p-1 text-slate-500 hover:text-blue-500 rounded transition-colors"
                                       title="Générer un code unique"
                                     >
-                                      <Sparkles className="w-3 h-3" />
+                                      <RefreshCw className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       type="button"
@@ -3150,7 +3151,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                         setScanningVariantTarget(v.id);
                                         setIsStockScannerOpen(true);
                                       }}
-                                      className="p-1 text-slate-400 hover:text-emerald-500 rounded transition-colors"
+                                      className="p-1 text-slate-500 hover:text-emerald-500 rounded transition-colors"
                                       title="Scanner le code de cette variante avec la caméra du téléphone"
                                     >
                                       <Camera className="w-3 h-3" />
@@ -3169,7 +3170,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                     updated[i].prix = parseFloat(e.target.value) || 0;
                                     setVariantesDetaillees(updated);
                                   }}
-                                  className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-black text-blue-600 dark:text-blue-400"
+                                  className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400"
                                 />
                               </td>
                               <td className="p-2.5">
@@ -3183,11 +3184,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                     updated[i].cout_achat_unitaire = e.target.value ? parseFloat(e.target.value) || 0 : undefined;
                                     setVariantesDetaillees(updated);
                                   }}
-                                  className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                                  className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                                 />
                                 {!!v.cout_achat_unitaire && v.prix < v.cout_achat_unitaire && (
                                   <span
-                                    className="text-[10px] font-bold text-rose-500 flex items-center gap-0.5 mt-1"
+                                    className="text-xs font-semibold text-rose-500 flex items-center gap-0.5 mt-1"
                                     title="Prix de vente inférieur au coût d'achat — cette variante sera vendue à perte."
                                   >
                                     <AlertTriangle className="w-2.5 h-2.5" /> Vente à perte
@@ -3196,7 +3197,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                               </td>
                               <td className="p-2.5">
                                 {editingProduit ? (
-                                  <span className="font-bold text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 inline-block text-xs">
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 inline-block text-xs">
                                     {v.stock} en stock
                                   </span>
                                 ) : (
@@ -3209,7 +3210,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                       updated[i].stock = parseInt(e.target.value, 10) || 0;
                                       setVariantesDetaillees(updated);
                                     }}
-                                    className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                                    className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-semibold"
                                   />
                                 )}
                               </td>
@@ -3217,7 +3218,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteSingleVariant(v.id)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                  className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -3317,8 +3318,8 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               return null;
             }
             return (
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
-                <label className="text-xs font-bold text-purple-700 dark:text-purple-300 block">
+              <div className="p-3 rounded-xl bg-slate-500/10 border border-slate-500/20 space-y-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                   Variante spécifique à réapprovisionner
                 </label>
                 <select
@@ -3352,7 +3353,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 required
                 value={achatQuantite}
                 onChange={(e) => handleAchatQtyChange(e.target.value)}
-                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white"
               />
             </div>
             <div>
@@ -3367,7 +3368,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 value={achatCoutUnitaire}
                 onChange={(e) => handleAchatUnitCostChange(e.target.value)}
                 placeholder="Ex: 15000"
-                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white"
               />
             </div>
             <div>
@@ -3382,7 +3383,7 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                 value={achatCoutTotal}
                 onChange={(e) => handleAchatTotalCostChange(e.target.value)}
                 placeholder="Ex: 150000"
-                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -3407,10 +3408,10 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             const isLoss = newSalePriceNum > 0 && unitCostNum > 0 && newSalePriceNum < unitCostNum;
 
             return (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/5 to-purple-500/5 border border-blue-500/20 space-y-3">
+              <div className="p-4 rounded-xl bg-surface-muted border border-line space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/50 dark:border-white/10">
                   <div>
-                    <span className="text-[11px] uppercase tracking-wider font-extrabold text-slate-400 block">
+                    <span className="text-xs uppercase tracking-wide font-semibold text-slate-500 block">
                       Ajustement du Prix de Vente Client
                     </span>
                     <span className="text-xs font-medium text-slate-500">
@@ -3419,14 +3420,14 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                   </div>
                   {unitCostNum > 0 && newSalePriceNum > 0 && (
                     <Badge variant={isLoss ? 'red' : marginPercent > 20 ? 'green' : 'amber'} size="sm">
-                      {isLoss ? '⚠️ Vente à perte' : `Marge estimée : +${formatCfa(marginAmount)} (+${marginPercent}%)`}
+                      {isLoss ? 'Vente à perte' : `Marge estimée : +${formatCfa(marginAmount)} (+${marginPercent}%)`}
                     </Badge>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
                       Nouveau Prix de Vente Client (F)
                     </label>
                     <input
@@ -3435,11 +3436,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                       value={nouveauPrixVente}
                       onChange={(e) => setNouveauPrixVente(e.target.value)}
                       placeholder={currentSalePrice.toString()}
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-extrabold text-blue-600 dark:text-blue-400"
+                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400"
                     />
                   </div>
                   <div className="text-xs text-slate-500 space-y-1">
-                    <p>💡 Si le fournisseur a augmenté ou baissé ses tarifs, ajustez ce montant pour actualiser instantanément le prix de vente en caisse.</p>
+                    <p>Si le fournisseur a augmenté ou baissé ses tarifs, ajustez ce montant pour actualiser instantanément le prix de vente en caisse.</p>
                   </div>
                 </div>
               </div>
@@ -3501,8 +3502,8 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
               return null;
             }
             return (
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
-                <label className="text-xs font-bold text-purple-700 dark:text-purple-300 block">
+              <div className="p-3 rounded-xl bg-slate-500/10 border border-slate-500/20 space-y-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                   Variante spécifique à ajuster
                 </label>
                 <select
@@ -3543,11 +3544,11 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
             return (
               <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200/50 dark:border-white/10">
                 <div>
-                  <span className="text-[11px] font-semibold text-slate-400 block">Stock Théorique Actuel</span>
-                  <span className="text-lg font-bold text-slate-700 dark:text-slate-300">{currentStock} unités</span>
+                  <span className="text-xs font-semibold text-slate-500 block">Stock Théorique Actuel</span>
+                  <span className="text-lg font-semibold text-slate-700 dark:text-slate-300">{currentStock} unités</span>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block mb-0.5">
+                  <label className="text-xs font-semibold text-blue-600 dark:text-blue-400 block mb-0.5">
                     Nouveau Stock Constaté *
                   </label>
                   <input
@@ -3556,13 +3557,13 @@ export const Stock: React.FC<StockProps> = ({ activeZoneId }) => {
                     required
                     value={nouveauStockConstate}
                     onChange={(e) => setNouveauStockConstate(e.target.value)}
-                    className="w-full glass-input px-3 py-1.5 rounded-lg text-base font-black text-slate-900 dark:text-white"
+                    className="w-full glass-input px-3 py-1.5 rounded-lg text-base font-semibold text-slate-900 dark:text-white"
                   />
                 </div>
                 {delta !== 0 && (
-                  <div className="col-span-2 pt-1 border-t border-slate-200/40 dark:border-white/5 flex items-center justify-between text-xs font-bold">
+                  <div className="col-span-2 pt-1 border-t border-slate-200/40 dark:border-white/5 flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-500">Variation calculée (Delta) :</span>
-                    <span className={delta > 0 ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : 'text-rose-600 dark:text-rose-400 font-extrabold'}>
+                    <span className={delta > 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-rose-600 dark:text-rose-400 font-semibold'}>
                       {delta > 0 ? `+${delta}` : delta} unités
                     </span>
                   </div>

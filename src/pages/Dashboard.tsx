@@ -596,7 +596,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
   }
   if (loadError) {
     return <div className="p-8 text-center text-sm text-rose-500">{loadError}</div>;
@@ -608,14 +608,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             Tableau de Bord
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Aperçu analytique de l'activité, des stocks et du recouvrement des créances.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <DateRangePicker
             startDate={dateDebut}
             endDate={dateFin}
@@ -626,14 +626,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           />
           <Button
             variant="glass"
-            icon={<Download className="w-4 h-4 text-blue-500" />}
+            icon={<Download className="w-4 h-4" />}
             onClick={() => setIsExportModalOpen(true)}
           >
             CSV
           </Button>
           <Button
             variant="glass"
-            icon={<ShoppingBag className="w-4 h-4 text-blue-500" />}
+            icon={<ShoppingBag className="w-4 h-4" />}
             onClick={() => onNavigate('pos')}
           >
             Caisse
@@ -643,6 +643,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             icon={<PlusCircle className="w-4 h-4" />}
             onClick={() => onNavigate('stock')}
             title="Ajouter un produit"
+            aria-label="Ajouter un produit"
           />
         </div>
       </div>
@@ -652,7 +653,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
         {/* Card 1: Chiffre d'affaires */}
         <GlassCard hoverEffect className="relative min-w-0 overflow-hidden p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 truncate">
               Chiffre d'Affaires
             </span>
             <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
@@ -660,7 +661,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between gap-2 min-w-0 flex-wrap">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap" title={formatCfa(totalCA)}>
+            <div className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight break-words leading-tight" title={formatCfa(totalCA)}>
               {formatCfa(totalCA)}
             </div>
             {caVariation !== null && (
@@ -670,7 +671,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               </Badge>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-2 truncate" title={`${ventesFiltrees.length} transactions sur la période`}>
+          <p className="text-xs text-slate-500 mt-2 truncate" title={`${ventesFiltrees.length} transactions sur la période`}>
             {ventesFiltrees.length} transaction{ventesFiltrees.length > 1 ? 's' : ''}
             {totalRetours > 0 && <span className="text-rose-500 font-semibold"> · {formatCfa(totalRetours)} retourné</span>}
           </p>
@@ -679,34 +680,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
         {/* Card 2: Panier Moyen */}
         <GlassCard hoverEffect className="min-w-0 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 truncate">
               Panier Moyen
             </span>
-            <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
+            <div className="p-2 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400 shrink-0">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap" title={formatCfa(panierMoyen)}>
+          <div className="mt-3 text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight break-words leading-tight" title={formatCfa(panierMoyen)}>
             {formatCfa(panierMoyen)}
           </div>
-          <p className="text-[11px] text-slate-400 mt-2 truncate">Moyenne par vente</p>
+          <p className="text-xs text-slate-500 mt-2 truncate">Moyenne par vente</p>
         </GlassCard>
 
         {/* Card 3: Bénéfice (Admin) */}
         {personnel?.role === 'admin' && (
           <GlassCard hoverEffect className={`min-w-0 p-4 sm:p-5 ${benefice >= 0 ? 'border-emerald-500/30' : 'border-rose-500/30'}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 truncate">
                 Bénéfice Net
               </span>
               <div className={`p-2 rounded-xl shrink-0 ${benefice >= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
                 <TrendingUp className="w-4 h-4" />
               </div>
             </div>
-            <div className={`mt-3 text-xl sm:text-2xl font-black tracking-tight whitespace-nowrap ${benefice >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} title={formatCfa(benefice)}>
+            <div className={`mt-3 text-xl sm:text-2xl font-semibold tracking-tight break-words leading-tight ${benefice >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} title={formatCfa(benefice)}>
               {formatCfa(benefice)}
             </div>
-            <p className="text-[11px] text-slate-400 mt-2 truncate">Marge : {tauxMarge.toFixed(1)}%</p>
+            <p className="text-xs text-slate-500 mt-2 truncate">Marge : {tauxMarge.toFixed(1)}%</p>
           </GlassCard>
         )}
 
@@ -715,12 +716,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           hoverEffect
           className={`relative min-w-0 overflow-hidden p-4 sm:p-5 ${
             totalCreances > 0
-              ? 'border-rose-500/40 bg-gradient-to-br from-rose-500/5 to-transparent'
+              ? 'border-rose-300 dark:border-rose-500/40 bg-rose-50/60 dark:bg-rose-500/5'
               : ''
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 truncate" title="Créances en Attente">
+            <span className="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400 truncate" title="Créances en Attente">
               Créances Dues
             </span>
             <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
@@ -728,16 +729,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between gap-2 min-w-0 flex-wrap">
-            <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight whitespace-nowrap" title={formatCfa(totalCreances)}>
+            <div className="text-xl sm:text-2xl font-semibold text-rose-600 dark:text-rose-400 tracking-tight break-words leading-tight" title={formatCfa(totalCreances)}>
               {formatCfa(totalCreances)}
             </div>
             {totalCreances > 0 && (
-              <Badge variant="red" size="sm" className="shrink-0 whitespace-nowrap text-[10px] px-1.5 py-0.5">
+              <Badge variant="red" size="sm" className="shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5">
                 À recouvrer
               </Badge>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-slate-400 min-w-0">
+          <div className="mt-2 flex items-center justify-between gap-1 text-xs text-slate-500 min-w-0">
             <span className="truncate">Dettes clients</span>
             <button
               onClick={() => onNavigate('clients')}
@@ -751,7 +752,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
         {/* Card 5: Stock Total */}
         <GlassCard hoverEffect className="min-w-0 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 truncate">
               Stock Total
             </span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -759,20 +760,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between gap-2 min-w-0">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight break-words leading-tight">
               {totalStockItems}
             </div>
-            <Badge variant="green" size="sm" className="shrink-0 whitespace-nowrap text-[10px] px-1.5 py-0.5">
+            <Badge variant="green" size="sm" className="shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5">
               {produits.length} réf.
             </Badge>
           </div>
-          <p className="text-[11px] text-slate-400 mt-2 truncate">Unités en rayon</p>
+          <p className="text-xs text-slate-500 mt-2 truncate">Unités en rayon</p>
         </GlassCard>
 
         {/* Card 6: Alertes Stock Bas */}
         <GlassCard hoverEffect className={`min-w-0 p-4 sm:p-5 ${stockBasItems.length > 0 ? 'border-amber-500/40' : ''}`}>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 truncate">
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 truncate">
               Stock Critique
             </span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
@@ -780,16 +781,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between gap-2 min-w-0">
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-semibold text-amber-600 dark:text-amber-400 tracking-tight break-words leading-tight">
               {stockBasItems.length}
             </div>
             {stockBasItems.length > 0 && (
-              <Badge variant="amber" size="sm" className="shrink-0 whitespace-nowrap text-[10px] px-1.5 py-0.5">
+              <Badge variant="amber" size="sm" className="shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5">
                 Alerte
               </Badge>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-slate-400 min-w-0">
+          <div className="mt-2 flex items-center justify-between gap-1 text-xs text-slate-500 min-w-0">
             <span className="truncate">Sous le seuil</span>
             <button
               onClick={() => onNavigate('stock')}
@@ -809,9 +810,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                 <Users className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ventes par vendeur</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Ventes par vendeur</h3>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Performance individuelle, chiffre d'affaires et volume de ventes par membre de l'équipe.
             </p>
           </div>
@@ -819,7 +820,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {/* Recherche rapide vendeur */}
             <div className="relative min-w-[200px]">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={sellerSearch}
@@ -830,7 +831,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               {sellerSearch && (
                 <button
                   onClick={() => setSellerSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -839,7 +840,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
 
             {/* Sélecteur de tri */}
             <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/10 text-xs">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <select
                 value={sellerSort}
                 onChange={(e) => setSellerSort(e.target.value as any)}
@@ -862,7 +863,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                 Aucun vendeur trouvé
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {sellerSearch ? 'Aucun vendeur ne correspond à votre recherche.' : 'Aucune vente enregistrée sur cette période.'}
               </p>
             </div>
@@ -874,19 +875,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               return (
                 <div
                   key={vendeur.nom}
-                  className="group relative rounded-2xl bg-slate-50/80 dark:bg-slate-900/40 p-4 border border-slate-200/60 dark:border-white/10 hover:border-blue-500/40 hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+                  className="group relative rounded-xl bg-slate-50/80 dark:bg-slate-900/40 p-4 border border-slate-200/60 dark:border-white/10 hover:border-blue-500/40 hover:shadow-lg transition-colors duration-300 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 flex items-center justify-center font-black text-sm text-blue-600 dark:text-blue-400 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-line flex items-center justify-center font-semibold text-sm text-slate-700 dark:text-slate-200 shrink-0">
                           {vendeur.nom.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                          <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                             {vendeur.nom}
                           </div>
-                          <div className="text-[11px] text-slate-400 truncate">
+                          <div className="text-xs text-slate-500 truncate">
                             {vendeur.identifiant ? `ID: ${vendeur.identifiant}` : `${vendeur.count} transaction(s)`}
                           </div>
                         </div>
@@ -913,7 +914,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                     {/* Chiffre d'Affaires & Part */}
                     <div className="space-y-1 my-3">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
+                        <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400 tracking-tight">
                           {formatCfa(vendeur.total)}
                         </span>
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -924,7 +925,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                       {/* Barre de part de CA */}
                       <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700/60 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                          className="h-full rounded-full bg-accent"
                           style={{ width: `${Math.min(100, Math.max(5, caShare))}%` }}
                         />
                       </div>
@@ -933,14 +934,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                     {/* Statistiques clés */}
                     <div className="grid grid-cols-2 gap-2 py-2 border-t border-slate-200/50 dark:border-white/10 text-xs">
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Ventes</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                        <span className="text-xs uppercase font-semibold text-slate-500 block">Ventes</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {vendeur.count} transaction{vendeur.count > 1 ? 's' : ''}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Panier moyen</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                        <span className="text-xs uppercase font-semibold text-slate-500 block">Panier moyen</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {formatCfa(sellerPanierMoyen)}
                         </span>
                       </div>
@@ -950,7 +951,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                   {/* Bouton d'action */}
                   <button
                     onClick={() => handleOpenSellerDetail(vendeur.nom)}
-                    className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white dark:text-blue-400 dark:hover:text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white dark:text-blue-400 dark:hover:text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Explorer les ventes de ce vendeur
@@ -975,14 +976,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             {/* Header avec action Export */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/50 dark:border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-blue-500/20">
+                <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center font-semibold text-white text-base">
                   {sellerDetailName.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h4 className="text-base font-semibold text-slate-900 dark:text-white">
                     {sellerDetailName}
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     {ventesDuVendeurFiltrees.length} vente(s) correspondant aux critères
                   </p>
                 </div>
@@ -1004,45 +1005,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             {/* 4 Mini-KPIs en direct basés sur les filtres appliqués */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block">
+                <span className="text-xs uppercase font-semibold text-blue-600 dark:text-blue-400 block">
                   Chiffre d'Affaires
                 </span>
-                <span className="text-base font-black text-slate-900 dark:text-white block mt-0.5 truncate">
+                <span className="text-base font-semibold text-slate-900 dark:text-white block mt-0.5 truncate">
                   {formatCfa(sellerModalStats.totalCa)}
                 </span>
               </div>
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                <span className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 block">
+              <div className="p-3 rounded-xl bg-slate-500/10 border border-slate-500/20">
+                <span className="text-xs uppercase font-semibold text-slate-600 dark:text-slate-400 block">
                   Tickets / Ventes
                 </span>
-                <span className="text-base font-black text-slate-900 dark:text-white block mt-0.5">
+                <span className="text-base font-semibold text-slate-900 dark:text-white block mt-0.5">
                   {sellerModalStats.countSales}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">
+                <span className="text-xs uppercase font-semibold text-emerald-600 dark:text-emerald-400 block">
                   Panier Moyen
                 </span>
-                <span className="text-base font-black text-slate-900 dark:text-white block mt-0.5 truncate">
+                <span className="text-base font-semibold text-slate-900 dark:text-white block mt-0.5 truncate">
                   {formatCfa(sellerModalStats.panierMoyen)}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block">
+                <span className="text-xs uppercase font-semibold text-amber-600 dark:text-amber-400 block">
                   Articles Vendus
                 </span>
-                <span className="text-base font-black text-slate-900 dark:text-white block mt-0.5">
+                <span className="text-base font-semibold text-slate-900 dark:text-white block mt-0.5">
                   {sellerModalStats.totalItems} pcs
                 </span>
               </div>
             </div>
 
             {/* BARRE DE FILTRES AVANCÉE DU VENDEUR */}
-            <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-white/10 space-y-3">
+            <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-white/10 space-y-3">
               {/* Ligne 1 : Recherche & Tri */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input
                     type="text"
                     value={sellerModalSearch}
@@ -1056,7 +1057,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                   {sellerModalSearch && (
                     <button
                       onClick={() => setSellerModalSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:hover:text-white"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1064,7 +1065,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 </div>
 
                 <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-white/10 text-xs">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <select
                     value={sellerModalSort}
                     onChange={(e) => {
@@ -1085,7 +1086,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {/* Période / Presets */}
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">
+                  <label className="text-xs uppercase font-semibold text-slate-500 mb-1 block">
                     Période de vente
                   </label>
                   <select
@@ -1101,13 +1102,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                     <option value="7d">7 derniers jours</option>
                     <option value="30d">30 derniers jours</option>
                     <option value="this_month">Ce mois-ci</option>
-                    <option value="custom">📅 Plage de dates personnalisée...</option>
+                    <option value="custom">Plage de dates personnalisée…</option>
                   </select>
                 </div>
 
                 {/* Mode de paiement */}
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">
+                  <label className="text-xs uppercase font-semibold text-slate-500 mb-1 block">
                     Mode de paiement
                   </label>
                   <select
@@ -1127,7 +1128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
 
                 {/* Statut vente */}
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">
+                  <label className="text-xs uppercase font-semibold text-slate-500 mb-1 block">
                     Statut de la vente
                   </label>
                   <select
@@ -1139,9 +1140,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                     className="w-full glass-input px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-900 dark:text-white"
                   >
                     <option value="all">Tous les statuts</option>
-                    <option value="paye">✅ Payé intégralement</option>
+                    <option value="paye">Payé intégralement</option>
                     <option value="partiel">⏳ Paiement partiel</option>
-                    <option value="credit">⚠️ À crédit (Dette)</option>
+                    <option value="credit">À crédit (Dette)</option>
                   </select>
                 </div>
               </div>
@@ -1149,7 +1150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
               {/* Plage personnalisée si sélectionnée */}
               {sellerModalDatePreset === 'custom' && (
                 <div className="pt-2 border-t border-slate-200/50 dark:border-white/10 flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Dates personnalisées :
                   </span>
                   <DateRangePicker
@@ -1170,7 +1171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 <div className="flex justify-end pt-1">
                   <button
                     onClick={resetSellerModalFilters}
-                    className="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1"
+                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1"
                   >
                     <RotateCcw className="w-3 h-3" />
                     Réinitialiser tous les filtres
@@ -1187,7 +1188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                   <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                     Aucune vente trouvée avec ces critères
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Essayez de modifier votre recherche ou d'élargir la période.
                   </p>
                 </div>
@@ -1199,11 +1200,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                   return (
                     <div
                       key={vente.id}
-                      className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/40 hover:border-blue-500/30 transition-all space-y-2.5"
+                      className="p-3.5 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/40 hover:border-blue-500/30 transition-colors space-y-2.5"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                          <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
                             {new Date(vente.date).toLocaleString('fr-FR', {
                               day: '2-digit',
                               month: '2-digit',
@@ -1212,11 +1213,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                               minute: '2-digit',
                             })}
                           </span>
-                          <span className="text-xs text-slate-400">·</span>
+                          <span className="text-xs text-slate-500">·</span>
                           <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                             Client : <strong className="text-slate-900 dark:text-white">{vente.client_nom || 'Client Passant'}</strong>
                           </span>
-                          <span className="text-xs text-slate-400">·</span>
+                          <span className="text-xs text-slate-500">·</span>
                           <Badge
                             variant={
                               vente.methode_paiement === 'especes'
@@ -1252,10 +1253,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                         </div>
 
                         <div className="text-right">
-                          <span className="text-base font-black text-blue-600 dark:text-blue-400">
+                          <span className="text-base font-semibold text-blue-600 dark:text-blue-400">
                             {formatCfa(vente.total)}
                           </span>
-                          <span className="text-[10px] text-slate-400 block">
+                          <span className="text-xs text-slate-500 block">
                             {totalItemsInSale} article{totalItemsInSale > 1 ? 's' : ''}
                           </span>
                         </div>
@@ -1271,7 +1272,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                             <span className="truncate pr-2">
                               <strong className="text-slate-900 dark:text-white">{ligne.produit_nom}</strong>
                               {ligne.variante ? ` (${ligne.variante})` : ''}
-                              <span className="text-slate-400"> × {ligne.quantite}</span>
+                              <span className="text-slate-500"> × {ligne.quantite}</span>
                             </span>
                             <span className="font-semibold text-slate-900 dark:text-white shrink-0">
                               {formatCfa(ligne.prix_unitaire * ligne.quantite)}
@@ -1288,7 +1289,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             {/* PAGINATION DE LA MODALE */}
             {totalSellerModalPages > 1 && (
               <div className="flex items-center justify-between pt-3 border-t border-slate-200/50 dark:border-white/10 text-xs">
-                <span className="text-slate-400">
+                <span className="text-slate-500">
                   Page <strong className="text-slate-900 dark:text-white">{sellerModalPage}</strong> sur{' '}
                   <strong className="text-slate-900 dark:text-white">{totalSellerModalPages}</strong> ({ventesDuVendeurFiltrees.length} ventes)
                 </span>
@@ -1322,10 +1323,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
       <GlassCard className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-2 gap-2">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
               Évolution du Chiffre d'Affaires
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Ventes quotidiennes sur la période sélectionnée.
             </p>
           </div>
@@ -1361,11 +1362,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                   if (active && payload && payload.length) {
                     return (
                       <div className="glass-card p-3 rounded-xl border border-white/40 shadow-xl text-xs space-y-1">
-                        <p className="font-bold text-slate-900 dark:text-white">{label}</p>
-                        <p className="text-blue-600 dark:text-blue-400 font-extrabold text-sm">
+                        <p className="font-semibold text-slate-900 dark:text-white">{label}</p>
+                        <p className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
                           {formatCfa(Number(payload[0].value))}
                         </p>
-                        <p className="text-slate-400">
+                        <p className="text-slate-500">
                           {payload[0].payload.count} transaction(s)
                         </p>
                       </div>
@@ -1391,7 +1392,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Award className="w-5 h-5 text-amber-500" />
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white"> Performances</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white"> Performances</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           
@@ -1399,17 +1400,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <GlassCard className="flex flex-col">
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/50 dark:border-white/10">
               <Star className="w-4 h-4 text-blue-500" />
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Meilleurs clients</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Meilleurs clients</h4>
             </div>
             <div className="space-y-3 flex-1">
-              {topClients.length === 0 ? <p className="text-xs text-slate-400">Aucune donnée</p> : 
+              {topClients.length === 0 ? <p className="text-xs text-slate-500">Aucune donnée</p> : 
                 topClients.map((c, i) => (
                   <div key={c.nom} className="flex justify-between items-center text-sm">
                     <span className="truncate flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-[10px] shrink-0 font-bold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
+                      <span className="text-xs shrink-0 font-semibold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
                       <span className="truncate">{c.nom}</span>
                     </span>
-                    <span className="font-bold text-blue-600 shrink-0">{formatCfa(c.total)}</span>
+                    <span className="font-semibold text-blue-600 shrink-0">{formatCfa(c.total)}</span>
                   </div>
                 ))
               }
@@ -1420,17 +1421,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <GlassCard className="flex flex-col">
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/50 dark:border-white/10">
               <Package className="w-4 h-4 text-emerald-500" />
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Top Produits (Vendus)</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Top Produits (Vendus)</h4>
             </div>
             <div className="space-y-3 flex-1">
-              {topProduits.byQte.length === 0 ? <p className="text-xs text-slate-400">Aucune donnée</p> : 
+              {topProduits.byQte.length === 0 ? <p className="text-xs text-slate-500">Aucune donnée</p> : 
                 topProduits.byQte.map((p, i) => (
                   <div key={p.nom} className="flex justify-between items-center text-sm">
                     <span className="truncate flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-[10px] shrink-0 font-bold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
+                      <span className="text-xs shrink-0 font-semibold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
                       <span className="truncate">{p.nom}</span>
                     </span>
-                    <span className="font-bold text-emerald-600 shrink-0">{p.qte} <span className="text-[10px] font-normal text-slate-400">unit.</span></span>
+                    <span className="font-semibold text-emerald-600 shrink-0">{p.qte} <span className="text-xs font-normal text-slate-500">unit.</span></span>
                   </div>
                 ))
               }
@@ -1441,18 +1442,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           {personnel?.role === 'admin' ? (
             <GlassCard className="flex flex-col">
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/50 dark:border-white/10">
-                <TrendingUp className="w-4 h-4 text-violet-500" />
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm">Top Produits (Rentables)</h4>
+                <TrendingUp className="w-4 h-4 text-slate-500" />
+                <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Top Produits (Rentables)</h4>
               </div>
               <div className="space-y-3 flex-1">
-                {topProduits.byBenefice.length === 0 ? <p className="text-xs text-slate-400">Aucune donnée</p> : 
+                {topProduits.byBenefice.length === 0 ? <p className="text-xs text-slate-500">Aucune donnée</p> : 
                   topProduits.byBenefice.map((p, i) => (
                     <div key={p.nom} className="flex justify-between items-center text-sm">
                       <span className="truncate flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-[10px] shrink-0 font-bold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
+                        <span className="text-xs shrink-0 font-semibold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
                         <span className="truncate">{p.nom}</span>
                       </span>
-                      <span className="font-bold text-violet-600 shrink-0">{formatCfa(p.benefice)}</span>
+                      <span className="font-semibold text-slate-600 shrink-0">{formatCfa(p.benefice)}</span>
                     </div>
                   ))
                 }
@@ -1460,8 +1461,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
             </GlassCard>
           ) : (
             <GlassCard className="flex flex-col justify-center items-center opacity-50 bg-slate-100/30 dark:bg-slate-800/20">
-              <TrendingUp className="w-6 h-6 text-slate-400 mb-2" />
-              <p className="text-xs text-slate-400 text-center px-4">Statistiques de rentabilité réservées aux administrateurs.</p>
+              <TrendingUp className="w-6 h-6 text-slate-500 mb-2" />
+              <p className="text-xs text-slate-500 text-center px-4">Statistiques de rentabilité réservées aux administrateurs.</p>
             </GlassCard>
           )}
 
@@ -1469,17 +1470,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <GlassCard className="flex flex-col">
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/50 dark:border-white/10">
               <Store className="w-4 h-4 text-rose-500" />
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Top Boutiques</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Top Boutiques</h4>
             </div>
             <div className="space-y-3 flex-1">
-              {topZones.length === 0 ? <p className="text-xs text-slate-400">Aucune donnée</p> : 
+              {topZones.length === 0 ? <p className="text-xs text-slate-500">Aucune donnée</p> : 
                 topZones.map((z, i) => (
                   <div key={z.nom} className="flex justify-between items-center text-sm">
                     <span className="truncate flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-[10px] shrink-0 font-bold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
+                      <span className="text-xs shrink-0 font-semibold bg-slate-100 dark:bg-slate-800 w-5 h-5 flex items-center justify-center rounded-full">{i + 1}</span>
                       <span className="truncate">{z.nom}</span>
                     </span>
-                    <span className="font-bold text-rose-600 shrink-0">{formatCfa(z.ca)}</span>
+                    <span className="font-semibold text-rose-600 shrink-0">{formatCfa(z.ca)}</span>
                   </div>
                 ))
               }
@@ -1496,7 +1497,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/10 mb-4">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-rose-500" />
-              <h3 className="font-bold text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-slate-900 dark:text-white">
                 Clients avec Créances
               </h3>
             </div>
@@ -1510,7 +1511,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
 
           <div className="space-y-3">
             {clients.filter((c) => c.total_dette > 0).length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-4 text-center">
+              <p className="text-xs text-slate-500 italic py-4 text-center">
                 Aucune créance client en attente. Félicitations !
               </p>
             ) : (
@@ -1520,19 +1521,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 .map((client) => (
                   <div
                     key={client.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-100/50 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5 min-w-0"
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-100/50 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5 min-w-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                         {client.nom}
                       </h4>
-                      <p className="text-xs text-slate-400 truncate">{client.telephone}</p>
+                      <p className="text-xs text-slate-500 truncate">{client.telephone}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-rose-600 dark:text-rose-400 whitespace-nowrap">
                         {formatCfa(client.total_dette)}
                       </div>
-                      <Badge variant="red" size="sm" className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] px-1.5 py-0.2">
+                      <Badge variant="red" size="sm" className="mt-0.5 shrink-0 whitespace-nowrap text-xs px-1.5 py-0.2">
                         Dette
                       </Badge>
                     </div>
@@ -1547,7 +1548,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/10 mb-4">
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-amber-500" />
-              <h3 className="font-bold text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-slate-900 dark:text-white">
                 Alertes Réapprovisionnement
               </h3>
             </div>
@@ -1561,26 +1562,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
 
           <div className="space-y-3">
             {stockBasItems.length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-4 text-center">
+              <p className="text-xs text-slate-500 italic py-4 text-center">
                 Tous vos stocks sont au-dessus des seuils minimaux.
               </p>
             ) : (
               stockBasItems.slice(0, 4).map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20"
+                  className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20"
                 >
                   <div>
                     <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
                       {item.nom}
                     </h4>
-                    <p className="text-xs text-slate-400">Code: {item.code_barres}</p>
+                    <p className="text-xs text-slate-500">Code: {item.code_barres}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                    <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">
                       Reste: {item.stock} unit.
                     </div>
-                    <span className="text-[10px] text-slate-400">Seuil min: {item.min_stock}</span>
+                    <span className="text-xs text-slate-500">Seuil min: {item.min_stock}</span>
                   </div>
                 </div>
               ))
@@ -1595,7 +1596,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Sélectionnez les données que vous souhaitez télécharger. Un fichier séparé sera téléchargé pour chaque sélection.
           </p>
-          <div className="space-y-3 p-4 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+          <div className="space-y-3 p-4 rounded-xl border border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
             <label className="flex items-start gap-3 cursor-pointer">
               <input 
                 type="checkbox" 
@@ -1604,7 +1605,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
               />
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">Ventes détaillées</div>
+                <div className="font-semibold text-slate-900 dark:text-white">Ventes détaillées</div>
                 <div className="text-xs text-slate-500">Exporte toutes les ventes de la période filtrée ({dateDebut} au {dateFin}) avec le détail des articles vendus.</div>
               </div>
             </label>
@@ -1617,7 +1618,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
               />
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">Répertoire Clients</div>
+                <div className="font-semibold text-slate-900 dark:text-white">Répertoire Clients</div>
                 <div className="text-xs text-slate-500">Exporte la liste complète de vos clients avec leurs dettes et coordonnées.</div>
               </div>
             </label>
@@ -1630,7 +1631,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, activeZoneId }
                 className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
               />
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">État des Stocks</div>
+                <div className="font-semibold text-slate-900 dark:text-white">État des Stocks</div>
                 <div className="text-xs text-slate-500">Exporte l'inventaire actuel des produits (stock disponible, prix de vente, etc.).</div>
               </div>
             </label>

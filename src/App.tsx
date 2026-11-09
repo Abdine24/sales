@@ -23,7 +23,7 @@ const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m
 
 function PageFallback() {
   return (
-    <div className="flex-1 flex items-center justify-center py-20 text-slate-400">
+    <div className="flex-1 flex items-center justify-center py-20 text-slate-500">
       <Loader2 className="w-6 h-6 animate-spin" />
     </div>
   );
@@ -32,11 +32,11 @@ function PageFallback() {
 function AccessDenied({ onGoHome }: { onGoHome: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 p-10">
-      <div className="p-4 rounded-3xl bg-rose-500/10 text-rose-500">
+      <div className="p-4 rounded-xl bg-rose-500/10 text-rose-500">
         <Lock className="w-8 h-8" />
       </div>
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Accès restreint</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Accès restreint</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
           Votre rôle ne vous permet pas d'ouvrir cette page.
         </p>

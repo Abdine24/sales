@@ -23,7 +23,7 @@ export default defineConfig({
         description:
           'Gestion des ventes (POS), stocks, fournisseurs et créances, fonctionnant hors-ligne.',
         lang: 'fr',
-        theme_color: '#007AFF',
+        theme_color: '#2563EB',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'any',

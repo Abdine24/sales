@@ -1,29 +1,33 @@
 import React from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
 
-interface GlassCardProps extends HTMLMotionProps<'div'> {
+interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
+  /**
+   * Carte cliquable : bordure plus marquée au survol (souris uniquement). Sans effet sur une
+   * carte qui n'a pas d'action — un survol ne doit jamais promettre un clic qui n'existe pas.
+   */
   hoverEffect?: boolean;
 }
 
+// Carte de base : surface pleine, bordure 1 px, ombre fine. Aucune animation d'entrée — les
+// cartes ne « sautent » plus à chaque filtre, onglet ou rechargement de données.
+// (Le nom historique GlassCard est conservé pour ne pas toucher les ~50 usages.)
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className = '',
   hoverEffect = false,
   ...props
 }) => {
+  const interactive = hoverEffect && typeof props.onClick === 'function';
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={hoverEffect ? { y: -4, scale: 1.01 } : undefined}
-      whileTap={hoverEffect ? { scale: 0.99 } : undefined}
-      className={`glass-card rounded-2xl p-5 border transition-all duration-300 ${className}`}
+    <div
+      className={`glass-card rounded-xl p-5 ${
+        interactive ? 'cursor-pointer transition-colors duration-150 hover:border-line-strong' : ''
+      } ${className}`}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };

@@ -39,17 +39,17 @@ export const HelpGuideModal: React.FC<{ isOpen: boolean; onClose: () => void }> 
   <Modal isOpen={isOpen} onClose={onClose} title="Comment utiliser iVente Pro" maxWidth="2xl">
     <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
       {STEPS.map((step) => (
-        <div key={step.title} className="flex gap-3.5 p-3.5 rounded-2xl bg-slate-500/5 border border-slate-200/50 dark:border-white/10">
+        <div key={step.title} className="flex gap-3.5 p-3.5 rounded-xl bg-slate-500/5 border border-slate-200/50 dark:border-white/10">
           <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <step.icon className="w-4.5 h-4.5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">{step.title}</h3>
+            <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{step.title}</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">{step.text}</p>
           </div>
         </div>
       ))}
-      <p className="text-xs text-slate-400 text-center pt-1">
+      <p className="text-xs text-slate-500 text-center pt-1">
         Une question précise ? Contacte-nous via WhatsApp (lien en bas de l'écran de connexion).
       </p>
     </div>

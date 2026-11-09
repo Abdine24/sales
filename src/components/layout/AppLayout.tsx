@@ -27,8 +27,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeZoneId, setActiveZoneId] = useState<number | null>(personnel.role === 'gerant' ? personnel.zone_id || null : null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('app-theme-mode') as ThemeMode;
-    if (saved === 'light' || saved === 'dark' || saved === 'emerald' || saved === 'contrast') return saved;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem('app-theme-mode');
+    } catch {
+      // Stockage indisponible (navigation privée) : on suit le thème du système.
+    }
+    if (saved === 'light' || saved === 'dark' || saved === 'contrast') return saved;
+    // L'ancien thème « Émeraude » a été retiré : ses utilisateurs passent au thème sombre.
+    if (saved === 'emerald') return 'dark';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
@@ -62,19 +69,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem('app-theme-mode', themeMode);
+    try {
+      localStorage.setItem('app-theme-mode', themeMode);
+    } catch {
+      // Préférence non mémorisée, sans conséquence.
+    }
     const root = document.documentElement;
     root.classList.remove('dark', 'theme-emerald', 'theme-contrast');
-
-    if (themeMode === 'light') {
-      // Standard light glass mode
-    } else if (themeMode === 'dark') {
-      root.classList.add('dark');
-    } else if (themeMode === 'emerald') {
-      root.classList.add('dark', 'theme-emerald');
-    } else if (themeMode === 'contrast') {
-      root.classList.add('theme-contrast');
-    }
+    // Chaque thème ne fait que redéfinir les jetons de couleur (voir index.css).
+    if (themeMode === 'dark') root.classList.add('dark');
+    if (themeMode === 'contrast') root.classList.add('theme-contrast');
   }, [themeMode]);
 
   return (
@@ -85,7 +89,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
     // Les encoches latérales (paysage sur iPhone) sont absorbées ici, une seule
     // fois pour toute l'app : le conteneur racine n'a aucun padding propre, donc
     // aucun risque d'écraser celui d'un écran. Vaut 0 partout ailleurs.
-    <div className="flex h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="flex h-[100dvh] overflow-hidden bg-canvas text-ink font-sans pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Navigation latérale — masquée sur mobile, où la barre d'onglets du bas
           prend le relais (voir BottomNav) : 256px de menu sur un écran de 375px
           ne laisserait pas de place au contenu. */}
@@ -98,6 +102,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, personnel }) => 
           role={personnel.role}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          settings={settings}
+          isOnline={isOnline}
         />
       </div>
 

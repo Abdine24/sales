@@ -183,28 +183,28 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
     return (
       <GlassCard className="p-8 text-center">
         <ShieldCheck className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Accès limité</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Accès limité</h2>
         <p className="text-sm text-slate-500 mt-2">Seul un administrateur peut gérer le personnel.</p>
       </GlassCard>
     );
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Gestion du personnel</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Gestion du personnel</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ajoutez des comptes et limitez leurs actions selon leur rôle.</p>
         </div>
         <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={openCreate}>Ajouter une personne</Button>
       </div>
 
       {infoMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm flex items-start gap-2">
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{infoMessage}</span>
         </div>
@@ -217,13 +217,13 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center"><Users className="w-5 h-5" /></div>
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white">{person.nom}</div>
+                  <div className="font-semibold text-slate-900 dark:text-white">{person.nom}</div>
                   <div className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
                     <span className="font-semibold text-slate-700 dark:text-slate-300">@{person.username}</span>
-                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500">•</span>
                     <span>{person.email || 'Email non défini'}</span>
                   </div>
-                  <div className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5"><Copy className="w-3 h-3" /> ID: {person.identifiant}</div>
+                  <div className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5"><Copy className="w-3 h-3" /> ID: {person.identifiant}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -245,7 +245,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
           <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Adresse email" className="w-full glass-input px-4 py-3 rounded-xl" />
           {!editingPerson && (
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+              <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
               <input
                 required
                 type="text"
@@ -273,7 +273,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ currentUser }) => {
       <Modal isOpen={!!passwordTarget} onClose={() => setPasswordTarget(null)} title={passwordTarget ? `Nouveau mot de passe — ${passwordTarget.nom}` : ''}>
         <form onSubmit={submitNewPassword} className="space-y-4">
           <div className="relative">
-            <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+            <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
             <input
               required
               autoFocus

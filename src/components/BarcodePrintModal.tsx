@@ -103,10 +103,10 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Impression d'Étiquettes Code-barres" maxWidth="3xl">
       <div className="space-y-4">
         {/* Print Configuration Controls */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-white/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-white/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           {produit.is_variable && produit.variantes_detaillees && (
             <div>
-              <label className="font-bold text-slate-500 mb-1 block">Déclinaison / Variante</label>
+              <label className="font-semibold text-slate-500 mb-1 block">Déclinaison / Variante</label>
               <select
                 value={selectedVariantId}
                 onChange={(e) => setSelectedVariantId(e.target.value)}
@@ -128,19 +128,19 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
           )}
 
           <div>
-            <label className="font-bold text-slate-500 mb-1 block">Nombre de copies</label>
+            <label className="font-semibold text-slate-500 mb-1 block">Nombre de copies</label>
             <input
               type="number"
               min="1"
               max="200"
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-full glass-input px-2.5 py-2 rounded-xl text-xs font-bold"
+              className="w-full glass-input px-2.5 py-2 rounded-xl text-xs font-semibold"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-500 mb-1 block">Support d'impression</label>
+            <label className="font-semibold text-slate-500 mb-1 block">Support d'impression</label>
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value as 'a4' | 'thermal')}
@@ -185,12 +185,12 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
         {/* Live Visual Printable Preview */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
               Aperçu avant impression ({labelsToPrint.length} étiquette{labelsToPrint.length > 1 ? 's' : ''})
             </span>
           </div>
 
-          <div className="max-h-80 overflow-y-auto p-4 rounded-2xl bg-slate-200/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10">
+          <div className="max-h-80 overflow-y-auto p-4 rounded-xl bg-slate-200/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10">
             <div
               id="printable-barcode-sheet"
               className={
@@ -205,19 +205,19 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
                   className="barcode-sticker border border-slate-300 rounded-lg p-2 flex flex-col items-center justify-between text-center bg-white min-h-[105px] w-full overflow-hidden box-border"
                 >
                   {showStoreName && (
-                    <div className="text-[9px] uppercase font-black tracking-wider text-slate-500 truncate w-full">
+                    <div className="text-[9px] uppercase font-semibold tracking-wide text-slate-500 truncate w-full">
                       {settings?.nom_site || 'Boutique'}
                     </div>
                   )}
 
                   {showProductName && (
-                    <div className="font-bold text-[11px] text-slate-900 truncate w-full leading-tight mt-0.5">
+                    <div className="font-semibold text-[11px] text-slate-900 truncate w-full leading-tight mt-0.5">
                       {lbl.nom}
                     </div>
                   )}
 
                   {lbl.varianteLabel && (
-                    <div className="text-[10px] font-bold text-purple-800 dark:text-purple-900 truncate w-full leading-tight">
+                    <div className="text-[10px] font-semibold text-slate-800 dark:text-slate-900 truncate w-full leading-tight">
                       {lbl.varianteLabel}
                     </div>
                   )}
@@ -227,7 +227,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
                   </div>
 
                   {showPrice && (
-                    <div className="text-[11px] font-black text-blue-700 leading-tight">
+                    <div className="text-[11px] font-semibold text-blue-700 leading-tight">
                       {formatCfa(lbl.prix)}
                     </div>
                   )}

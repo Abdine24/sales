@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   RotateCw,
   CheckCircle2,
-  Sparkles,
   Send,
   ShieldAlert,
   Eye,
@@ -19,6 +18,8 @@ import {
   MessageCircle,
   FileText,
   HelpCircle,
+  Clock,
+  Info,
 } from 'lucide-react';
 import { authenticate, createPrincipal, completePasswordReset } from '../services/localAuth';
 import { sendEmailOtp, verifyEmailOtp } from '../services/authService';
@@ -60,7 +61,7 @@ const PasswordField: React.FC<{
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+      <LockKeyhole className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
       <input
         required
         autoFocus={autoFocus}
@@ -74,7 +75,7 @@ const PasswordField: React.FC<{
         type="button"
         tabIndex={-1}
         onClick={() => setVisible((prev) => !prev)}
-        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+        className="absolute right-3 top-3 text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
         title={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -399,10 +400,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   return (
     <div className="min-h-[100dvh] bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-6 relative">
-      <div className="w-full max-w-md glass-card p-8 rounded-3xl relative overflow-hidden shadow-2xl border border-slate-200/80 dark:border-white/10">
+      <div className="w-full max-w-md glass-card p-8 rounded-xl relative overflow-hidden shadow-xl border border-slate-200/80 dark:border-white/10">
         {/* Header */}
         <div className="flex items-center gap-3.5 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shrink-0">
             {mode === 'create-boutique' ? (
               <Store className="w-6 h-6" />
             ) : mode === 'forgot-password' || mode === 'reset-password' ? (
@@ -414,7 +415,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">iVente</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">iVente</h1>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
               {mode === 'create-boutique'
                 ? 'Créer ma boutique'
@@ -438,11 +439,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               Donne un nom à ta boutique — ça devient aussi l'adresse à laquelle ton équipe s'y connectera.
             </p>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Nom de la boutique
               </label>
               <div className="relative">
-                <Store className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <Store className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   autoFocus
@@ -459,7 +460,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Adresse de la boutique
               </label>
               <div className="relative">
@@ -475,7 +476,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   placeholder="boutique-fatou"
                   className="w-full glass-input pl-4 pr-36 py-3 rounded-xl text-sm text-slate-900 dark:text-white font-mono"
                 />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 pointer-events-none">
                   .azanga.tech
                 </span>
               </div>
@@ -506,11 +507,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {mode === 'login' && (
           <form onSubmit={submitLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Nom d’utilisateur / Nom
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   value={username}
@@ -522,11 +523,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Adresse Email / Mail
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   type="email"
@@ -539,7 +540,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Mot de passe
               </label>
               <PasswordField value={password} onChange={setPassword} placeholder="Mot de passe" />
@@ -553,7 +554,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     setForgotSent(false);
                     setMode('forgot-password');
                   }}
-                  className="text-[11px] font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+                  className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors"
                 >
                   Mot de passe oublié ?
                 </button>
@@ -588,7 +589,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {mode === 'forgot-password' && (
           <div className="space-y-5">
             {forgotSent ? (
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   {infoMessage || 'Email de réinitialisation envoyé.'}
@@ -603,11 +604,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   Saisis l'adresse email de ton compte : tu recevras un lien pour choisir un nouveau mot de passe.
                 </p>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                     Adresse Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       required
                       autoFocus
@@ -647,13 +648,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               Choisis un nouveau mot de passe pour ton compte.
             </p>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Nouveau mot de passe
               </label>
               <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Au moins 6 caractères" autoFocus />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Confirmer le mot de passe
               </label>
               <PasswordField value={newPasswordConfirm} onChange={setNewPasswordConfirm} placeholder="Ressaisir le mot de passe" />
@@ -681,11 +682,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {mode === 'activation' && activationStep === 'form' && (
           <form onSubmit={handleInitiateActivation} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Nom complet de l'Admin
               </label>
               <div className="relative">
-                <ShieldCheck className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <ShieldCheck className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   value={nom}
@@ -697,11 +698,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Nom d’utilisateur
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   value={username}
@@ -713,11 +714,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Adresse Email (pour recevoir le code OTP)
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   type="email"
@@ -730,7 +731,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                 Mot de passe
               </label>
               <PasswordField value={password} onChange={setPassword} placeholder="Au moins 6 caractères" />
@@ -738,7 +739,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                   Clé de Licence Logicielle
                 </label>
                 <button
@@ -751,15 +752,15 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                       setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
                     }
                   }}
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition"
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition"
                   title="Générer et appliquer la clé d'essai 7 jours"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <Clock className="w-3.5 h-3.5" />
                   Essai gratuit (7 jours)
                 </button>
               </div>
               <div className="relative">
-                <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <KeyRound className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                 <input
                   required
                   value={cle}
@@ -777,10 +778,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                       setError(err instanceof Error ? err.message : "Impossible de générer une clé d'essai pour le moment.");
                     }
                   }}
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
                   title="Remplir avec une clé d'essai 7 jours"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <Clock className="w-3.5 h-3.5" />
                   <span>Essai 7j</span>
                 </button>
               </div>
@@ -790,7 +791,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold space-y-2.5">
                 <div>{error}</div>
                 {(error.toLowerCase().includes('rate limit') || error.toLowerCase().includes('limit')) && (
-                  <p className="text-[11px] font-normal text-rose-500/90">
+                  <p className="text-xs font-normal text-rose-500/90">
                     Limite d'envoi d'emails Supabase atteinte — réessaie dans une heure, ou configure un SMTP personnalisé (voir la doc du projet).
                   </p>
                 )}
@@ -812,14 +813,14 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {/* STEP 3: OTP VERIFICATION STEP */}
         {mode === 'activation' && activationStep === 'otp' && (
           <form onSubmit={handleVerifyOtpAndCreate} className="space-y-5">
-            <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 text-center">
+            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 text-center">
               <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-2">
                 <Mail className="w-5 h-5" />
               </div>
               <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Un code de vérification à 6 chiffres a été envoyé à :
               </p>
-              <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono mt-0.5 truncate">
+              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 font-mono mt-0.5 truncate">
                 {email}
               </p>
             </div>
@@ -827,13 +828,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             {isSimulatedOtp && simulatedCode && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Info className="w-4 h-4 shrink-0" />
                   <span>Mode Test / Supabase non relié :</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOtpCode(simulatedCode)}
-                  className="font-mono font-black text-sm px-2 py-0.5 bg-amber-500 text-white rounded hover:bg-amber-600 transition"
+                  className="font-mono font-semibold text-sm px-2 py-0.5 bg-amber-500 text-white rounded hover:bg-amber-600 transition"
                   title="Cliquer pour insérer"
                 >
                   {simulatedCode}
@@ -842,7 +843,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             )}
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block text-center">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block text-center">
                 Saisissez le Code OTP reçu par email
               </label>
               <input
@@ -858,7 +859,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="• • • • • •"
-                className="w-full text-center tracking-[0.4em] text-2xl font-black font-mono glass-input py-3.5 rounded-2xl text-slate-900 dark:text-white"
+                className="w-full text-center tracking-[0.4em] text-2xl font-semibold font-mono glass-input py-3.5 rounded-xl text-slate-900 dark:text-white"
               />
             </div>
 
@@ -869,7 +870,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             )}
 
             {infoMessage && !error && (
-              <div className="text-[11px] text-center text-emerald-600 dark:text-emerald-400 font-medium">
+              <div className="text-xs text-center text-emerald-600 dark:text-emerald-400 font-medium">
                 {infoMessage}
               </div>
             )}
@@ -923,7 +924,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 setActivationStep('form');
                 setMode('activation');
               }}
-              className="text-xs font-semibold text-slate-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+              className="text-xs font-semibold text-slate-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-1.5 mx-auto"
             >
               <KeyRound className="w-3.5 h-3.5" />
               Activer une nouvelle licence
@@ -936,7 +937,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 setActivationStep('form');
                 setMode('login');
               }}
-              className="text-xs font-semibold text-slate-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+              className="text-xs font-semibold text-slate-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-1.5 mx-auto"
             >
               <LogIn className="w-3.5 h-3.5" />
               Retour à la connexion
@@ -948,7 +949,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {/* Pied de page public — contact, CGU, guide. Visible sur tous les écrans de cette
             page (accueil de la plateforme, connexion, activation...), pas seulement à la
             création de boutique. */}
-        <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-4 text-[11px] font-semibold text-slate-400">
+        <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-center gap-4 text-xs font-semibold text-slate-500">
           {whatsappUrl && (
             <a
               href={whatsappUrl}

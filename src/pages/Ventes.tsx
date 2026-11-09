@@ -161,14 +161,14 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
     retoursParVente(venteId).reduce((sum, r) => sum + r.montant_total, 0);
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ventes & Retours</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Ventes & Retours</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Historique complet des ventes. Enregistre un retour quand un client rapporte un article.
           </p>
@@ -180,7 +180,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
 
       {/* Trois façons de consulter l'historique : vente par vente, toutes les ventes d'un
           produit, ou les retours d'articles */}
-      <div className="inline-flex p-1 rounded-2xl bg-slate-200/60 dark:bg-white/5 gap-1">
+      <div className="inline-flex p-1 rounded-xl bg-slate-200/60 dark:bg-white/5 gap-1">
         {([
           ['ventes', 'Par vente'],
           ['produit', 'Par produit'],
@@ -190,7 +190,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
             key={id}
             type="button"
             onClick={() => setVue(id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
               vue === id
                 ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -205,7 +205,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
       <GlassCard className="p-0 overflow-hidden">
         <div className="p-4 border-b border-slate-200/50 dark:border-white/10 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               value={search}
               onChange={(e) => {
@@ -213,7 +213,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                 setPage(1);
               }}
               placeholder="Rechercher réf, client ou vendeur..."
-              className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
             />
           </div>
           <select
@@ -238,7 +238,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
             pleine largeur, atteignables au pouce. */}
         <div className="md:hidden divide-y divide-slate-200/40 dark:divide-white/5">
           {paginated.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-400 italic">
+            <div className="p-8 text-center text-sm text-slate-500 italic">
               Aucune vente sur cette période.
             </div>
           ) : (
@@ -248,10 +248,10 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                 <div key={v.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-bold text-slate-900 dark:text-white truncate">
+                      <div className="font-semibold text-slate-900 dark:text-white truncate">
                         {v.client_nom || 'Client Passant'}
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
+                      <div className="text-xs text-slate-500 mt-0.5">
                         {new Date(v.date).toLocaleString('fr-FR', {
                           day: '2-digit',
                           month: '2-digit',
@@ -260,17 +260,17 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                           minute: '2-digit',
                         })}
                       </div>
-                      <div className="text-[11px] text-slate-400 font-mono mt-0.5 selectable">
+                      <div className="text-xs text-slate-500 font-mono mt-0.5 selectable">
                         #{v.id.slice(0, 8)}
                         {v.vendeur_nom ? ` · ${v.vendeur_nom}` : ''}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-bold text-slate-900 dark:text-white whitespace-nowrap selectable">
+                      <div className="font-semibold text-slate-900 dark:text-white whitespace-nowrap selectable">
                         {formatCfa(v.total)}
                       </div>
                       {retourne > 0 && (
-                        <div className="text-[10px] font-semibold text-rose-500 mt-0.5 whitespace-nowrap">
+                        <div className="text-xs font-semibold text-rose-500 mt-0.5 whitespace-nowrap">
                           - {formatCfa(retourne)} retourné
                         </div>
                       )}
@@ -315,7 +315,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wider">
+              <tr className="border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500 uppercase tracking-wide">
                 <th className="p-4 font-semibold">Date</th>
                 <th className="p-4 font-semibold">Réf</th>
                 <th className="p-4 font-semibold">Client</th>
@@ -328,7 +328,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
             <tbody className="divide-y divide-slate-200/40 dark:divide-white/5 text-sm">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-10 text-center text-slate-400 italic">
+                  <td colSpan={7} className="p-10 text-center text-slate-500 italic">
                     Aucune vente sur cette période.
                   </td>
                 </tr>
@@ -340,13 +340,13 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                       <td className="p-4 text-xs text-slate-500 whitespace-nowrap">
                         {new Date(v.date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </td>
-                      <td className="p-4 font-mono text-xs font-bold text-slate-900 dark:text-white">{v.id.slice(0, 8)}</td>
+                      <td className="p-4 font-mono text-xs font-semibold text-slate-900 dark:text-white">{v.id.slice(0, 8)}</td>
                       <td className="p-4 text-sm text-slate-700 dark:text-slate-200">{v.client_nom || 'Client Passant'}</td>
                       <td className="p-4 text-xs text-slate-500">{v.vendeur_nom || '—'}</td>
-                      <td className="p-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      <td className="p-4 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                         {formatCfa(v.total)}
                         {retourne > 0 && (
-                          <div className="text-[10px] font-semibold text-rose-500 mt-0.5">- {formatCfa(retourne)} retourné</div>
+                          <div className="text-xs font-semibold text-rose-500 mt-0.5">- {formatCfa(retourne)} retourné</div>
                         )}
                       </td>
                       <td className="p-4 text-right">
@@ -427,30 +427,30 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-white/10">
               <div>
-                <div className="text-xs text-slate-400">Référence Vente</div>
-                <div className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                <div className="text-xs text-slate-500">Référence Vente</div>
+                <div className="font-mono font-semibold text-sm text-slate-900 dark:text-white">
                   {selectedReceiptSale.id.substring(0, 8).toUpperCase()}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-slate-400">Total Vente</div>
-                <div className="font-black text-sm text-blue-600 dark:text-blue-400">
+                <div className="text-xs text-slate-500">Total Vente</div>
+                <div className="font-semibold text-sm text-blue-600 dark:text-blue-400">
                   {formatCfa(selectedReceiptSale.total)}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Format d'impression
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setReceiptFormat('thermique')}
-                  className={`p-3 rounded-xl border text-xs font-bold transition-all ${
+                  className={`p-3 rounded-xl border text-xs font-semibold transition-colors ${
                     receiptFormat === 'thermique'
-                      ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-xs'
+                      ? 'border-slate-500 bg-slate-500/10 text-slate-600 dark:text-slate-400 shadow-xs'
                       : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                   }`}
                 >
@@ -459,7 +459,7 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                 <button
                   type="button"
                   onClick={() => setReceiptFormat('a4')}
-                  className={`p-3 rounded-xl border text-xs font-bold transition-all ${
+                  className={`p-3 rounded-xl border text-xs font-semibold transition-colors ${
                     receiptFormat === 'a4'
                       ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
@@ -484,10 +484,10 @@ export const Ventes: React.FC<VentesProps> = ({ activeZoneId, vendeur }) => {
                   {phone ? (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
                       <div className="text-xs">
-                        <div className="font-bold text-emerald-800 dark:text-emerald-300">
+                        <div className="font-semibold text-emerald-800 dark:text-emerald-300">
                           Envoyer le reçu sur WhatsApp
                         </div>
-                        <div className="text-slate-500 font-mono text-[11px]">{phone} • PDF A4 inclus</div>
+                        <div className="text-slate-500 font-mono text-xs">{phone} • PDF A4 inclus</div>
                       </div>
                       <Button
                         type="button"
@@ -693,13 +693,13 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
   return (
     <Modal isOpen onClose={onClose} title={`Retour — Vente ${vente.id.slice(0, 8)}`} maxWidth="lg">
       <div className="space-y-5">
-        <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+        <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-blue-500 shrink-0" />
           <span>Indiquez les quantités rapportées par le client. Le stock sera automatiquement réincrémenté.</span>
         </div>
 
         {lignesRetournables.every(({ restant }) => restant === 0) ? (
-          <div className="py-8 text-center text-slate-400">
+          <div className="py-8 text-center text-slate-500">
             <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
             Tous les articles de cette vente ont déjà été retournés.
           </div>
@@ -713,10 +713,10 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
                 }`}
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                     {ligne.produit_nom}{ligne.variante ? ` (${ligne.variante})` : ''}
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-xs text-slate-500">
                     Vendu : {ligne.quantite} × {formatCfa(ligne.prix_unitaire)} · Retournable : {restant}
                   </div>
                 </div>
@@ -735,7 +735,7 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
                     value={getQty(index)}
                     onChange={(e) => setQty(index, Number(e.target.value.replace(/\D/g, '')), restant)}
                     disabled={restant === 0}
-                    className="w-10 text-center text-sm font-bold glass-input rounded-lg py-1"
+                    className="w-10 text-center text-sm font-semibold glass-input rounded-lg py-1"
                   />
                   <button
                     type="button"
@@ -775,7 +775,7 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
               <option value="mobile_money">Mobile money</option>
               <option value="virement">Virement</option>
                         </select>
-            <p className="text-xs text-slate-400 mt-1">Le montant du retour sera déduit de la dette du client (si dette {'>'} 0).</p>
+            <p className="text-xs text-slate-500 mt-1">Le montant du retour sera déduit de la dette du client (si dette {'>'} 0).</p>
           </div>
         </div>
 
@@ -789,9 +789,9 @@ const RetourModal: React.FC<RetourModalProps> = ({ vente, lignes, quantiteDejaRe
           />
         </div>
 
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase text-rose-600 dark:text-rose-400">Total à rembourser</span>
-          <span className="text-xl font-black text-rose-600 dark:text-rose-400">{formatCfa(montantTotal)}</span>
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase text-rose-600 dark:text-rose-400">Total à rembourser</span>
+          <span className="text-xl font-semibold text-rose-600 dark:text-rose-400">{formatCfa(montantTotal)}</span>
         </div>
 
         <div className="flex justify-end gap-3">

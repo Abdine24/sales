@@ -29,8 +29,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-6">
-        <div className="glass-panel rounded-3xl p-8 max-w-md text-center space-y-4">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+        <div className="glass-panel rounded-xl p-8 max-w-md text-center space-y-4">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
             Une erreur est survenue
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">

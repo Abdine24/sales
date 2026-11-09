@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, ShieldCheck, TimerReset, Sparkles, Clock, AlertTriangle, Info, Laptop, DownloadCloud, RefreshCw } from 'lucide-react';
+import { CheckCircle2, KeyRound, ShieldCheck, TimerReset, Clock, AlertTriangle, Info, Laptop, DownloadCloud, RefreshCw } from 'lucide-react';
 import type { Licence } from '../db/db';
 import { apiGet, ApiError } from '../services/api';
 import { evaluateLicenceStatus, APP_VERSION, APP_RELEASE_NAME } from '../utils/license';
@@ -73,8 +73,8 @@ export const LicenceSection: React.FC = () => {
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">Abonnement & Version Système</h3>
-            <p className="text-xs text-slate-400">Gestion de la clé de licence annuelle et statut de validité.</p>
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white">Abonnement & Version Système</h3>
+            <p className="text-xs text-slate-500">Gestion de la clé de licence annuelle et statut de validité.</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -87,7 +87,7 @@ export const LicenceSection: React.FC = () => {
               type="button"
               onClick={installUpdate}
               disabled={installing}
-              className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
+              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
               title={`Nouvelle version v${updateReadyVersion} téléchargée — cliquez pour redémarrer et l'installer`}
             >
               {installing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <DownloadCloud className="w-3.5 h-3.5" />}
@@ -98,16 +98,16 @@ export const LicenceSection: React.FC = () => {
       </div>
 
       {/* Time Left & Licence Status Display */}
-      <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-900/60 dark:to-slate-800/40 border border-slate-200/70 dark:border-white/10 mb-6">
+      <div className="p-5 rounded-xl bg-surface-muted border border-line mb-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-emerald-500" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Temps Restant (Time Left)
               </span>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+            <div className="text-2xl font-semibold text-slate-900 dark:text-white mt-1">
               {status.timeLeftFormatted}
             </div>
             {status.expireLe && (
@@ -118,7 +118,7 @@ export const LicenceSection: React.FC = () => {
           </div>
 
           <div className="flex flex-col items-start md:items-end gap-1.5">
-            <div className="text-xs font-semibold text-slate-400">Statut de l'abonnement</div>
+            <div className="text-xs font-semibold text-slate-500">Statut de l'abonnement</div>
             {status.state === 'expiree' ? (
               <Badge variant="red" size="md">
                 <TimerReset className="w-3.5 h-3.5" /> Licence Expirée
@@ -138,13 +138,13 @@ export const LicenceSection: React.FC = () => {
         {/* Visual Progress Bar */}
         {status.state !== 'absente' && (
           <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-white/5">
-            <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
               <span>Validité restante (Max 1 an)</span>
               <span>{status.percentageLeft}%</span>
             </div>
             <div className="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
+                className={`h-full rounded-full transition-colors duration-500 ${
                   status.daysRemaining <= 15
                     ? 'bg-rose-500'
                     : status.daysRemaining <= 45
@@ -159,8 +159,8 @@ export const LicenceSection: React.FC = () => {
 
         {/* Active Key Info */}
         <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
-          <span>Clé installée : <code className="font-mono font-bold text-slate-800 dark:text-slate-200">{licence?.cle || 'Aucune'}</code></span>
-          <span className="text-[11px] text-slate-400 italic">Abonnement renouvelable annuellement (max 365 jours).</span>
+          <span>Clé installée : <code className="font-mono font-semibold text-slate-800 dark:text-slate-200">{licence?.cle || 'Aucune'}</code></span>
+          <span className="text-xs text-slate-500 italic">Abonnement renouvelable annuellement (max 365 jours).</span>
         </div>
       </div>
 
@@ -169,20 +169,20 @@ export const LicenceSection: React.FC = () => {
           Réglages en a forcément déjà eu un (ou n'y a jamais eu droit), donc seule une clé
           payante a du sens pour activer/renouveler depuis cet écran. */}
       <div>
-        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
           Activer ou renouveler votre clé de licence
         </label>
         <form onSubmit={submitRenewal} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               value={cle}
               onChange={(e) => setCle(e.target.value)}
               placeholder="IVTE-0365-XXXXXXXX-XXXXXXXX"
-              className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white font-mono uppercase font-bold"
+              className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white font-mono uppercase font-semibold"
             />
           </div>
-          <Button type="submit" variant="primary" disabled={submitting || !cle.trim()} icon={<Sparkles className="w-4 h-4" />}>
+          <Button type="submit" variant="primary" disabled={submitting || !cle.trim()} icon={<KeyRound className="w-4 h-4" />}>
             {submitting ? 'Vérification...' : 'Valider la clé'}
           </Button>
         </form>

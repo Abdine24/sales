@@ -110,7 +110,7 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
       <GlassCard className="p-4">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               autoFocus
               value={search}
@@ -119,7 +119,7 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
                 setVendeurFilter('all');
               }}
               placeholder="Tape le nom d'un produit (ex: Samsung A15)..."
-              className="w-full glass-input pl-10 pr-4 py-2.5 rounded-2xl text-sm text-slate-900 dark:text-white"
+              className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white"
             />
           </div>
           <select
@@ -141,13 +141,13 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
       </GlassCard>
 
       {!q ? (
-        <GlassCard className="p-10 text-center text-sm text-slate-400">
+        <GlassCard className="p-10 text-center text-sm text-slate-500">
           <Package className="w-8 h-8 mx-auto mb-3 text-slate-300" />
           Tape le nom d'un produit pour voir qui l'a vendu, à qui, en quelle quantité et à quel prix sur la
           période choisie.
         </GlassCard>
       ) : lignes.length === 0 ? (
-        <GlassCard className="p-10 text-center text-sm text-slate-400 italic">
+        <GlassCard className="p-10 text-center text-sm text-slate-500 italic">
           Aucune vente de « {search.trim()} » sur cette période.
         </GlassCard>
       ) : (
@@ -161,18 +161,18 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
               { label: 'Vendeurs', value: String(parVendeur.length), icon: <Users className="w-4 h-4" /> },
             ].map((stat) => (
               <GlassCard key={stat.label} className="p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wide">
                   {stat.icon}
                   {stat.label}
                 </div>
-                <div className="mt-1.5 text-xl font-black text-slate-900 dark:text-white">{stat.value}</div>
+                <div className="mt-1.5 text-xl font-semibold text-slate-900 dark:text-white">{stat.value}</div>
               </GlassCard>
             ))}
           </div>
 
           {/* Par vendeur */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200/50 dark:border-white/10 font-bold text-sm text-slate-900 dark:text-white">
+            <div className="px-4 py-3 border-b border-slate-200/50 dark:border-white/10 font-semibold text-sm text-slate-900 dark:text-white">
               Qui l'a vendu
             </div>
             <div className="divide-y divide-slate-200/40 dark:divide-white/5">
@@ -182,13 +182,13 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
                     <div className="font-semibold text-slate-900 dark:text-white truncate">
                       {nom === SANS_VENDEUR ? 'Vendeur inconnu' : nom}
                     </div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-xs text-slate-500">
                       {stats.ventes.size} vente{stats.ventes.size > 1 ? 's' : ''}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-slate-900 dark:text-white">{stats.quantite} unité{stats.quantite > 1 ? 's' : ''}</div>
-                    <div className="text-[11px] text-slate-400">{formatCfa(stats.montant)}</div>
+                    <div className="font-semibold text-slate-900 dark:text-white">{stats.quantite} unité{stats.quantite > 1 ? 's' : ''}</div>
+                    <div className="text-xs text-slate-500">{formatCfa(stats.montant)}</div>
                   </div>
                 </div>
               ))}
@@ -197,7 +197,7 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
 
           {/* Détail des ventes */}
           <GlassCard className="p-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200/50 dark:border-white/10 font-bold text-sm text-slate-900 dark:text-white">
+            <div className="px-4 py-3 border-b border-slate-200/50 dark:border-white/10 font-semibold text-sm text-slate-900 dark:text-white">
               Détail des ventes ({lignes.length})
             </div>
 
@@ -208,16 +208,16 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
                   <div className="min-w-0">
                     <div className="font-semibold text-slate-900 dark:text-white truncate">
                       {ligne.produit_nom}
-                      {ligne.variante ? <span className="text-slate-400 font-normal"> · {ligne.variante}</span> : null}
+                      {ligne.variante ? <span className="text-slate-500 font-normal"> · {ligne.variante}</span> : null}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{formatDate(vente.date)}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
+                    <div className="text-xs text-slate-500 mt-0.5">{formatDate(vente.date)}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">
                       Vendeur : {vente.vendeur_nom || 'inconnu'} · Client : {vente.client_nom || 'Client Passant'}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-slate-900 dark:text-white">{formatCfa(ligne.quantite * ligne.prix_unitaire)}</div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="font-semibold text-slate-900 dark:text-white">{formatCfa(ligne.quantite * ligne.prix_unitaire)}</div>
+                    <div className="text-xs text-slate-500">
                       {ligne.quantite} × {formatCfa(ligne.prix_unitaire)}
                     </div>
                   </div>
@@ -229,14 +229,14 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200/50 dark:border-white/10">
-                    <th className="px-4 py-2.5 font-bold">Date</th>
-                    <th className="px-4 py-2.5 font-bold">Produit</th>
-                    <th className="px-4 py-2.5 font-bold">Vendeur</th>
-                    <th className="px-4 py-2.5 font-bold">Client</th>
-                    <th className="px-4 py-2.5 font-bold text-right">Qté</th>
-                    <th className="px-4 py-2.5 font-bold text-right">Prix unitaire</th>
-                    <th className="px-4 py-2.5 font-bold text-right">Total</th>
+                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200/50 dark:border-white/10">
+                    <th className="px-4 py-2.5 font-semibold">Date</th>
+                    <th className="px-4 py-2.5 font-semibold">Produit</th>
+                    <th className="px-4 py-2.5 font-semibold">Vendeur</th>
+                    <th className="px-4 py-2.5 font-semibold">Client</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Qté</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Prix unitaire</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200/40 dark:divide-white/5">
@@ -245,13 +245,13 @@ export const VentesParProduit: React.FC<VentesParProduitProps> = ({
                       <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{formatDate(vente.date)}</td>
                       <td className="px-4 py-2.5">
                         <span className="font-semibold text-slate-900 dark:text-white">{ligne.produit_nom}</span>
-                        {ligne.variante ? <span className="text-slate-400"> · {ligne.variante}</span> : null}
+                        {ligne.variante ? <span className="text-slate-500"> · {ligne.variante}</span> : null}
                       </td>
                       <td className="px-4 py-2.5">{vente.vendeur_nom || 'Inconnu'}</td>
                       <td className="px-4 py-2.5">{vente.client_nom || 'Client Passant'}</td>
                       <td className="px-4 py-2.5 text-right font-semibold">{ligne.quantite}</td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">{formatCfa(ligne.prix_unitaire)}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-bold text-slate-900 dark:text-white">
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-slate-900 dark:text-white">
                         {formatCfa(ligne.quantite * ligne.prix_unitaire)}
                       </td>
                     </tr>

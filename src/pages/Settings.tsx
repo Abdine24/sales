@@ -14,7 +14,6 @@ import {
   Receipt,
   Check,
   MessageSquare,
-  Sparkles,
   Smartphone,
   LayoutTemplate,
   Eye,
@@ -345,13 +344,13 @@ export const Settings: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-sm text-slate-400">Chargement…</div>;
+    return <div className="p-8 text-center text-sm text-slate-500">Chargement…</div>;
   }
 
   return (
     <div className="space-y-6 max-w-6xl pb-10">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
           Paramètres Généraux
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -364,7 +363,7 @@ export const Settings: React.FC = () => {
         <GlassCard>
           <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-200/50 dark:border-white/10">
             <Building2 className="w-5 h-5 text-blue-500" />
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white">
               Identité de l'Établissement & Coordonnées
             </h3>
           </div>
@@ -400,7 +399,7 @@ export const Settings: React.FC = () => {
                 Email de contact
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
                 <input
                   type="email"
                   value={email}
@@ -464,7 +463,7 @@ export const Settings: React.FC = () => {
                 Logo de la boutique
               </label>
               <div className="flex items-center gap-3">
-                <div className="h-16 w-16 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                <div className="h-16 w-16 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white flex items-center justify-center overflow-hidden shrink-0">
                   {logoUrl ? (
                     <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
                   ) : (
@@ -503,7 +502,7 @@ export const Settings: React.FC = () => {
                   )}
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
+              <p className="text-xs text-slate-500 mt-1.5">
                 Photo ou image de ton logo (PNG, JPEG…). Elle est enregistrée sur le serveur et apparaît dans le menu, les tickets et les factures.
               </p>
             </div>
@@ -515,16 +514,16 @@ export const Settings: React.FC = () => {
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50 dark:border-white/10">
             <Tag className="w-5 h-5 text-emerald-500" />
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Mode de Tarification & Saisie des Prix
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Définissez la politique de prix de vente appliquée dans votre magasin.
               </p>
             </div>
           </div>
 
-          <label className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-500/5 border border-slate-200/60 dark:border-white/10 cursor-pointer hover:bg-slate-500/10 transition-colors">
+          <label className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-500/5 border border-slate-200/60 dark:border-white/10 cursor-pointer hover:bg-slate-500/10 transition-colors">
             <input
               type="checkbox"
               checked={saisiePrixALaVente}
@@ -532,7 +531,7 @@ export const Settings: React.FC = () => {
               className="mt-1 w-5 h-5 text-blue-600 rounded-lg focus:ring-blue-500 border-slate-300 dark:border-slate-600 shrink-0"
             />
             <div className="space-y-1 min-w-0">
-              <span className="font-bold text-sm text-slate-900 dark:text-white block">
+              <span className="font-semibold text-sm text-slate-900 dark:text-white block">
                 Saisir les prix de vente au moment de la caisse (Prix libres / variables)
               </span>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -542,7 +541,7 @@ export const Settings: React.FC = () => {
             </div>
           </label>
 
-          <label className="mt-3 flex items-start gap-3.5 p-4 rounded-2xl bg-slate-500/5 border border-slate-200/60 dark:border-white/10 cursor-pointer hover:bg-slate-500/10 transition-colors">
+          <label className="mt-3 flex items-start gap-3.5 p-4 rounded-xl bg-slate-500/5 border border-slate-200/60 dark:border-white/10 cursor-pointer hover:bg-slate-500/10 transition-colors">
             <input
               type="checkbox"
               checked={afficherRemise}
@@ -550,7 +549,7 @@ export const Settings: React.FC = () => {
               className="mt-1 w-5 h-5 text-blue-600 rounded-lg focus:ring-blue-500 border-slate-300 dark:border-slate-600 shrink-0"
             />
             <div className="space-y-1 min-w-0">
-              <span className="font-bold text-sm text-slate-900 dark:text-white block">
+              <span className="font-semibold text-sm text-slate-900 dark:text-white block">
                 Proposer une remise lors de l'encaissement
               </span>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -564,10 +563,10 @@ export const Settings: React.FC = () => {
         {/* POLICE D'AFFICHAGE (appliquée sur tous les appareils de la boutique) */}
         <GlassCard>
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50 dark:border-white/10">
-            <Type className="w-5 h-5 text-indigo-500" />
+            <Type className="w-5 h-5 text-slate-500" />
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">Police d'affichage</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">Police d'affichage</h3>
+              <p className="text-xs text-slate-500">
                 Police utilisée dans toute l'application et sur les tickets, pour tous les appareils de la boutique.
               </p>
             </div>
@@ -585,7 +584,7 @@ export const Settings: React.FC = () => {
                     setPoliceAffichage(font.id);
                     applyAppFont(font.id); // aperçu immédiat ; enregistré avec « Enregistrer »
                   }}
-                  className={`text-left p-4 rounded-2xl border transition-colors ${
+                  className={`text-left p-4 rounded-xl border transition-colors ${
                     selected
                       ? 'border-blue-500 bg-blue-500/10'
                       : 'border-slate-200/60 dark:border-white/10 bg-slate-500/5 hover:bg-slate-500/10'
@@ -598,7 +597,7 @@ export const Settings: React.FC = () => {
                     Total : 125 000 F
                   </span>
                   {!installed && (
-                    <span className="block text-[11px] text-amber-600 dark:text-amber-400 mt-2">
+                    <span className="block text-xs text-amber-600 dark:text-amber-400 mt-2">
                       Non installée sur cet appareil — Arial y sera utilisée.
                     </span>
                   )}
@@ -606,7 +605,7 @@ export const Settings: React.FC = () => {
               );
             })}
           </div>
-          <p className="text-[11px] text-slate-400 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             Ces polices ne sont pas fournies par l'application : chaque appareil utilise celle qui y est installée
             (Microsoft Sans Serif existe sur Windows ; Swiss 721 BT doit être installée). Sinon, Arial est utilisée.
             Les factures PDF restent en Arial.
@@ -616,12 +615,12 @@ export const Settings: React.FC = () => {
         {/* 2. FORMAT D'IMPRESSION & PERSONNALISATION DES TICKETS DE CAISSE */}
         <GlassCard>
           <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-200/50 dark:border-white/10">
-            <Printer className="w-5 h-5 text-purple-500" />
+            <Printer className="w-5 h-5 text-slate-500" />
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Format d'Impression & Options du Ticket de Caisse
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Définissez le format par défaut et personnalisez les éléments imprimés sur chaque reçu.
               </p>
             </div>
@@ -629,13 +628,13 @@ export const Settings: React.FC = () => {
 
           {/* Choix du format par défaut */}
           <div className="mb-6">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2.5 block">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2.5 block">
               Format d'impression par défaut en caisse
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label
-                className={`relative flex items-center gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${printFormatDefault === 'thermique'
-                  ? 'border-purple-500 bg-purple-500/10 shadow-sm'
+                className={`relative flex items-center gap-3.5 p-4 rounded-xl border cursor-pointer transition-colors ${printFormatDefault === 'thermique'
+                  ? 'border-slate-500 bg-slate-500/10 shadow-sm'
                   : 'border-slate-200/80 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
               >
@@ -649,17 +648,17 @@ export const Settings: React.FC = () => {
                 />
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${printFormatDefault === 'thermique'
-                    ? 'bg-purple-500 text-white shadow-md'
+                    ? 'bg-slate-500 text-white shadow-md'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                     }`}
                 >
                   <Receipt className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                     Rouleau Thermique (80mm / 58mm)
                     {printFormatDefault === 'thermique' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500 text-white">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-500 text-white">
                         Recommandé
                       </span>
                     )}
@@ -671,7 +670,7 @@ export const Settings: React.FC = () => {
               </label>
 
               <label
-                className={`relative flex items-center gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${printFormatDefault === 'a4'
+                className={`relative flex items-center gap-3.5 p-4 rounded-xl border cursor-pointer transition-colors ${printFormatDefault === 'a4'
                   ? 'border-blue-500 bg-blue-500/10 shadow-sm'
                   : 'border-slate-200/80 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
@@ -693,10 +692,10 @@ export const Settings: React.FC = () => {
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                     Facture A4 Standard
                     {printFormatDefault === 'a4' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
                         Format Bureautique
                       </span>
                     )}
@@ -711,7 +710,7 @@ export const Settings: React.FC = () => {
 
           {/* Cases à cocher pour afficher/masquer sur le ticket */}
           <div className="pt-4 border-t border-slate-200/60 dark:border-white/10">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3 block">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
               Éléments visibles sur le ticket de caisse
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
@@ -720,7 +719,7 @@ export const Settings: React.FC = () => {
                   type="checkbox"
                   checked={ticketShowLogo}
                   onChange={(e) => setTicketShowLogo(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-slate-600 rounded focus:ring-slate-500"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Logo de la boutique
@@ -732,7 +731,7 @@ export const Settings: React.FC = () => {
                   type="checkbox"
                   checked={ticketShowVendeur}
                   onChange={(e) => setTicketShowVendeur(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-slate-600 rounded focus:ring-slate-500"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nom du caissier / vendeur
@@ -744,7 +743,7 @@ export const Settings: React.FC = () => {
                   type="checkbox"
                   checked={ticketShowAdresse}
                   onChange={(e) => setTicketShowAdresse(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-slate-600 rounded focus:ring-slate-500"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Adresse & Téléphone
@@ -756,7 +755,7 @@ export const Settings: React.FC = () => {
                   type="checkbox"
                   checked={ticketShowIfu}
                   onChange={(e) => setTicketShowIfu(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-slate-600 rounded focus:ring-slate-500"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Numéros IFU & RCCM
@@ -768,7 +767,7 @@ export const Settings: React.FC = () => {
                   type="checkbox"
                   checked={ticketShowQrcode}
                   onChange={(e) => setTicketShowQrcode(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-slate-600 rounded focus:ring-slate-500"
                 />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Référence / Code QR du reçu
@@ -779,7 +778,7 @@ export const Settings: React.FC = () => {
 
           {/* Message de bas de ticket */}
           <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-white/10">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Message personnalisé de bas de ticket (Pied de page)
             </label>
             <input
@@ -800,13 +799,13 @@ export const Settings: React.FC = () => {
                 <MessageSquare className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white flex items-center gap-2">
                   Reçus & Messages de Fidélité WhatsApp
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     Nouveau
                   </span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   Envoyez automatiquement un message de remerciement et le reçu détaillé par WhatsApp au client.
                 </p>
               </div>
@@ -815,9 +814,9 @@ export const Settings: React.FC = () => {
 
           <div className="space-y-4 mt-4">
             {/* Activation WhatsApp */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/70 dark:border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/70 dark:border-white/10">
               <div>
-                <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <div className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                   Activer les reçus WhatsApp après chaque vente
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -832,16 +831,16 @@ export const Settings: React.FC = () => {
                   onChange={(e) => setWhatsappEnabled(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-colors peer-checked:bg-emerald-500"></div>
               </label>
             </div>
 
             {whatsappEnabled && (
               <>
                 {/* Auto open toggle */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20">
                   <div>
-                    <div className="font-bold text-sm text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                    <div className="font-semibold text-sm text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
                       Ouverture automatique de WhatsApp
                     </div>
                     <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">
@@ -856,17 +855,17 @@ export const Settings: React.FC = () => {
                       onChange={(e) => setWhatsappAutoOpen(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-colors peer-checked:bg-emerald-500"></div>
                   </label>
                 </div>
 
                 {/* Custom Message input */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Message personnalisé WhatsApp & Balises dynamiques
                     </label>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                       Accompagné de la Facture A4 (PDF)
                     </span>
                   </div>
@@ -887,7 +886,7 @@ export const Settings: React.FC = () => {
                         key={item.tag}
                         type="button"
                         onClick={() => setWhatsappCustomMessage((prev) => `${prev} ${item.tag}`)}
-                        className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-all"
+                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors"
                         title={item.desc}
                       >
                         + {item.tag}
@@ -902,7 +901,7 @@ export const Settings: React.FC = () => {
                     placeholder="Bonjour {client}, merci pour votre fidélité chez {boutique} ! Voici votre commande : {produit} ..."
                     className="w-full glass-input px-4 py-2.5 rounded-xl text-sm"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Insérez <code>&#123;client&#125;</code> pour le nom du client et <code>&#123;produit&#125;</code> pour placer la liste des articles avec leurs prix et remises.
                   </p>
                 </div>
@@ -918,8 +917,8 @@ export const Settings: React.FC = () => {
               <LayoutTemplate className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">Templates de reçus</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">Templates de reçus</h3>
+              <p className="text-xs text-slate-500">
                 Choisissez la mise en page de votre facture A4 (PDF) — utilisée partout : téléchargement, envoi WhatsApp.
               </p>
             </div>
@@ -929,8 +928,8 @@ export const Settings: React.FC = () => {
             {/* Aucun modèle intégré à l'application : la liste ne contient que les modèles
                 ajoutés depuis la Console Propriétaire. Elle peut donc être vide. */}
             {customTemplates.length === 0 && (
-              <div className="p-4 rounded-2xl border border-dashed border-amber-500/40 bg-amber-500/5 text-xs text-amber-700 dark:text-amber-400">
-                <p className="font-bold mb-1">Aucun modèle de facture disponible</p>
+              <div className="p-4 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 text-xs text-amber-700 dark:text-amber-400">
+                <p className="font-semibold mb-1">Aucun modèle de facture disponible</p>
                 <p>
                   Tant qu'aucun modèle n'a été ajouté, la facture A4 (téléchargement, impression,
                   envoi WhatsApp) n'est pas disponible. Le ticket rouleau 80/58 mm, lui, fonctionne
@@ -945,17 +944,17 @@ export const Settings: React.FC = () => {
                 return (
                   <div
                     key={tpl.id}
-                    className={`flex items-center justify-between gap-4 p-4 rounded-2xl border transition-colors ${
+                    className={`flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors ${
                       selected
                         ? 'bg-blue-500/5 border-blue-500/40'
                         : 'bg-slate-50/80 dark:bg-slate-900/40 border-slate-200/70 dark:border-white/10'
                     }`}
                   >
                     <div className="min-w-0">
-                      <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <div className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         {tpl.nom}
                         {selected && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                             Sélectionné
                           </span>
                         )}
@@ -988,7 +987,7 @@ export const Settings: React.FC = () => {
               }
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             Le choix n'est appliqué qu'après avoir cliqué sur « Enregistrer les modifications » en bas de page.
           </p>
         </GlassCard>
@@ -1000,13 +999,13 @@ export const Settings: React.FC = () => {
               {soundEnabled ? (
                 <Volume2 className="w-5 h-5 text-emerald-500" />
               ) : (
-                <VolumeX className="w-5 h-5 text-slate-400" />
+                <VolumeX className="w-5 h-5 text-slate-500" />
               )}
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                   Bip Sonore de Caisse & Scanner
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   Signal audio lors du scan d'un code-barres et de la validation d'une vente.
                 </p>
               </div>
@@ -1025,9 +1024,9 @@ export const Settings: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/70 dark:border-white/10">
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/70 dark:border-white/10">
             <div>
-              <div className="font-bold text-sm text-slate-900 dark:text-white">
+              <div className="font-semibold text-sm text-slate-900 dark:text-white">
                 Activer les effets sonores
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1045,7 +1044,7 @@ export const Settings: React.FC = () => {
                 }}
                 className="sr-only peer"
               />
-              <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-colors peer-checked:bg-emerald-500"></div>
             </label>
           </div>
         </GlassCard>
@@ -1053,7 +1052,7 @@ export const Settings: React.FC = () => {
         {/* Bouton de sauvegarde global */}
         <div className="flex items-center justify-end gap-3 sticky bottom-4 z-20 py-2">
           {saveSuccess && (
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-xl flex items-center gap-1.5 animate-pulse">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-lg flex items-center gap-1.5" role="status">
               <Check className="w-4 h-4" /> Paramètres enregistrés avec succès !
             </span>
           )}
@@ -1069,10 +1068,10 @@ export const Settings: React.FC = () => {
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-emerald-500" />
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Magasins & Points de Vente (Zones)
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Organisez vos stocks et vos caissiers par boutique ou zone géographique.
               </p>
             </div>
@@ -1100,13 +1099,13 @@ export const Settings: React.FC = () => {
             return (
               <div key={zone.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                 <div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                     {zone.nom}
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       {zone.code}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-xs text-slate-500 mt-0.5">
                     {countDispo} produit(s) en catalogue ({countSpecific} exclusif{countSpecific > 1 ? 's' : ''}) · {countStaff} membre(s) du personnel
                   </div>
                 </div>
@@ -1163,7 +1162,7 @@ export const Settings: React.FC = () => {
               value={zoneCode}
               onChange={(event) => setZoneCode(event.target.value)}
               placeholder="Ex: MAG-02"
-              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm font-mono font-bold uppercase"
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm font-mono font-semibold uppercase"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
