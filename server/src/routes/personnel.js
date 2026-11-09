@@ -189,6 +189,16 @@ personnelRouter.post('/', async (req, res) => {
   }
 });
 
+// L'administrateur principal est le propriétaire de la boutique : un autre administrateur ne
+// doit pas pouvoir le rétrograder, le désactiver, le supprimer, ni changer son mot de passe
+// (ce qui reviendrait à prendre le contrôle de la boutique). L'écran Personnel le bloquait
+// déjà, mais seulement dans le navigateur.
+async function loadPersonnel(req, id) {
+  const { rows } = await req.tenantPool.query('select * from personnel where id=$1', [id]);
+  return rows[0] || null;
+}
+const isSelf = (req, person) => req.callerPersonnel?.id === person.id;
+
 // Change le mot de passe d'un membre — réservé aux admins (c'est l'admin qui gère les
 // identifiants de son équipe, voir aussi POST / ci-dessus).
 personnelRouter.put('/:id/mot-de-passe', requireAdmin, async (req, res) => {
@@ -199,8 +209,12 @@ personnelRouter.put('/:id/mot-de-passe', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
   }
 
-  const { rows } = await req.tenantPool.query('select supabase_user_id from personnel where id=$1', [id]);
-  if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
+  const target = await loadPersonnel(req, id);
+  if (!target) return res.status(404).json({ error: 'Introuvable.' });
+  if (target.principal && !isSelf(req, target)) {
+    return res.status(403).json({ error: "Seul l'administrateur principal peut changer son propre mot de passe." });
+  }
+  const rows = [target];
   if (!rows[0].supabase_user_id) {
     return res.status(409).json({ error: "Ce profil n'est rattaché à aucun compte de connexion." });
   }
@@ -214,13 +228,20 @@ personnelRouter.put('/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
   const body = req.body || {};
-  const columns = ['nom', 'username', 'email', 'role', 'actif', 'principal', 'zone_id'];
+  // `principal` n'est jamais modifiable ici : il n'y a qu'un principal, fixé à l'activation.
+  const columns = ['nom', 'username', 'email', 'role', 'actif', 'zone_id'];
   const provided = columns.filter((c) => body[c] !== undefined);
-  if (provided.length === 0) {
-    const { rows } = await req.tenantPool.query('select * from personnel where id=$1', [id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Introuvable.' });
-    return res.json(rows[0]);
+  const target = await loadPersonnel(req, id);
+  if (!target) return res.status(404).json({ error: 'Introuvable.' });
+  if (target.principal) {
+    if ((body.role !== undefined && body.role !== 'admin') || body.actif === false) {
+      return res.status(409).json({ error: "L'administrateur principal doit rester un administrateur actif." });
+    }
+    if (provided.length > 0 && !isSelf(req, target)) {
+      return res.status(403).json({ error: "Seul l'administrateur principal peut modifier son propre profil." });
+    }
   }
+  if (provided.length === 0) return res.json(target);
   const setClause = provided.map((c, i) => `${c}=$${i + 1}`).join(',') + ', updated_at=now()';
   const { rows } = await req.tenantPool.query(
     `update personnel set ${setClause} where id=$${provided.length + 1} returning *`,
@@ -233,7 +254,11 @@ personnelRouter.put('/:id', requireAdmin, async (req, res) => {
 personnelRouter.delete('/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identifiant invalide.' });
-  const { rowCount } = await req.tenantPool.query('delete from personnel where id=$1', [id]);
-  if (rowCount === 0) return res.status(404).json({ error: 'Introuvable.' });
+  const target = await loadPersonnel(req, id);
+  if (!target) return res.status(404).json({ error: 'Introuvable.' });
+  if (target.principal) {
+    return res.status(409).json({ error: "L'administrateur principal ne peut pas être supprimé." });
+  }
+  await req.tenantPool.query('delete from personnel where id=$1', [id]);
   res.status(204).send();
 });
