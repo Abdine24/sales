@@ -93,3 +93,18 @@ create index if not exists idx_licences_catalogue_status on licences_catalogue(s
 create index if not exists idx_licences_catalogue_created on licences_catalogue(created_at desc);
 
 
+
+-- Registre de TOUTES les clés de licence déjà activées, quelle que soit leur origine (catalogue
+-- du propriétaire, script CLI, essai gratuit) : une clé ne sert qu'une seule fois, sur une seule
+-- boutique. Sans ce registre, ressaisir la même clé remettait sa date d'activation à
+-- aujourd'hui — une clé de 30 jours ressaisie tous les 29 jours ne s'arrêtait jamais, et une clé
+-- du script CLI pouvait servir à autant de boutiques qu'on voulait. Voir routes/licenceStatus.js.
+create table if not exists licences_utilisees (
+  cle text primary key,
+  boutique_id uuid references boutiques(id) on delete set null,
+  utilisee_le timestamptz not null default now()
+);
+-- Rattrapage : les clés du catalogue déjà rattachées à une boutique sont déjà consommées.
+insert into licences_utilisees (cle, boutique_id, utilisee_le)
+select cle, boutique_id, coalesce(activated_at, now()) from licences_catalogue where boutique_id is not null
+on conflict (cle) do nothing;
